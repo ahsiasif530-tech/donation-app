@@ -1,0 +1,93 @@
+/* Each donation page picks a fixed brand theme (pages.theme column) —
+   deliberate look chosen by the page owner, not adapted to visitor OS setting. */
+
+.theme-classic {
+  --bg: #EEF2F7;
+  --surface: #FFFFFF;
+  --surface-2: #F5F7FA;
+  --ink: #1E2430;
+  --ink-muted: #5B6472;
+  --border: #DCE3EC;
+  --heading: #2E3358;
+  --gold: #9C6B1F;
+  --gold-bright: #B8842E;
+  --gold-soft: rgba(184, 132, 46, 0.12);
+  --success-bg: #E4F0E7;
+  --success-text: #2F6B45;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.theme-midnight {
+  --bg: #222B40;
+  --surface: #2B3652;
+  --surface-2: #333F5E;
+  --ink: #F2F4F8;
+  --ink-muted: #B7C0D4;
+  --border: #48567A;
+  --heading: #F0D28E;
+  --gold: #D4A94E;
+  --gold-bright: #F0D28E;
+  --gold-soft: rgba(240, 210, 142, 0.18);
+  --success-bg: #274539;
+  --success-text: #94E3BC;
+  background: radial-gradient(circle at 50% -10%, #2E3A57 0%, var(--bg) 60%);
+  color: var(--ink);
+}
+
+.theme-sage {
+  --bg: #F2F5EF;
+  --surface: #FFFFFF;
+  --surface-2: #EAF0E6;
+  --ink: #24301F;
+  --ink-muted: #5E6E57;
+  --border: #D7E4D2;
+  --heading: #2E4A2A;
+  --gold: #3B7A4E;
+  --gold-bright: #4C9760;
+  --gold-soft: rgba(59, 150, 96, 0.12);
+  --success-bg: #E4F0E7;
+  --success-text: #2F6B45;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.theme-amber {
+  --bg: #FBF3EC;
+  --surface: #FFFFFF;
+  --surface-2: #F5E6D8;
+  --ink: #3A2A1F;
+  --ink-muted: #7A6553;
+  --border: #E8D3BC;
+  --heading: #8A4A2A;
+  --gold: #B8622E;
+  --gold-bright: #D17A3F;
+  --gold-soft: rgba(184, 98, 46, 0.14);
+  --success-bg: #E4F0E7;
+  --success-text: #2F6B45;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.halo {
+  position: relative;
+  width: 112px;
+  height: 112px;
+}
+.halo::before {
+  content: "";
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-soft) 0%, transparent 70%);
+  animation: donate-glow 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .halo::before {
+    animation: none;
+  }
+}
+@keyframes donate-glow {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
