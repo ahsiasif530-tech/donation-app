@@ -34,8 +34,7 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-2xl shadow-sm p-8 space-y-5 border"
-      style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}
+      className="w-full max-w-sm a-card p-8 space-y-5"
     >
       <div className="text-center">
         <h1 className="text-2xl font-bold">Sign in</h1>

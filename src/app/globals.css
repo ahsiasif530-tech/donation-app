@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -37,7 +38,47 @@ body {
   --a-accent-ink: #171A21;
   --a-success: #34D399;
   --a-danger: #F87171;
-  background: var(--a-bg);
+  --a-font-display: 'Fraunces', serif;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(212,175,55,0.08), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(232,200,117,0.05), transparent 55%),
+    var(--a-bg);
+  background-attachment: fixed;
   color: var(--a-text);
   min-height: 100vh;
+}
+
+.admin-theme h1,
+.admin-theme .a-display {
+  font-family: var(--a-font-display);
+  letter-spacing: -0.01em;
+}
+
+.admin-theme .a-card {
+  background: var(--a-surface);
+  border: 1px solid var(--a-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -20px rgba(0,0,0,0.5);
+}
+
+.admin-theme .a-card-hero {
+  border-color: var(--a-accent);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 0 0 1px var(--a-accent), 0 20px 45px -12px rgba(212,175,55,0.22);
+}
+
+.admin-theme .a-brand {
+  font-family: var(--a-font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.admin-theme .a-gold-text {
+  background: linear-gradient(135deg, var(--a-accent-strong), var(--a-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

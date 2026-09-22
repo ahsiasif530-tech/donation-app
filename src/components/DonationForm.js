@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   PayPalScriptProvider,
   PayPalButtons,
@@ -8,14 +8,15 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
-import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction } from '@/app/donate/[slug]/actions'
+import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, getPaypalClientId } from '@/app/donate/[slug]/actions'
 import CountrySelect from './CountrySelect'
 import { COUNTRIES } from '@/lib/countries'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
-const GATEWAY_ORDER = ['paypal', 'stripe']
-const GATEWAY_LABELS = { paypal: 'PayPal', stripe: 'Card' }
+const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
+const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Credit or Debit Card', bank: 'Bank Transfer' }
+const EXPRESS_GATEWAYS = ['applepay', 'googlepay']
 
 function GatewayIcon({ gateway }) {
   if (gateway === 'paypal') {
@@ -23,6 +24,32 @@ function GatewayIcon({ gateway }) {
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
         <path fill="#003087" d="M8.5 4h6.2c3 0 4.6 1.5 4.1 4.3-.6 3.5-2.9 5.3-6.2 5.3h-2l-.9 5.4H6.3L8.5 4Z" />
         <path fill="#009cde" d="M10.3 6h6.2c1.7 0 2.8.6 3.1 2 .5 2.6-1.4 5.1-4.6 5.1h-2.2l-.9 5.4H8.6l1.7-12.5Z" />
+      </svg>
+    )
+  }
+  if (gateway === 'bank') {
+    return (
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M3 10l9-6 9 6" />
+        <path d="M4.5 10v9M9 10v9M15 10v9M19.5 10v9" />
+        <path d="M2.5 19h19" />
+      </svg>
+    )
+  }
+  if (gateway === 'applepay') {
+    return (
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M16.5 3.5c-.9 1.07-2.3 1.9-3.7 1.79-.18-1.4.5-2.87 1.32-3.78C15 .43 16.5-.3 17.7 0c.14 1.46-.42 2.9-1.2 3.5Zm1.18 2.02c-2.05-.12-3.8 1.16-4.78 1.16-1 0-2.5-1.1-4.14-1.07-2.13.03-4.1 1.24-5.19 3.16-2.23 3.86-.58 9.58 1.58 12.72 1.06 1.55 2.32 3.27 3.98 3.21 1.6-.06 2.2-1.04 4.13-1.04s2.48 1.04 4.17 1.01c1.73-.03 2.82-1.56 3.87-3.12 1.22-1.78 1.72-3.5 1.75-3.59-.04-.02-3.36-1.3-3.39-5.14-.03-3.22 2.63-4.76 2.75-4.84-1.5-2.22-3.84-2.46-4.68-2.46Z"
+        />
+      </svg>
+    )
+  }
+  if (gateway === 'googlepay') {
+    return (
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path fill="#4285F4" d="M12 10.9v2.4h3.6c-.15 1-.9 2.5-3.6 2.5-2.17 0-3.94-1.8-3.94-4s1.77-4 3.94-4c1.24 0 2.06.53 2.53.98l1.73-1.66C15.16 5.98 13.72 5.3 12 5.3c-3.7 0-6.7 3-6.7 6.7s3 6.7 6.7 6.7c3.87 0 6.43-2.72 6.43-6.55 0-.44-.05-.78-.1-1.11H12Z" />
       </svg>
     )
   }
@@ -34,37 +61,25 @@ function GatewayIcon({ gateway }) {
   )
 }
 
-function CardPaySubmitButton({ billingName, billingAddress, disabled }) {
+// Registers the inline card-fields submit function onto a ref so the outer
+// form's single "Pay" button can trigger it after the donation row exists.
+function CardFieldsBridge({ submitRef, billingName, billingAddress }) {
   const { cardFieldsForm } = usePayPalCardFields()
-  const [submitting, setSubmitting] = useState(false)
 
-  async function handleClick() {
-    if (!cardFieldsForm) return
-    setSubmitting(true)
-    try {
-      await cardFieldsForm.submit({ name: billingName, billingAddress })
-    } catch {
-      setSubmitting(false)
+  useEffect(() => {
+    submitRef.current = cardFieldsForm ? () => cardFieldsForm.submit({ name: billingName, billingAddress }) : null
+    return () => {
+      submitRef.current = null
     }
-  }
+  }, [cardFieldsForm, billingName, billingAddress, submitRef])
 
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={disabled || submitting}
-      className="w-full rounded-xl py-3.5 text-base font-semibold text-white disabled:opacity-60"
-      style={{ background: 'var(--gold)', fontFamily: 'var(--font-display)' }}
-    >
-      {submitting ? 'Processing…' : 'Pay'}
-    </button>
-  )
+  return null
 }
 
 function Field({ label, required, ...props }) {
   return (
     <div>
-      <label htmlFor={props.id} className="block text-sm font-semibold mb-2">
+      <label htmlFor={props.id} className="block text-sm font-bold mb-2">
         {label} {required && <span style={{ color: 'var(--gold-bright)' }}>*</span>}
       </label>
       <input
@@ -77,8 +92,25 @@ function Field({ label, required, ...props }) {
   )
 }
 
-export default function DonationForm({ slug, enabledGateways }) {
-  const orderedGateways = GATEWAY_ORDER.filter((g) => enabledGateways.includes(g))
+export default function DonationForm({
+  slug,
+  enabledGateways,
+  cardEnabled = true,
+  paypalEnabled = true,
+  bankEnabled = false,
+  bankDetails = null,
+  applepayEnabled = false,
+  googlepayEnabled = false,
+}) {
+  const orderedGateways = GATEWAY_ORDER.filter(
+    (g) =>
+      enabledGateways.includes(g) &&
+      (g !== 'paypal' || paypalEnabled) &&
+      (g !== 'stripe' || cardEnabled) &&
+      (g !== 'bank' || bankEnabled) &&
+      (g !== 'applepay' || applepayEnabled) &&
+      (g !== 'googlepay' || googlepayEnabled)
+  )
 
   const [step, setStep] = useState('details')
 
@@ -92,7 +124,6 @@ export default function DonationForm({ slug, enabledGateways }) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [street, setStreet] = useState('')
-  const [apartment, setApartment] = useState('')
   const [city, setCity] = useState('')
   const [zip, setZip] = useState('')
   const [country, setCountry] = useState('United States')
@@ -101,6 +132,99 @@ export default function DonationForm({ slug, enabledGateways }) {
   const [status, setStatus] = useState('idle')
   const [feedback, setFeedback] = useState('')
   const [paypalCheckout, setPaypalCheckout] = useState(null)
+  const [cardClientId, setCardClientId] = useState(null)
+
+  const invoiceNumberRef = useRef(null)
+  const cardFieldsSubmitRef = useRef(null)
+
+  useEffect(() => {
+    if (!orderedGateways.some((g) => g === 'stripe' || EXPRESS_GATEWAYS.includes(g))) return
+    getPaypalClientId().then(setCardClientId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const billingName = `${firstName} ${lastName}`.trim()
+  const billingAddress = useMemo(
+    () => ({
+      addressLine1: street,
+      adminArea2: city,
+      postalCode: zip,
+      countryCode: COUNTRIES.find((c) => c.name === country)?.code || 'US',
+    }),
+    [street, city, zip, country]
+  )
+
+  const cardScriptOptions = useMemo(
+    () => ({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }),
+    [cardClientId]
+  )
+
+  // Apple Pay / Google Pay ride on the same PayPal merchant app as PayPal itself,
+  // rendered as PayPal's own official button widgets (required by both Apple's and
+  // Google's branding rules — a custom button can't trigger their payment sheets).
+  const expressScriptOptions = useMemo(
+    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons,applepay,googlepay' }),
+    [cardClientId]
+  )
+
+  // Called by the PayPal SDK itself once the popup/bridge is already open, so the
+  // donation row is created here (not before cardFieldsForm.submit()) to avoid
+  // delaying that submit() call past the original click — a delay there is what
+  // causes the SDK's "Window closed before response" error. Also used by the
+  // Apple Pay / Google Pay buttons, which trigger this directly without ever
+  // going through the form's own submit handler.
+  const createOrder = async () => {
+    if (!invoiceNumberRef.current) {
+      if (!email.trim() || !firstName.trim() || !lastName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+        const msg = 'Please fill in all required fields.'
+        setFeedback(msg)
+        throw new Error(msg)
+      }
+
+      const address = [street, city, zip, country].filter(Boolean).join(', ')
+      const donationResult = await submitDonation({
+        slug,
+        donorName: name,
+        donorEmail: email,
+        donorAddress: address,
+        donorPhone: phone,
+        donorCountry: country,
+        isAnonymous: anonymous,
+        amount,
+        message,
+        gateway,
+      })
+      if (donationResult.error) {
+        setFeedback(donationResult.error)
+        throw new Error(donationResult.error)
+      }
+      invoiceNumberRef.current = donationResult.invoiceNumber
+    }
+
+    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current, amount })
+    if (res.error) {
+      setFeedback(res.error)
+      throw new Error(res.error)
+    }
+    return res.orderId
+  }
+
+  const onApprove = async (data) => {
+    const res = await capturePaypalOrderAction({ orderId: data.orderID, invoiceNumber: invoiceNumberRef.current })
+    if (res.error) {
+      setStatus('idle')
+      setFeedback(res.error)
+      return
+    }
+    setStatus('done')
+    setFeedback(`Thank you for your kindness! Your donation (invoice ${invoiceNumberRef.current}) has been received. May God bless you and your family.`)
+  }
+
+  const onError = (err) => {
+    console.error('PayPal card fields error:', err)
+    setStatus('idle')
+    setFeedback('Checkout failed. Please try again.')
+  }
 
   function handleContinue(e) {
     e.preventDefault()
@@ -118,10 +242,41 @@ export default function DonationForm({ slug, enabledGateways }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setStatus('loading')
     setFeedback('')
 
-    const address = [street, apartment, city, zip, country].filter(Boolean).join(', ')
+    if (EXPRESS_GATEWAYS.includes(gateway)) {
+      setFeedback(`Please use the ${GATEWAY_LABELS[gateway]} button above to complete your donation.`)
+      return
+    }
+
+    if (!email.trim() || !firstName.trim() || !lastName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+      setFeedback('Please fill in all required fields.')
+      return
+    }
+
+    if (gateway === 'stripe') {
+      if (!cardClientId) {
+        setFeedback('Card payment is not set up yet. Please try PayPal instead.')
+        return
+      }
+      if (!cardFieldsSubmitRef.current) {
+        setFeedback('The card form is still loading. Please try again in a moment.')
+        return
+      }
+      setStatus('loading')
+      try {
+        await cardFieldsSubmitRef.current()
+      } catch (err) {
+        console.error('Card payment submit failed:', err)
+        setStatus('idle')
+        setFeedback('Please check your card details and try again.')
+      }
+      return
+    }
+
+    setStatus('loading')
+
+    const address = [street, city, zip, country].filter(Boolean).join(', ')
 
     const result = await submitDonation({
       slug,
@@ -129,6 +284,7 @@ export default function DonationForm({ slug, enabledGateways }) {
       donorEmail: email,
       donorAddress: address,
       donorPhone: phone,
+      donorCountry: country,
       isAnonymous: anonymous,
       amount,
       message,
@@ -147,43 +303,38 @@ export default function DonationForm({ slug, enabledGateways }) {
     }
 
     if (result.paypalClientId) {
-      setPaypalCheckout({
-        clientId: result.paypalClientId,
-        invoiceNumber: result.invoiceNumber,
-        amount,
-        gateway: result.gateway,
-        billingName: `${firstName} ${lastName}`.trim(),
-        billingAddress: {
-          addressLine1: street,
-          addressLine2: apartment,
-          adminArea2: city,
-          postalCode: zip,
-          countryCode: COUNTRIES.find((c) => c.name === country)?.code || 'US',
-        },
-      })
+      setPaypalCheckout({ clientId: result.paypalClientId, invoiceNumber: result.invoiceNumber, amount })
       setStatus('idle')
       return
     }
 
     setStatus('done')
-    setFeedback(`Your donation has been recorded (invoice ${result.invoiceNumber}). You'll receive a confirmation once payment is processed.`)
+    setFeedback(`Your generosity means the world to us. Your donation (invoice ${result.invoiceNumber}) has been recorded, and you'll receive a confirmation once payment is processed. May God bless you abundantly.`)
   }
 
   if (status === 'done') {
     return (
-      <div className="rounded-2xl border p-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-        <p className="text-lg font-semibold" style={{ color: 'var(--heading)', fontFamily: 'var(--font-display)' }}>Thank you</p>
+      <div className="d-card rounded-2xl border p-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <p className="text-lg font-semibold" style={{ color: 'var(--heading)', fontFamily: 'var(--font-display)' }}>God Bless You 🙏</p>
         <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>{feedback}</p>
+
+        {gateway === 'bank' && bankDetails && (
+          <div className="mt-6 rounded-xl border p-5 text-left space-y-2" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+            <p className="text-sm font-bold mb-1">Please send your donation to:</p>
+            {bankDetails.account_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Account holder:</span> {bankDetails.account_name}</p>}
+            {bankDetails.bank_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Bank:</span> {bankDetails.bank_name}</p>}
+            {bankDetails.account_number && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Account number:</span> {bankDetails.account_number}</p>}
+            {bankDetails.iban && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>IBAN:</span> {bankDetails.iban}</p>}
+            {bankDetails.swift && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>SWIFT / BIC:</span> {bankDetails.swift}</p>}
+          </div>
+        )}
       </div>
     )
   }
 
   if (paypalCheckout) {
-    const createOrder = async () => {
-      const res = await createPaypalOrderAction({
-        invoiceNumber: paypalCheckout.invoiceNumber,
-        amount: paypalCheckout.amount,
-      })
+    const createPaypalButtonOrder = async () => {
+      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, amount: paypalCheckout.amount })
       if (res.error) {
         setFeedback(res.error)
         throw new Error(res.error)
@@ -191,23 +342,18 @@ export default function DonationForm({ slug, enabledGateways }) {
       return res.orderId
     }
 
-    const onApprove = async (data) => {
-      const res = await capturePaypalOrderAction({
-        orderId: data.orderID,
-        invoiceNumber: paypalCheckout.invoiceNumber,
-      })
+    const onApprovePaypalButton = async (data) => {
+      const res = await capturePaypalOrderAction({ orderId: data.orderID, invoiceNumber: paypalCheckout.invoiceNumber })
       if (res.error) {
         setFeedback(res.error)
         return
       }
       setStatus('done')
-      setFeedback(`Thank you! Your donation (invoice ${paypalCheckout.invoiceNumber}) has been received.`)
+      setFeedback(`Thank you for your kindness! Your donation (invoice ${paypalCheckout.invoiceNumber}) has been received. May God bless you and your family.`)
     }
 
-    const onError = () => setFeedback('Checkout failed. Please try again.')
-
     return (
-      <div className="rounded-2xl border p-8 space-y-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <div className="d-card rounded-2xl border p-8 space-y-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <h2 className="text-lg font-semibold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
           Complete your donation
         </h2>
@@ -217,25 +363,21 @@ export default function DonationForm({ slug, enabledGateways }) {
 
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
-        {paypalCheckout.gateway === 'stripe' ? (
-          <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD', components: 'card-fields' }}>
-            <PayPalCardFieldsProvider createOrder={createOrder} onApprove={onApprove} onError={onError}>
-              <PayPalCardFieldsForm />
-              <CardPaySubmitButton billingName={paypalCheckout.billingName} billingAddress={paypalCheckout.billingAddress} />
-            </PayPalCardFieldsProvider>
-          </PayPalScriptProvider>
-        ) : (
-          <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD' }}>
-            <PayPalButtons style={{ layout: 'vertical' }} createOrder={createOrder} onApprove={onApprove} onError={onError} />
-          </PayPalScriptProvider>
-        )}
+        <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD' }}>
+          <PayPalButtons
+            style={{ layout: 'vertical' }}
+            createOrder={createPaypalButtonOrder}
+            onApprove={onApprovePaypalButton}
+            onError={() => setFeedback('Checkout failed. Please try again.')}
+          />
+        </PayPalScriptProvider>
       </div>
     )
   }
 
   if (step === 'supporter-info') {
     return (
-      <form onSubmit={handleSubmit} className="rounded-2xl border shadow-sm p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
             Supporter Information
@@ -258,7 +400,6 @@ export default function DonationForm({ slug, enabledGateways }) {
         </div>
 
         <Field id="street" label="Street address" required value={street} onChange={(e) => setStreet(e.target.value)} />
-        <Field id="apartment" label="Apartment, suite, unit, etc." value={apartment} onChange={(e) => setApartment(e.target.value)} />
 
         <div className="grid grid-cols-2 gap-3">
           <Field id="city" label="Town / City" required value={city} onChange={(e) => setCity(e.target.value)} />
@@ -266,29 +407,68 @@ export default function DonationForm({ slug, enabledGateways }) {
         </div>
 
         <div>
-          <label htmlFor="country" className="block text-sm font-semibold mb-2">
+          <label htmlFor="country" className="block text-sm font-bold mb-2">
             Country / Region <span style={{ color: 'var(--gold-bright)' }}>*</span>
           </label>
           <CountrySelect value={country} onChange={setCountry} />
         </div>
         <Field id="phone" label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
 
+        {gateway === 'stripe' && (
+          <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
+            <label className="block text-sm font-bold">
+              Card details <span style={{ color: 'var(--gold-bright)' }}>*</span>
+            </label>
+            {cardClientId ? (
+              <PayPalScriptProvider options={cardScriptOptions}>
+                <PayPalCardFieldsProvider createOrder={createOrder} onApprove={onApprove} onError={onError}>
+                  <PayPalCardFieldsForm />
+                  <CardFieldsBridge submitRef={cardFieldsSubmitRef} billingName={billingName} billingAddress={billingAddress} />
+                </PayPalCardFieldsProvider>
+              </PayPalScriptProvider>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading card form…</p>
+            )}
+          </div>
+        )}
+
+        {EXPRESS_GATEWAYS.includes(gateway) && (
+          <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
+            <label className="block text-sm font-bold">Complete with {GATEWAY_LABELS[gateway]}</label>
+            {cardClientId ? (
+              <PayPalScriptProvider options={expressScriptOptions}>
+                <PayPalButtons
+                  fundingSource={gateway}
+                  style={{ layout: 'vertical', height: 45 }}
+                  createOrder={createOrder}
+                  onApprove={onApprove}
+                  onError={onError}
+                />
+              </PayPalScriptProvider>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading {GATEWAY_LABELS[gateway]}…</p>
+            )}
+          </div>
+        )}
+
         {feedback && <p className="text-sm text-red-600">{feedback}</p>}
 
-        <button
-          type="submit"
-          disabled={status === 'loading'}
-          className="w-full rounded-xl py-3.5 text-base font-semibold text-white disabled:opacity-60"
-          style={{ background: 'var(--gold)', fontFamily: 'var(--font-display)' }}
-        >
-          {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : 'Donate Now'}
-        </button>
+        {!EXPRESS_GATEWAYS.includes(gateway) && (
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : 'Donate Now'}
+          </button>
+        )}
       </form>
     )
   }
 
   return (
-    <form onSubmit={handleContinue} className="rounded-2xl border shadow-sm p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+    <form onSubmit={handleContinue} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
       <Field id="donor-name" label="Your Name" required value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
 
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
@@ -297,19 +477,15 @@ export default function DonationForm({ slug, enabledGateways }) {
       </label>
 
       <div>
-        <label className="block text-sm font-semibold mb-2 text-center">Choose an amount</label>
+        <label className="block text-sm font-bold mb-2 text-center">Choose an amount</label>
         <div className="grid grid-cols-6 gap-2 max-[420px]:grid-cols-3">
           {PRESET_AMOUNTS.map((a) => (
             <button
               key={a}
               type="button"
               onClick={() => setAmount(a)}
-              className="rounded-lg border py-2.5 text-sm font-semibold tabular-nums transition-colors"
-              style={
-                amount === a
-                  ? { background: 'var(--gold)', borderColor: 'var(--gold)', color: '#fff' }
-                  : { borderColor: 'var(--border)', background: 'var(--surface-2)' }
-              }
+              className={`rounded-lg border py-2.5 text-sm font-bold tabular-nums transition-colors ${amount === a ? 'd-btn-gold' : ''}`}
+              style={amount === a ? {} : { borderColor: 'var(--border)', background: 'var(--surface-2)' }}
             >
               ${a}
             </button>
@@ -318,7 +494,7 @@ export default function DonationForm({ slug, enabledGateways }) {
       </div>
 
       <div>
-        <label htmlFor="amount-input" className="block text-sm font-semibold mb-2">
+        <label htmlFor="amount-input" className="block text-sm font-bold mb-2">
           Amount (USD) <span style={{ color: 'var(--gold-bright)' }}>*</span>
         </label>
         <input
@@ -329,14 +505,14 @@ export default function DonationForm({ slug, enabledGateways }) {
           step="0.01"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-lg border px-3 py-3 text-center text-xl font-semibold tabular-nums focus:outline-none"
+          className="w-full rounded-lg border px-3 py-3 text-center text-2xl font-bold tabular-nums focus:outline-none"
           style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', fontFamily: 'var(--font-display)' }}
         />
         <p className="mt-2 text-center text-xs" style={{ color: 'var(--ink-muted)' }}>Min $1 &middot; Max $10,000</p>
       </div>
 
       <div>
-        <label htmlFor="message" className="block text-sm font-semibold mb-2">Message</label>
+        <label htmlFor="message" className="block text-sm font-bold mb-2">Message</label>
         <textarea
           id="message"
           rows={3}
@@ -349,12 +525,12 @@ export default function DonationForm({ slug, enabledGateways }) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold mb-2">Payment method</label>
-        <div className="rounded-lg border divide-y overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+        <label className="block text-sm font-bold mb-2">Payment method</label>
+        <div className="rounded-xl border divide-y overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           {orderedGateways.map((g) => (
             <label
               key={g}
-              className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer"
+              className="flex items-center gap-4 px-6 py-5 text-base cursor-pointer"
               style={{
                 background: gateway === g ? 'var(--surface-2)' : 'var(--surface)',
                 borderColor: 'var(--border)',
@@ -365,10 +541,12 @@ export default function DonationForm({ slug, enabledGateways }) {
                 name="gateway"
                 checked={gateway === g}
                 onChange={() => setGateway(g)}
-                style={{ accentColor: 'var(--gold)' }}
+                style={{ accentColor: 'var(--gold)', width: 20, height: 20 }}
               />
-              <GatewayIcon gateway={g} />
-              <span className="font-medium">{GATEWAY_LABELS[g]}</span>
+              <span className="scale-125 origin-left">
+                <GatewayIcon gateway={g} />
+              </span>
+              <span className="font-bold text-lg">{GATEWAY_LABELS[g]}</span>
             </label>
           ))}
         </div>
@@ -378,8 +556,8 @@ export default function DonationForm({ slug, enabledGateways }) {
 
       <button
         type="submit"
-        className="w-full rounded-xl py-3.5 text-base font-semibold text-white disabled:opacity-60"
-        style={{ background: 'var(--gold)', fontFamily: 'var(--font-display)' }}
+        className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
+        style={{ fontFamily: 'var(--font-display)' }}
       >
         Donate Now
       </button>

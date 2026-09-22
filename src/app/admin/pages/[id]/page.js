@@ -1,11 +1,13 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 
-const GATEWAY_LABELS = { paypal: 'PayPal', stripe: 'Card (Stripe)', bank: 'Bank Transfer', payoneer: 'Payoneer' }
+const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
 
-export default async function PageInvoicesPage({ params }) {
+export default async function PageInvoicesPage({ params, searchParams }) {
   const { id } = await params
+  const { status: statusFilter, from: fromFilter, to: toFilter } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -32,15 +34,36 @@ export default async function PageInvoicesPage({ params }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, donor_country, created_at')
     .eq('page_id', id)
     .order('created_at', { ascending: false })
 
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
 
+  const countryTotals = new Map()
+  for (const d of completed) {
+    const country = d.donor_country || 'Unknown'
+    const entry = countryTotals.get(country) || { country, total: 0, count: 0 }
+    entry.total += Number(d.amount)
+    entry.count += 1
+    countryTotals.set(country, entry)
+  }
+  const byCountry = [...countryTotals.values()].sort((a, b) => b.total - a.total)
+
+  const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
+  const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null
+
+  const filteredDonations = (donations || []).filter((d) => {
+    if (statusFilter && statusFilter !== 'all' && d.status !== statusFilter) return false
+    const createdAt = new Date(d.created_at)
+    if (fromDate && createdAt < fromDate) return false
+    if (toDate && createdAt > toDate) return false
+    return true
+  })
+
   const byGateway = Object.keys(GATEWAY_LABELS).map((g) => {
-    const rows = (donations || []).filter((d) => d.gateway === g)
+    const rows = filteredDonations.filter((d) => d.gateway === g)
     return {
       gateway: g,
       label: GATEWAY_LABELS[g],
@@ -50,6 +73,16 @@ export default async function PageInvoicesPage({ params }) {
   })
 
   const cardStyle = { background: 'var(--a-surface)', borderColor: 'var(--a-border)' }
+
+  function exportQuery(gateway) {
+    const params = new URLSearchParams()
+    if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
+    params.set('page', id)
+    if (fromFilter) params.set('from', fromFilter)
+    if (toFilter) params.set('to', toFilter)
+    params.set('gateway', gateway)
+    return params.toString()
+  }
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
@@ -67,12 +100,56 @@ export default async function PageInvoicesPage({ params }) {
           </p>
         </div>
 
+        <div className="rounded-2xl border overflow-hidden" style={cardStyle}>
+          <div className="px-5 py-3.5 border-b" style={{ borderColor: 'var(--a-border)' }}>
+            <h3 className="font-bold">By country</h3>
+          </div>
+          {byCountry.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono completed donation নেই।</p>
+          ) : (
+            <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
+              {byCountry.map((c) => (
+                <div key={c.country} className="flex items-center gap-3 px-5 py-3 text-sm">
+                  <span className="flex-1 font-semibold">{c.country}</span>
+                  <span style={{ color: 'var(--a-text-muted)' }}>{c.count} {c.count === 1 ? 'donor' : 'donors'}</span>
+                  <span className="font-bold tabular-nums w-16 text-right" style={{ color: 'var(--a-accent-strong)' }}>
+                    {((c.total / totalEarning) * 100).toFixed(0)}%
+                  </span>
+                  <span className="font-bold tabular-nums w-20 text-right">${c.total.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div id="invoices" className="scroll-mt-4">
+          <InvoiceFilterBar fixedPageId={id} basePath={`/admin/pages/${id}`} />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {byGateway.map((g) => (
             <div key={g.gateway} className="rounded-2xl border overflow-hidden" style={cardStyle}>
-              <div className="px-5 py-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
+              <div className="px-5 py-3.5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
                 <h3 className="font-bold">{g.label}</h3>
-                <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={`/admin/invoices/export?${exportQuery(g.gateway)}`}
+                    className="text-xs font-bold hover:underline"
+                    style={{ color: 'var(--a-text-muted)' }}
+                  >
+                    CSV
+                  </a>
+                  <a
+                    href={`/admin/invoices/export/print?${exportQuery(g.gateway)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold hover:underline"
+                    style={{ color: 'var(--a-text-muted)' }}
+                  >
+                    PDF
+                  </a>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
+                </div>
               </div>
               {g.invoices.length === 0 ? (
                 <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice নেই।</p>

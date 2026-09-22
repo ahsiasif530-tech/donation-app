@@ -20,10 +20,12 @@ function Field({ label, ...props }) {
 export default function PaymentSettingsForm({ initialSettings }) {
   const s = initialSettings || {}
 
+  const [paypalEnabled, setPaypalEnabled] = useState(s.paypal?.enabled ?? true)
   const [paypalEmail, setPaypalEmail] = useState(s.paypal?.email || '')
   const [paypalClientId, setPaypalClientId] = useState(s.paypal?.client_id || '')
   const [paypalSecret, setPaypalSecret] = useState(s.paypal?.secret || '')
 
+  const [bankEnabled, setBankEnabled] = useState(s.bank?.enabled ?? false)
   const [bankAccountName, setBankAccountName] = useState(s.bank?.account_name || '')
   const [bankAccountNumber, setBankAccountNumber] = useState(s.bank?.account_number || '')
   const [bankName, setBankName] = useState(s.bank?.bank_name || '')
@@ -33,9 +35,13 @@ export default function PaymentSettingsForm({ initialSettings }) {
   const [otherName, setOtherName] = useState(s.other?.name || s.payoneer?.name || '')
   const [otherDetails, setOtherDetails] = useState(s.other?.details || s.payoneer?.details || '')
 
+  const [cardEnabled, setCardEnabled] = useState(s.card?.enabled ?? true)
   const [cardProcessor, setCardProcessor] = useState(s.card?.processor || 'Stripe')
   const [cardPublishableKey, setCardPublishableKey] = useState(s.card?.publishable_key || '')
   const [cardSecretKey, setCardSecretKey] = useState(s.card?.secret_key || '')
+
+  const [applepayEnabled, setApplepayEnabled] = useState(s.applepay?.enabled ?? false)
+  const [googlepayEnabled, setGooglepayEnabled] = useState(s.googlepay?.enabled ?? false)
 
   const [status, setStatus] = useState('idle')
 
@@ -44,8 +50,9 @@ export default function PaymentSettingsForm({ initialSettings }) {
     setStatus('saving')
 
     const result = await updatePaymentSettings({
-      paypal: { email: paypalEmail, client_id: paypalClientId, secret: paypalSecret },
+      paypal: { enabled: paypalEnabled, email: paypalEmail, client_id: paypalClientId, secret: paypalSecret },
       bank: {
+        enabled: bankEnabled,
         account_name: bankAccountName,
         account_number: bankAccountNumber,
         bank_name: bankName,
@@ -53,6 +60,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
         swift: bankSwift,
       },
       card: {
+        enabled: cardEnabled,
         processor: cardProcessor,
         publishable_key: cardPublishableKey,
         secret_key: cardSecretKey,
@@ -61,6 +69,8 @@ export default function PaymentSettingsForm({ initialSettings }) {
         name: otherName,
         details: otherDetails,
       },
+      applepay: { enabled: applepayEnabled },
+      googlepay: { enabled: googlepayEnabled },
     })
 
     setStatus(result.error ? 'error' : 'saved')
@@ -71,6 +81,10 @@ export default function PaymentSettingsForm({ initialSettings }) {
     <form onSubmit={handleSubmit} className="space-y-8">
       <div>
         <h3 className="font-bold mb-3">PayPal</h3>
+        <label className="flex items-center gap-2 text-sm font-medium mb-4 cursor-pointer">
+          <input type="checkbox" checked={paypalEnabled} onChange={(e) => setPaypalEnabled(e.target.checked)} />
+          Show &quot;PayPal&quot; as a payment option on donation pages
+        </label>
         <div className="space-y-3">
           <Field
             label="Receiving email"
@@ -96,6 +110,13 @@ export default function PaymentSettingsForm({ initialSettings }) {
 
       <div>
         <h3 className="font-bold mb-3">Bank account</h3>
+        <label className="flex items-center gap-2 text-sm font-medium mb-4 cursor-pointer">
+          <input type="checkbox" checked={bankEnabled} onChange={(e) => setBankEnabled(e.target.checked)} />
+          Show &quot;Bank Transfer&quot; as a payment option on donation pages
+        </label>
+        <p className="text-xs mb-3" style={{ color: 'var(--a-text-muted)' }}>
+          There&apos;s no automatic verification for bank transfers — donors see these details after donating, and the invoice stays &quot;pending&quot; until you manually mark it completed once you receive the transfer.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Field label="Account holder name" value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} />
@@ -117,13 +138,35 @@ export default function PaymentSettingsForm({ initialSettings }) {
 
       <div>
         <h3 className="font-bold mb-3">Card</h3>
+
+        <label className="flex items-center gap-2 text-sm font-medium mb-4 cursor-pointer">
+          <input type="checkbox" checked={cardEnabled} onChange={(e) => setCardEnabled(e.target.checked)} />
+          Show &quot;Credit or Debit Card&quot; as a payment option on donation pages
+        </label>
         <p className="text-xs mb-3" style={{ color: 'var(--a-text-muted)' }}>
-          Card payments need a processor account (e.g. Stripe). Keys go here once that account exists — donation pages won&apos;t accept live card payments until then.
+          Powered by PayPal&apos;s own Advanced Card Payments using the PayPal Client ID/Secret above — turning this off leaves only PayPal as an option. The fields below are unused placeholders for a future separate processor.
         </p>
         <div className="space-y-3">
           <Field label="Processor" value={cardProcessor} onChange={(e) => setCardProcessor(e.target.value)} />
           <Field label="Publishable key" value={cardPublishableKey} onChange={(e) => setCardPublishableKey(e.target.value)} />
           <Field label="Secret key" type="password" value={cardSecretKey} onChange={(e) => setCardSecretKey(e.target.value)} />
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold mb-3">Express checkout</h3>
+        <p className="text-xs mb-3" style={{ color: 'var(--a-text-muted)' }}>
+          Both ride on the same PayPal Client ID/Secret above (as PayPal&apos;s own button widgets), no separate setup needed. Apple Pay only shows up for visitors on Safari/Apple devices, and PayPal requires your live site to be on HTTPS with a verified domain before it will actually appear — leave it off until the site is live on its real domain.
+        </p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input type="checkbox" checked={applepayEnabled} onChange={(e) => setApplepayEnabled(e.target.checked)} />
+            Show &quot;Apple Pay&quot; as a payment option on donation pages
+          </label>
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input type="checkbox" checked={googlepayEnabled} onChange={(e) => setGooglepayEnabled(e.target.checked)} />
+            Show &quot;Google Pay&quot; as a payment option on donation pages
+          </label>
         </div>
       </div>
 

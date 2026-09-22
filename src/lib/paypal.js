@@ -36,7 +36,10 @@ export async function createPaypalOrder({ clientId, secret, amount, invoiceNumbe
       ],
     }),
   })
-  if (!res.ok) throw new Error('Failed to create PayPal order')
+  if (!res.ok) {
+    console.error('PayPal create order failed:', res.status, await res.text())
+    throw new Error('Failed to create PayPal order')
+  }
   return res.json()
 }
 
@@ -49,6 +52,10 @@ export async function capturePaypalOrder({ clientId, secret, orderId }) {
       'Content-Type': 'application/json',
     },
   })
-  if (!res.ok) throw new Error('Failed to capture PayPal order')
-  return res.json()
+  const body = await res.text()
+  if (!res.ok) {
+    console.error('PayPal capture order failed:', res.status, body)
+    throw new Error('Failed to capture PayPal order')
+  }
+  return JSON.parse(body)
 }

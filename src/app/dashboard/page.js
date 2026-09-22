@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   if (!profile?.page_id) {
     return (
       <main className="admin-theme min-h-screen px-4 py-10">
-        <div className="max-w-2xl mx-auto rounded-2xl border p-8 text-center" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
+        <div className="max-w-2xl mx-auto a-card p-8 text-center">
           <p style={{ color: 'var(--a-text-muted)' }}>Tomar account-e ekhono kono page assign kora hoyni. Admin-ke bolo.</p>
           <SignOutButton className="mt-4" />
         </div>
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
 
-  const GATEWAY_LABELS = { paypal: 'PayPal', stripe: 'Card (Stripe)', bank: 'Bank Transfer', payoneer: 'Payoneer' }
+  const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
   const byGateway = Object.keys(GATEWAY_LABELS).map((g) => {
     const rows = (donations || []).filter((d) => d.gateway === g)
     return {
@@ -56,11 +56,10 @@ export default async function DashboardPage() {
     }
   })
 
-  const cardStyle = { background: 'var(--a-surface)', borderColor: 'var(--a-border)' }
-
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
       <div className="max-w-3xl mx-auto space-y-6">
+        <p className="a-brand a-gold-text">BlessedHands</p>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Hi, {profile.full_name}</h1>
@@ -69,16 +68,16 @@ export default async function DashboardPage() {
           <SignOutButton />
         </div>
 
-        <div className="rounded-2xl border p-6" style={{ ...cardStyle, borderColor: 'var(--a-accent)', boxShadow: '0 0 0 1px var(--a-accent) inset, 0 12px 30px rgba(212,175,55,0.12)' }}>
+        <div className="a-card a-card-hero p-6">
           <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning (completed)</p>
-          <p className="text-4xl font-extrabold mt-1 tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>
+          <p className="a-display a-gold-text text-5xl font-semibold mt-1 tabular-nums">
             ${totalEarning.toFixed(2)}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {byGateway.map((g) => (
-            <div key={g.gateway} className="rounded-2xl border overflow-hidden" style={cardStyle}>
+            <div key={g.gateway} className="a-card overflow-hidden">
               <div className="px-5 py-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
                 <h3 className="font-bold">{g.label}</h3>
                 <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>

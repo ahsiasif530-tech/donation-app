@@ -19,7 +19,13 @@ async function getPaypalCredentials(supabase) {
   return { clientId: paypal.client_id, secret: paypal.secret, email: paypal.email }
 }
 
-export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, isAnonymous, amount, message, gateway }) {
+export async function getPaypalClientId() {
+  const supabase = createAdminClient()
+  const paypal = await getPaypalSettings(supabase)
+  return paypal?.client_id || null
+}
+
+export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
   const numericAmount = Number(amount)
 
   if (!numericAmount || numericAmount < 1 || numericAmount > 10000) {
@@ -48,6 +54,7 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
       donor_email: donorEmail?.trim() || null,
       donor_address: donorAddress?.trim() || null,
       donor_phone: donorPhone?.trim() || null,
+      donor_country: donorCountry?.trim() || null,
       is_anonymous: isAnonymous,
       amount: numericAmount,
       message: message?.trim() || null,

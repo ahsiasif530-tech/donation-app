@@ -43,17 +43,40 @@ create table if not exists donations (
   donor_email text,
   donor_address text,
   donor_phone text,
+  donor_country text,
   is_anonymous boolean not null default false,
   amount numeric(10, 2) not null check (amount > 0),
   currency text not null default 'USD',
   message text,
-  gateway text not null check (gateway in ('paypal', 'stripe', 'bank', 'payoneer')),
+  gateway text not null check (gateway in ('paypal', 'stripe', 'bank', 'applepay', 'googlepay')),
   gateway_reference text,
   status text not null default 'pending' check (status in ('pending', 'completed', 'failed')),
   created_at timestamptz not null default now()
 );
 
 create index if not exists donations_page_id_idx on donations(page_id);
+
+-- ============================================================
+-- Completed donations can never be deleted (blocks every role,
+-- including the service key — this is not an RLS policy).
+-- ============================================================
+create or replace function prevent_completed_donation_delete()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.status = 'completed' then
+    raise exception 'Completed donations cannot be deleted.';
+  end if;
+  return old;
+end;
+$$;
+
+drop trigger if exists trg_prevent_completed_donation_delete on donations;
+create trigger trg_prevent_completed_donation_delete
+before delete on donations
+for each row
+execute function prevent_completed_donation_delete();
 
 -- ============================================================
 -- settings: one global row holding site-wide payment settings

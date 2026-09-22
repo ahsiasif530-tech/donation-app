@@ -14,7 +14,7 @@ const supabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
-const enabledGateways = (gatewaysCsv || 'paypal,stripe,bank').split(',').map((g) => g.trim())
+const enabledGateways = (gatewaysCsv || 'paypal,stripe,bank,applepay,googlepay').split(',').map((g) => g.trim())
 
 const { data, error } = await supabase
   .from('pages')
