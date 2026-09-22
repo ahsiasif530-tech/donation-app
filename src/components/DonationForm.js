@@ -122,7 +122,6 @@ export default function DonationForm({
 
   const [email, setEmail] = useState('')
   const [supporterName, setSupporterName] = useState('')
-  const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [zip, setZip] = useState('')
   const [country, setCountry] = useState('United States')
@@ -145,12 +144,11 @@ export default function DonationForm({
   const billingName = supporterName.trim()
   const billingAddress = useMemo(
     () => ({
-      addressLine1: street,
       adminArea2: city,
       postalCode: zip,
       countryCode: COUNTRIES.find((c) => c.name === country)?.code || 'US',
     }),
-    [street, city, zip, country]
+    [city, zip, country]
   )
 
   const cardScriptOptions = useMemo(
@@ -174,13 +172,13 @@ export default function DonationForm({
   // going through the form's own submit handler.
   const createOrder = async () => {
     if (!invoiceNumberRef.current) {
-      if (!email.trim() || !supporterName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+      if (!email.trim() || !supporterName.trim() || !city.trim() || !zip.trim()) {
         const msg = 'Please fill in all required fields.'
         setFeedback(msg)
         throw new Error(msg)
       }
 
-      const address = [street, city, zip, country].filter(Boolean).join(', ')
+      const address = [city, zip, country].filter(Boolean).join(', ')
       const donationResult = await submitDonation({
         slug,
         donorName: name,
@@ -248,7 +246,7 @@ export default function DonationForm({
       return
     }
 
-    if (!email.trim() || !supporterName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+    if (!email.trim() || !supporterName.trim() || !city.trim() || !zip.trim()) {
       setFeedback('Please fill in all required fields.')
       return
     }
@@ -275,7 +273,7 @@ export default function DonationForm({
 
     setStatus('loading')
 
-    const address = [street, city, zip, country].filter(Boolean).join(', ')
+    const address = [city, zip, country].filter(Boolean).join(', ')
 
     const result = await submitDonation({
       slug,
@@ -394,8 +392,6 @@ export default function DonationForm({
         <Field id="email" label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
 
         <Field id="supporter-name" label="Name" required value={supporterName} onChange={(e) => setSupporterName(e.target.value)} />
-
-        <Field id="street" label="Street address" required value={street} onChange={(e) => setStreet(e.target.value)} />
 
         <div className="grid grid-cols-2 gap-3">
           <Field id="city" label="Town / City" required value={city} onChange={(e) => setCity(e.target.value)} />
