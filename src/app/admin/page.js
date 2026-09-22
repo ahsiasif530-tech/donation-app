@@ -4,7 +4,7 @@ import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 
 export default async function AdminPage({ searchParams }) {
-  const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter } = await searchParams
+  const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -28,7 +28,7 @@ export default async function AdminPage({ searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, page_id, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, page_id, donor_country, created_at')
     .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
@@ -58,6 +58,7 @@ export default async function AdminPage({ searchParams }) {
 
   const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
   const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null
+  const searchNeedle = searchQuery ? searchQuery.trim().toLowerCase() : ''
 
   const filteredDonations = (donations || []).filter((d) => {
     if (statusFilter && d.status !== statusFilter) return false
@@ -65,6 +66,10 @@ export default async function AdminPage({ searchParams }) {
     const createdAt = new Date(d.created_at)
     if (fromDate && createdAt < fromDate) return false
     if (toDate && createdAt > toDate) return false
+    if (searchNeedle) {
+      const haystack = `${d.invoice_number || ''} ${d.gateway_reference || ''}`.toLowerCase()
+      if (!haystack.includes(searchNeedle)) return false
+    }
     return true
   })
 
@@ -86,6 +91,7 @@ export default async function AdminPage({ searchParams }) {
     if (pageFilter && pageFilter !== 'all') params.set('page', pageFilter)
     if (fromFilter) params.set('from', fromFilter)
     if (toFilter) params.set('to', toFilter)
+    if (searchQuery) params.set('q', searchQuery)
     params.set('gateway', gateway)
     return params.toString()
   }

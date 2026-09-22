@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DateRangePicker from './DateRangePicker'
 
@@ -13,6 +14,8 @@ export default function InvoiceFilterBar({ pages, fixedPageId, basePath = '/admi
   const pageId = fixedPageId || searchParams.get('page') || 'all'
   const from = searchParams.get('from') || ''
   const to = searchParams.get('to') || ''
+  const q = searchParams.get('q') || ''
+  const [searchValue, setSearchValue] = useState(q)
 
   function pushParams(overrides) {
     const params = new URLSearchParams(searchParams.toString())
@@ -32,19 +35,44 @@ export default function InvoiceFilterBar({ pages, fixedPageId, basePath = '/admi
     color: 'var(--a-text)',
   }
 
-  const hasFilters = status !== 'all' || (!fixedPageId && pageId !== 'all') || from || to
+  const hasFilters = status !== 'all' || (!fixedPageId && pageId !== 'all') || from || to || q
 
   const exportQuery = new URLSearchParams()
   if (status !== 'all') exportQuery.set('status', status)
   if (pageId !== 'all') exportQuery.set('page', pageId)
   if (from) exportQuery.set('from', from)
   if (to) exportQuery.set('to', to)
+  if (q) exportQuery.set('q', q)
   const exportQs = exportQuery.toString()
   const csvHref = `/admin/invoices/export${exportQs ? `?${exportQs}` : ''}`
   const pdfHref = `/admin/invoices/export/print${exportQs ? `?${exportQs}` : ''}`
 
+  function handleSearchSubmit(e) {
+    e.preventDefault()
+    pushParams({ q: searchValue })
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 mb-3">
+      <form onSubmit={handleSearchSubmit} className="flex items-center gap-1.5">
+        <input
+          key={q}
+          type="text"
+          defaultValue={q}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Search by transaction ID"
+          className="text-sm rounded-lg border px-3 py-1.5 focus:outline-none w-48"
+          style={fieldStyle}
+        />
+        <button
+          type="submit"
+          className="text-sm font-bold rounded-lg border px-3 py-1.5 hover:opacity-80 transition-opacity"
+          style={fieldStyle}
+        >
+          Search
+        </button>
+      </form>
+
       <select
         value={status}
         onChange={(e) => pushParams({ status: e.target.value })}

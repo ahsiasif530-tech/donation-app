@@ -1,4 +1,4 @@
-export async function fetchFilteredInvoices(supabase, { status, page, from, to, gateway } = {}) {
+export async function fetchFilteredInvoices(supabase, { status, page, from, to, gateway, q } = {}) {
   const { data: pages } = await supabase
     .from('pages')
     .select('id, slug, title, label')
@@ -12,6 +12,7 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const fromDate = from ? new Date(`${from}T00:00:00`) : null
   const toDate = to ? new Date(`${to}T23:59:59`) : null
+  const needle = q ? q.trim().toLowerCase() : ''
 
   const invoices = (donations || []).filter((d) => {
     if (status && status !== 'all' && d.status !== status) return false
@@ -20,6 +21,10 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
     const createdAt = new Date(d.created_at)
     if (fromDate && createdAt < fromDate) return false
     if (toDate && createdAt > toDate) return false
+    if (needle) {
+      const haystack = `${d.invoice_number || ''} ${d.gateway_reference || ''}`.toLowerCase()
+      if (!haystack.includes(needle)) return false
+    }
     return true
   })
 

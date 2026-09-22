@@ -7,7 +7,7 @@ const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Go
 
 export default async function PageInvoicesPage({ params, searchParams }) {
   const { id } = await params
-  const { status: statusFilter, from: fromFilter, to: toFilter } = await searchParams
+  const { status: statusFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -34,7 +34,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, donor_country, created_at')
     .eq('page_id', id)
     .order('created_at', { ascending: false })
 
@@ -53,12 +53,17 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
   const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null
+  const searchNeedle = searchQuery ? searchQuery.trim().toLowerCase() : ''
 
   const filteredDonations = (donations || []).filter((d) => {
     if (statusFilter && statusFilter !== 'all' && d.status !== statusFilter) return false
     const createdAt = new Date(d.created_at)
     if (fromDate && createdAt < fromDate) return false
     if (toDate && createdAt > toDate) return false
+    if (searchNeedle) {
+      const haystack = `${d.invoice_number || ''} ${d.gateway_reference || ''}`.toLowerCase()
+      if (!haystack.includes(searchNeedle)) return false
+    }
     return true
   })
 
@@ -80,6 +85,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
     params.set('page', id)
     if (fromFilter) params.set('from', fromFilter)
     if (toFilter) params.set('to', toFilter)
+    if (searchQuery) params.set('q', searchQuery)
     params.set('gateway', gateway)
     return params.toString()
   }

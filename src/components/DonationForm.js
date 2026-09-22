@@ -121,8 +121,7 @@ export default function DonationForm({
   const [gateway, setGateway] = useState(orderedGateways[0])
 
   const [email, setEmail] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [supporterName, setSupporterName] = useState('')
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [zip, setZip] = useState('')
@@ -143,7 +142,7 @@ export default function DonationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const billingName = `${firstName} ${lastName}`.trim()
+  const billingName = supporterName.trim()
   const billingAddress = useMemo(
     () => ({
       addressLine1: street,
@@ -175,7 +174,7 @@ export default function DonationForm({
   // going through the form's own submit handler.
   const createOrder = async () => {
     if (!invoiceNumberRef.current) {
-      if (!email.trim() || !firstName.trim() || !lastName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+      if (!email.trim() || !supporterName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
         const msg = 'Please fill in all required fields.'
         setFeedback(msg)
         throw new Error(msg)
@@ -249,7 +248,7 @@ export default function DonationForm({
       return
     }
 
-    if (!email.trim() || !firstName.trim() || !lastName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
+    if (!email.trim() || !supporterName.trim() || !street.trim() || !city.trim() || !zip.trim()) {
       setFeedback('Please fill in all required fields.')
       return
     }
@@ -394,10 +393,7 @@ export default function DonationForm({
 
         <Field id="email" label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="first-name" label="First name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-          <Field id="last-name" label="Last name" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </div>
+        <Field id="supporter-name" label="Name" required value={supporterName} onChange={(e) => setSupporterName(e.target.value)} />
 
         <Field id="street" label="Street address" required value={street} onChange={(e) => setStreet(e.target.value)} />
 
