@@ -21,6 +21,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
   const s = initialSettings || {}
 
   const [paypalEnabled, setPaypalEnabled] = useState(s.paypal?.enabled ?? true)
+  const [paypalMode, setPaypalMode] = useState(s.paypal?.mode || 'sandbox')
   const [paypalEmail, setPaypalEmail] = useState(s.paypal?.email || '')
   const [paypalClientId, setPaypalClientId] = useState(s.paypal?.client_id || '')
   const [paypalSecret, setPaypalSecret] = useState(s.paypal?.secret || '')
@@ -50,7 +51,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
     setStatus('saving')
 
     const result = await updatePaymentSettings({
-      paypal: { enabled: paypalEnabled, email: paypalEmail, client_id: paypalClientId, secret: paypalSecret },
+      paypal: { enabled: paypalEnabled, mode: paypalMode, email: paypalEmail, client_id: paypalClientId, secret: paypalSecret },
       bank: {
         enabled: bankEnabled,
         account_name: bankAccountName,
@@ -86,6 +87,23 @@ export default function PaymentSettingsForm({ initialSettings }) {
           Show &quot;PayPal&quot; as a payment option on donation pages
         </label>
         <div className="space-y-3">
+          <div>
+            <label className="block text-sm mb-1.5" style={{ color: 'var(--a-text-muted)' }}>Mode</label>
+            <select
+              value={paypalMode}
+              onChange={(e) => setPaypalMode(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+              style={{ background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
+            >
+              <option value="sandbox">Sandbox (test — no real money)</option>
+              <option value="live">Live (real payments)</option>
+            </select>
+            {paypalMode === 'live' && (
+              <p className="text-xs mt-1.5" style={{ color: 'var(--a-accent-strong)' }}>
+                Live mode needs Live Client ID/Secret from developer.paypal.com (toggle from Sandbox to Live there first) — Sandbox credentials will not work here.
+              </p>
+            )}
+          </div>
           <Field
             label="Receiving email"
             type="email"

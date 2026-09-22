@@ -1,10 +1,12 @@
 import 'server-only'
 
-const PAYPAL_API_BASE = 'https://api-m.sandbox.paypal.com'
+function apiBase(mode) {
+  return mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'
+}
 
-async function getAccessToken(clientId, secret) {
+async function getAccessToken(clientId, secret, mode) {
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
-  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+  const res = await fetch(`${apiBase(mode)}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${auth}`,
@@ -17,9 +19,9 @@ async function getAccessToken(clientId, secret) {
   return data.access_token
 }
 
-export async function createPaypalOrder({ clientId, secret, amount, invoiceNumber }) {
-  const token = await getAccessToken(clientId, secret)
-  const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+export async function createPaypalOrder({ clientId, secret, mode, amount, invoiceNumber }) {
+  const token = await getAccessToken(clientId, secret, mode)
+  const res = await fetch(`${apiBase(mode)}/v2/checkout/orders`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -43,9 +45,9 @@ export async function createPaypalOrder({ clientId, secret, amount, invoiceNumbe
   return res.json()
 }
 
-export async function capturePaypalOrder({ clientId, secret, orderId }) {
-  const token = await getAccessToken(clientId, secret)
-  const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}/capture`, {
+export async function capturePaypalOrder({ clientId, secret, mode, orderId }) {
+  const token = await getAccessToken(clientId, secret, mode)
+  const res = await fetch(`${apiBase(mode)}/v2/checkout/orders/${orderId}/capture`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

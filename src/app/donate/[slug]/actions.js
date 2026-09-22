@@ -16,7 +16,7 @@ async function getPaypalSettings(supabase) {
 async function getPaypalCredentials(supabase) {
   const paypal = await getPaypalSettings(supabase)
   if (!paypal?.client_id || !paypal?.secret) return null
-  return { clientId: paypal.client_id, secret: paypal.secret, email: paypal.email }
+  return { clientId: paypal.client_id, secret: paypal.secret, email: paypal.email, mode: paypal.mode || 'sandbox' }
 }
 
 export async function getPaypalClientId() {
@@ -103,6 +103,7 @@ export async function createPaypalOrderAction({ invoiceNumber, amount }) {
     const order = await createPaypalOrder({
       clientId: credentials.clientId,
       secret: credentials.secret,
+      mode: credentials.mode,
       amount,
       invoiceNumber,
     })
@@ -121,6 +122,7 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
     const capture = await capturePaypalOrder({
       clientId: credentials.clientId,
       secret: credentials.secret,
+      mode: credentials.mode,
       orderId,
     })
 
