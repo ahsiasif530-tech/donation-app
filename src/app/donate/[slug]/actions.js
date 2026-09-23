@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
+import { COUNTRIES } from '@/lib/countries'
 
 async function getPaypalSettings(supabase) {
   const { data: settings } = await supabase
@@ -17,6 +18,22 @@ async function getPaypalCredentials(supabase) {
   const paypal = await getPaypalSettings(supabase)
   if (!paypal?.client_id || !paypal?.secret) return null
   return { clientId: paypal.client_id, secret: paypal.secret, email: paypal.email, mode: paypal.mode || 'sandbox' }
+}
+
+// The donation form no longer asks for email/address, so the invoice's donor
+// details are filled in from what PayPal returns (PayPal account for PayPal /
+// Apple Pay / Google Pay, the card's billing info for card payments).
+function donorInfoFromCapture(capture) {
+  const card = capture?.payment_source?.card
+  const address = capture?.payer?.address || card?.billing_address || capture?.purchase_units?.[0]?.shipping?.address
+  const countryCode = address?.country_code
+  const info = {
+    donor_email: capture?.payer?.email_address,
+    donor_phone: capture?.payer?.phone?.phone_number?.national_number,
+    donor_country: COUNTRIES.find((c) => c.code === countryCode)?.name || countryCode,
+    donor_address: [address?.admin_area_2, address?.postal_code, countryCode].filter(Boolean).join(', '),
+  }
+  return Object.fromEntries(Object.entries(info).filter(([, v]) => v))
 }
 
 export async function getPaypalClientId() {
@@ -130,7 +147,7 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
 
     await supabase
       .from('donations')
-      .update({ status: 'completed', gateway_reference: captureId })
+      .update({ status: 'completed', gateway_reference: captureId, ...donorInfoFromCapture(capture) })
       .eq('invoice_number', invoiceNumber)
 
     return { success: true }

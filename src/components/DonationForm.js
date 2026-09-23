@@ -9,8 +9,6 @@ import {
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
 import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, getPaypalClientId } from '@/app/donate/[slug]/actions'
-import CountrySelect from './CountrySelect'
-import { COUNTRIES } from '@/lib/countries'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
@@ -63,15 +61,15 @@ function GatewayIcon({ gateway }) {
 
 // Registers the inline card-fields submit function onto a ref so the outer
 // form's single "Pay" button can trigger it after the donation row exists.
-function CardFieldsBridge({ submitRef, billingName, billingAddress }) {
+function CardFieldsBridge({ submitRef }) {
   const { cardFieldsForm } = usePayPalCardFields()
 
   useEffect(() => {
-    submitRef.current = cardFieldsForm ? () => cardFieldsForm.submit({ name: billingName, billingAddress }) : null
+    submitRef.current = cardFieldsForm ? () => cardFieldsForm.submit() : null
     return () => {
       submitRef.current = null
     }
-  }, [cardFieldsForm, billingName, billingAddress, submitRef])
+  }, [cardFieldsForm, submitRef])
 
   return null
 }
@@ -112,20 +110,11 @@ export default function DonationForm({
       (g !== 'googlepay' || googlepayEnabled)
   )
 
-  const [step, setStep] = useState('details')
-
   const [name, setName] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [amount, setAmount] = useState(25)
   const [message, setMessage] = useState('')
   const [gateway, setGateway] = useState(orderedGateways[0])
-
-  const [email, setEmail] = useState('')
-  const [supporterName, setSupporterName] = useState('')
-  const [city, setCity] = useState('')
-  const [zip, setZip] = useState('')
-  const [country, setCountry] = useState('United States')
-  const [phone, setPhone] = useState('')
 
   const [status, setStatus] = useState('idle')
   const [feedback, setFeedback] = useState('')
@@ -140,16 +129,6 @@ export default function DonationForm({
     getPaypalClientId().then(setCardClientId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const billingName = supporterName.trim()
-  const billingAddress = useMemo(
-    () => ({
-      adminArea2: city,
-      postalCode: zip,
-      countryCode: COUNTRIES.find((c) => c.name === country)?.code || 'US',
-    }),
-    [city, zip, country]
-  )
 
   const cardScriptOptions = useMemo(
     () => ({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }),
@@ -172,20 +151,15 @@ export default function DonationForm({
   // going through the form's own submit handler.
   const createOrder = async () => {
     if (!invoiceNumberRef.current) {
-      if (!email.trim() || !supporterName.trim() || !city.trim() || !zip.trim()) {
-        const msg = 'Please fill in all required fields.'
-        setFeedback(msg)
-        throw new Error(msg)
+      const validationError = validateDetails()
+      if (validationError) {
+        setFeedback(validationError)
+        throw new Error(validationError)
       }
 
-      const address = [city, zip, country].filter(Boolean).join(', ')
       const donationResult = await submitDonation({
         slug,
         donorName: name,
-        donorEmail: email,
-        donorAddress: address,
-        donorPhone: phone,
-        donorCountry: country,
         isAnonymous: anonymous,
         amount,
         message,
@@ -223,18 +197,10 @@ export default function DonationForm({
     setFeedback('Checkout failed. Please try again.')
   }
 
-  function handleContinue(e) {
-    e.preventDefault()
-    setFeedback('')
-    if (!anonymous && !name.trim()) {
-      setFeedback('Please enter your name, or choose to donate anonymously.')
-      return
-    }
-    if (!amount || amount < 1 || amount > 10000) {
-      setFeedback('Amount must be between $1 and $10,000.')
-      return
-    }
-    setStep('supporter-info')
+  function validateDetails() {
+    if (!anonymous && !name.trim()) return 'Please enter your name, or choose to donate anonymously.'
+    if (!amount || amount < 1 || amount > 10000) return 'Amount must be between $1 and $10,000.'
+    return null
   }
 
   async function handleSubmit(e) {
@@ -246,8 +212,9 @@ export default function DonationForm({
       return
     }
 
-    if (!email.trim() || !supporterName.trim() || !city.trim() || !zip.trim()) {
-      setFeedback('Please fill in all required fields.')
+    const validationError = validateDetails()
+    if (validationError) {
+      setFeedback(validationError)
       return
     }
 
@@ -273,15 +240,9 @@ export default function DonationForm({
 
     setStatus('loading')
 
-    const address = [city, zip, country].filter(Boolean).join(', ')
-
     const result = await submitDonation({
       slug,
       donorName: name,
-      donorEmail: email,
-      donorAddress: address,
-      donorPhone: phone,
-      donorCountry: country,
       isAnonymous: anonymous,
       amount,
       message,
@@ -372,95 +333,8 @@ export default function DonationForm({
     )
   }
 
-  if (step === 'supporter-info') {
-    return (
-      <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-            Supporter Information
-          </h2>
-          <button
-            type="button"
-            onClick={() => setStep('details')}
-            className="text-sm font-medium"
-            style={{ color: 'var(--ink-muted)' }}
-          >
-            ← Back
-          </button>
-        </div>
-
-        <Field id="email" label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-
-        <Field id="supporter-name" label="Name" required value={supporterName} onChange={(e) => setSupporterName(e.target.value)} />
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="city" label="Town / City" required value={city} onChange={(e) => setCity(e.target.value)} />
-          <Field id="zip" label="ZIP code" required value={zip} onChange={(e) => setZip(e.target.value)} />
-        </div>
-
-        <div>
-          <label htmlFor="country" className="block text-sm font-bold mb-2">
-            Country / Region <span style={{ color: 'var(--gold-bright)' }}>*</span>
-          </label>
-          <CountrySelect value={country} onChange={setCountry} />
-        </div>
-        <Field id="phone" label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
-
-        {gateway === 'stripe' && (
-          <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
-            <label className="block text-sm font-bold">
-              Card details <span style={{ color: 'var(--gold-bright)' }}>*</span>
-            </label>
-            {cardClientId ? (
-              <PayPalScriptProvider options={cardScriptOptions}>
-                <PayPalCardFieldsProvider createOrder={createOrder} onApprove={onApprove} onError={onError}>
-                  <PayPalCardFieldsForm />
-                  <CardFieldsBridge submitRef={cardFieldsSubmitRef} billingName={billingName} billingAddress={billingAddress} />
-                </PayPalCardFieldsProvider>
-              </PayPalScriptProvider>
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading card form…</p>
-            )}
-          </div>
-        )}
-
-        {EXPRESS_GATEWAYS.includes(gateway) && (
-          <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
-            <label className="block text-sm font-bold">Complete with {GATEWAY_LABELS[gateway]}</label>
-            {cardClientId ? (
-              <PayPalScriptProvider options={expressScriptOptions}>
-                <PayPalButtons
-                  fundingSource={gateway}
-                  style={{ layout: 'vertical', height: 45 }}
-                  createOrder={createOrder}
-                  onApprove={onApprove}
-                  onError={onError}
-                />
-              </PayPalScriptProvider>
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading {GATEWAY_LABELS[gateway]}…</p>
-            )}
-          </div>
-        )}
-
-        {feedback && <p className="text-sm text-red-600">{feedback}</p>}
-
-        {!EXPRESS_GATEWAYS.includes(gateway) && (
-          <button
-            type="submit"
-            disabled={status === 'loading'}
-            className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : 'Donate Now'}
-          </button>
-        )}
-      </form>
-    )
-  }
-
   return (
-    <form onSubmit={handleContinue} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+    <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
       <Field id="donor-name" label="Your Name" required value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
 
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
@@ -544,15 +418,55 @@ export default function DonationForm({
         </div>
       </div>
 
+      {gateway === 'stripe' && (
+        <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
+          <label className="block text-sm font-bold">
+            Card details <span style={{ color: 'var(--gold-bright)' }}>*</span>
+          </label>
+          {cardClientId ? (
+            <PayPalScriptProvider options={cardScriptOptions}>
+              <PayPalCardFieldsProvider createOrder={createOrder} onApprove={onApprove} onError={onError}>
+                <PayPalCardFieldsForm />
+                <CardFieldsBridge submitRef={cardFieldsSubmitRef} />
+              </PayPalCardFieldsProvider>
+            </PayPalScriptProvider>
+          ) : (
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading card form…</p>
+          )}
+        </div>
+      )}
+
+      {EXPRESS_GATEWAYS.includes(gateway) && (
+        <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
+          <label className="block text-sm font-bold">Complete with {GATEWAY_LABELS[gateway]}</label>
+          {cardClientId ? (
+            <PayPalScriptProvider options={expressScriptOptions}>
+              <PayPalButtons
+                fundingSource={gateway}
+                style={{ layout: 'vertical', height: 45 }}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onError={onError}
+              />
+            </PayPalScriptProvider>
+          ) : (
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading {GATEWAY_LABELS[gateway]}…</p>
+          )}
+        </div>
+      )}
+
       {feedback && <p className="text-sm text-red-600">{feedback}</p>}
 
-      <button
-        type="submit"
-        className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        Donate Now
-      </button>
+      {!EXPRESS_GATEWAYS.includes(gateway) && (
+        <button
+          type="submit"
+          disabled={status === 'loading'}
+          className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : 'Donate Now'}
+        </button>
+      )}
     </form>
   )
 }
