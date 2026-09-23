@@ -48,7 +48,7 @@ export default async function InvoiceDetailPage({ params }) {
         <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 p-10 print:border-0 print:rounded-none print:p-0">
           <div className="flex items-start justify-between border-b border-slate-200 pb-6 mb-6">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Invoice</h1>
+              <h1 className="text-2xl font-bold tracking-tight">BlessedHands Invoice</h1>
               <p className="text-sm text-slate-500 mt-1">{donation.invoice_number}</p>
             </div>
             <span
