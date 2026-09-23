@@ -15,7 +15,7 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
   const needle = q ? q.trim().toLowerCase() : ''
 
   const invoices = (donations || []).filter((d) => {
-    if (status && status !== 'all' && d.status !== status) return false
+    if (status !== 'all' && d.status !== (status || 'completed')) return false
     if (page && page !== 'all' && d.page_id !== page) return false
     if (gateway && gateway !== 'all' && d.gateway !== gateway) return false
     const createdAt = new Date(d.created_at)

@@ -56,7 +56,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
   const searchNeedle = searchQuery ? searchQuery.trim().toLowerCase() : ''
 
   const filteredDonations = (donations || []).filter((d) => {
-    if (statusFilter && statusFilter !== 'all' && d.status !== statusFilter) return false
+    if (statusFilter !== 'all' && d.status !== (statusFilter || 'completed')) return false
     const createdAt = new Date(d.created_at)
     if (fromDate && createdAt < fromDate) return false
     if (toDate && createdAt > toDate) return false
@@ -81,7 +81,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   function exportQuery(gateway) {
     const params = new URLSearchParams()
-    if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
+    if (statusFilter) params.set('status', statusFilter)
     params.set('page', id)
     if (fromFilter) params.set('from', fromFilter)
     if (toFilter) params.set('to', toFilter)

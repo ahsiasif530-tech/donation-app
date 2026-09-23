@@ -8,7 +8,7 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
-import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, getPaypalClientId } from '@/app/donate/[slug]/actions'
+import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, getPaypalClientId, markDonationFailed } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
@@ -193,8 +193,15 @@ export default function DonationForm({
 
   const onError = (err) => {
     console.error('PayPal card fields error:', err)
+    markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
     setStatus('idle')
     setFeedback('Checkout failed. Please try again.')
+  }
+
+  const onCancel = () => {
+    markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
+    setStatus('idle')
+    setFeedback('Payment was cancelled.')
   }
 
   function validateDetails() {
@@ -232,6 +239,7 @@ export default function DonationForm({
         await cardFieldsSubmitRef.current()
       } catch (err) {
         console.error('Card payment submit failed:', err)
+        markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
         setStatus('idle')
         setFeedback('Please check your card details and try again.')
       }
@@ -326,7 +334,14 @@ export default function DonationForm({
             style={{ layout: 'vertical' }}
             createOrder={createPaypalButtonOrder}
             onApprove={onApprovePaypalButton}
-            onError={() => setFeedback('Checkout failed. Please try again.')}
+            onCancel={() => {
+              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber })
+              setFeedback('Payment was cancelled.')
+            }}
+            onError={() => {
+              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber })
+              setFeedback('Checkout failed. Please try again.')
+            }}
           />
         </PayPalScriptProvider>
       </div>
@@ -446,6 +461,7 @@ export default function DonationForm({
                 style={{ layout: 'vertical', height: 45 }}
                 createOrder={createOrder}
                 onApprove={onApprove}
+                onCancel={onCancel}
                 onError={onError}
               />
             </PayPalScriptProvider>

@@ -152,6 +152,21 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
 
     return { success: true }
   } catch {
+    await markDonationFailed({ invoiceNumber })
     return { error: 'Payment could not be confirmed. Please contact support.' }
   }
+}
+
+// Called when the donor cancels or the payment errors out. Only touches
+// still-pending online payments, so a completed invoice or a bank transfer
+// awaiting confirmation can never be flipped to failed from the browser.
+export async function markDonationFailed({ invoiceNumber }) {
+  if (!invoiceNumber) return
+  const supabase = createAdminClient()
+  await supabase
+    .from('donations')
+    .update({ status: 'failed' })
+    .eq('invoice_number', invoiceNumber)
+    .eq('status', 'pending')
+    .neq('gateway', 'bank')
 }

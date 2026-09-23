@@ -10,7 +10,8 @@ export default function InvoiceFilterBar({ pages, fixedPageId, basePath = '/admi
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const status = searchParams.get('status') || 'all'
+  // Only completed invoices are shown unless another status is picked.
+  const status = searchParams.get('status') || 'completed'
   const pageId = fixedPageId || searchParams.get('page') || 'all'
   const from = searchParams.get('from') || ''
   const to = searchParams.get('to') || ''
@@ -20,7 +21,8 @@ export default function InvoiceFilterBar({ pages, fixedPageId, basePath = '/admi
   function pushParams(overrides) {
     const params = new URLSearchParams(searchParams.toString())
     Object.entries(overrides).forEach(([key, value]) => {
-      if (!value || value === 'all') {
+      const isDefault = key === 'status' ? value === 'completed' : value === 'all'
+      if (!value || isDefault) {
         params.delete(key)
       } else {
         params.set(key, value)
@@ -35,10 +37,10 @@ export default function InvoiceFilterBar({ pages, fixedPageId, basePath = '/admi
     color: 'var(--a-text)',
   }
 
-  const hasFilters = status !== 'all' || (!fixedPageId && pageId !== 'all') || from || to || q
+  const hasFilters = status !== 'completed' || (!fixedPageId && pageId !== 'all') || from || to || q
 
   const exportQuery = new URLSearchParams()
-  if (status !== 'all') exportQuery.set('status', status)
+  if (status !== 'completed') exportQuery.set('status', status)
   if (pageId !== 'all') exportQuery.set('page', pageId)
   if (from) exportQuery.set('from', from)
   if (to) exportQuery.set('to', to)
