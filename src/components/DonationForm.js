@@ -15,6 +15,7 @@ const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Credit or Debit Card', bank: 'Bank Transfer' }
 const EXPRESS_GATEWAYS = ['applepay', 'googlepay']
+const CANCELLED_NOTICE = 'No payment was taken. Whenever you’re ready, you can try again or choose a different payment method.'
 
 function GatewayIcon({ gateway }) {
   if (gateway === 'paypal') {
@@ -74,6 +75,14 @@ function CardFieldsBridge({ submitRef }) {
   return null
 }
 
+function Notice({ text }) {
+  return (
+    <p className="rounded-xl px-4 py-3 text-sm text-center" style={{ background: 'var(--surface-2)', color: 'var(--ink-muted)' }}>
+      {text}
+    </p>
+  )
+}
+
 function Field({ label, required, ...props }) {
   return (
     <div>
@@ -118,10 +127,13 @@ export default function DonationForm({
 
   const [status, setStatus] = useState('idle')
   const [feedback, setFeedback] = useState('')
+  // Calm, non-error message (e.g. after the donor cancels), shown instead of the red feedback.
+  const [notice, setNotice] = useState('')
   const [paypalCheckout, setPaypalCheckout] = useState(null)
   const [cardClientId, setCardClientId] = useState(null)
 
   const invoiceNumberRef = useRef(null)
+  const invoiceDetailsRef = useRef(null)
   const cardFieldsSubmitRef = useRef(null)
 
   useEffect(() => {
@@ -150,6 +162,17 @@ export default function DonationForm({
   // Apple Pay / Google Pay buttons, which trigger this directly without ever
   // going through the form's own submit handler.
   const createOrder = async () => {
+    setNotice('')
+
+    // A retry after cancelling reuses the same invoice, unless the donor has
+    // since changed the amount or other details: then that invoice no longer
+    // matches, so it's closed as cancelled and a fresh one is made.
+    const details = JSON.stringify({ name, anonymous, amount, message, gateway })
+    if (invoiceNumberRef.current && invoiceDetailsRef.current !== details) {
+      markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'cancelled' })
+      invoiceNumberRef.current = null
+    }
+
     if (!invoiceNumberRef.current) {
       const validationError = validateDetails()
       if (validationError) {
@@ -170,9 +193,10 @@ export default function DonationForm({
         throw new Error(donationResult.error)
       }
       invoiceNumberRef.current = donationResult.invoiceNumber
+      invoiceDetailsRef.current = details
     }
 
-    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current, amount })
+    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current })
     if (res.error) {
       setFeedback(res.error)
       throw new Error(res.error)
@@ -211,7 +235,8 @@ export default function DonationForm({
   const onCancel = () => {
     markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'cancelled' })
     setStatus('idle')
-    setFeedback('Payment was cancelled.')
+    setFeedback('')
+    setNotice(CANCELLED_NOTICE)
   }
 
   function validateDetails() {
@@ -223,6 +248,7 @@ export default function DonationForm({
   async function handleSubmit(e) {
     e.preventDefault()
     setFeedback('')
+    setNotice('')
 
     if (EXPRESS_GATEWAYS.includes(gateway)) {
       setFeedback(`Please use the ${GATEWAY_LABELS[gateway]} button above to complete your donation.`)
@@ -310,7 +336,8 @@ export default function DonationForm({
 
   if (paypalCheckout) {
     const createPaypalButtonOrder = async () => {
-      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, amount: paypalCheckout.amount })
+      setNotice('')
+      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber })
       if (res.error) {
         setFeedback(res.error)
         throw new Error(res.error)
@@ -336,8 +363,25 @@ export default function DonationForm({
       setFeedback(`Thank you for your kindness! Your donation (invoice ${paypalCheckout.invoiceNumber}) has been received. May God bless you and your family.`)
     }
 
+    // Back to the form with everything the donor typed still filled in. This
+    // invoice is closed as cancelled; submitting again creates a fresh one.
+    const backToForm = () => {
+      markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'cancelled' })
+      setPaypalCheckout(null)
+      setFeedback('')
+      setNotice('')
+    }
+
     return (
       <div className="d-card rounded-2xl border p-8 space-y-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <button
+          type="button"
+          onClick={backToForm}
+          className="text-sm font-medium hover:underline"
+          style={{ color: 'var(--ink-muted)' }}
+        >
+          ← Change amount or payment method
+        </button>
         <h2 className="text-lg font-semibold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
           Complete your donation
         </h2>
@@ -345,6 +389,7 @@ export default function DonationForm({
           ${Number(paypalCheckout.amount).toFixed(2)} — invoice {paypalCheckout.invoiceNumber}
         </p>
 
+        {notice && <Notice text={notice} />}
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
         <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD' }}>
@@ -354,7 +399,8 @@ export default function DonationForm({
             onApprove={onApprovePaypalButton}
             onCancel={() => {
               markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'cancelled' })
-              setFeedback('Payment was cancelled.')
+              setFeedback('')
+              setNotice(CANCELLED_NOTICE)
             }}
             onError={() => {
               markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'checkout_error' })
@@ -489,6 +535,7 @@ export default function DonationForm({
         </div>
       )}
 
+      {notice && <Notice text={notice} />}
       {feedback && <p className="text-sm text-red-600">{feedback}</p>}
 
       {!EXPRESS_GATEWAYS.includes(gateway) && (

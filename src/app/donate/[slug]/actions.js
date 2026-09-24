@@ -111,17 +111,27 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
   return { success: true, invoiceNumber: data.invoice_number, redirectUrl, paypalClientId, gateway }
 }
 
-export async function createPaypalOrderAction({ invoiceNumber, amount }) {
+// The amount charged always comes from the invoice row, never from the
+// browser, so the PayPal order can't differ from what the invoice records.
+export async function createPaypalOrderAction({ invoiceNumber }) {
   const supabase = createAdminClient()
   const credentials = await getPaypalCredentials(supabase)
   if (!credentials) return { error: 'PayPal is not configured yet.' }
+
+  const { data: donation } = await supabase
+    .from('donations')
+    .select('amount')
+    .eq('invoice_number', invoiceNumber)
+    .in('status', ['pending', 'failed'])
+    .single()
+  if (!donation) return { error: 'Could not start PayPal checkout. Please try again.' }
 
   try {
     const order = await createPaypalOrder({
       clientId: credentials.clientId,
       secret: credentials.secret,
       mode: credentials.mode,
-      amount,
+      amount: donation.amount,
       invoiceNumber,
     })
     return { orderId: order.id }
