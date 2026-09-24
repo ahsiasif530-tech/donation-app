@@ -77,6 +77,7 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
       message: message?.trim() || null,
       gateway,
       status: 'pending',
+      checkout_step: 'form',
     })
     .select('invoice_number')
     .single()
@@ -134,6 +135,14 @@ export async function createPaypalOrderAction({ invoiceNumber }) {
       amount: donation.amount,
       invoiceNumber,
     })
+
+    // Lets the admin tell "never opened PayPal" apart from "opened it and left".
+    await supabase
+      .from('donations')
+      .update({ checkout_step: 'paypal' })
+      .eq('invoice_number', invoiceNumber)
+      .eq('status', 'pending')
+
     return { orderId: order.id }
   } catch {
     return { error: 'Could not start PayPal checkout. Please try again.' }

@@ -6,7 +6,7 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, page_id, donor_country, created_at')
+    .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, page_id, donor_country, created_at')
     .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
@@ -37,9 +37,24 @@ const FAILURE_REASON_LABELS = {
   capture_declined: 'Payment declined',
 }
 
-// e.g. "Payment declined · INSTRUMENT_DECLINED". Null for non-failed invoices.
-// Invoices that failed before reasons were recorded have no failure_reason.
-export function failureReasonLabel(donation) {
+const PENDING_STEP_LABELS = {
+  form: 'Left before opening PayPal',
+  paypal: 'Opened PayPal, didn’t finish',
+}
+
+// A donor still paying right now also shows as pending, so recent invoices
+// aren't labelled as abandoned yet.
+const IN_PROGRESS_MS = 30 * 60 * 1000
+
+// Short explanation shown under a failed or pending status badge, e.g.
+// "Payment declined · INSTRUMENT_DECLINED". Null for completed invoices.
+// Invoices from before reasons/steps were recorded have neither field set.
+export function statusNote(donation) {
+  if (donation?.status === 'pending') {
+    if (donation.gateway === 'bank') return 'Awaiting bank transfer'
+    if (Date.now() - new Date(donation.created_at).getTime() < IN_PROGRESS_MS) return 'Checkout in progress'
+    return PENDING_STEP_LABELS[donation.checkout_step] || 'Donor didn’t finish payment'
+  }
   if (donation?.status !== 'failed') return null
   if (!donation.failure_reason) return 'Reason not recorded'
   const label = FAILURE_REASON_LABELS[donation.failure_reason] || donation.failure_reason

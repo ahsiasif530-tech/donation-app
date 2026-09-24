@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { failureReasonLabel } from '@/lib/invoices'
+import { statusNote } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
 
@@ -36,7 +36,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, donor_country, created_at')
     .eq('page_id', id)
     .order('created_at', { ascending: false })
 
@@ -169,7 +169,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
                   subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
                   amount: d.amount,
                   status: d.status,
-                  failureLabel: failureReasonLabel(d),
+                  statusNote: statusNote(d),
                 }))}
               />
             </div>

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { failureReasonLabel } from '@/lib/invoices'
+import { statusNote } from '@/lib/invoices'
 import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
@@ -30,7 +30,7 @@ export default async function AdminPage({ searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, page_id, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, page_id, donor_country, created_at')
     .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
@@ -253,7 +253,7 @@ export default async function AdminPage({ searchParams }) {
                     subtitle: `${pageById[d.page_id]?.label || pageById[d.page_id]?.title || '—'} · ${d.donor_name || '—'}`,
                     amount: d.amount,
                     status: d.status,
-                    failureLabel: failureReasonLabel(d),
+                    statusNote: statusNote(d),
                   }))}
                 />
               </div>

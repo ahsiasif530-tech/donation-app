@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { failureReasonLabel } from '@/lib/invoices'
+import { statusNote } from '@/lib/invoices'
 import PrintButton from '@/components/PrintButton'
 
 export default async function InvoiceDetailPage({ params }) {
@@ -91,8 +91,10 @@ export default async function InvoiceDetailPage({ params }) {
               {donation.gateway_reference && (
                 <p className="text-sm text-slate-500 break-all">Transaction ID: {donation.gateway_reference}</p>
               )}
-              {failureReasonLabel(donation) && (
-                <p className="text-sm break-all" style={{ color: '#991B1B' }}>Failure reason: {failureReasonLabel(donation)}</p>
+              {statusNote(donation) && (
+                <p className="text-sm break-all" style={{ color: donation.status === 'failed' ? '#991B1B' : '#475569' }}>
+                  {donation.status === 'failed' ? 'Failure reason' : 'Status'}: {statusNote(donation)}
+                </p>
               )}
             </div>
           </div>

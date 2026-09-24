@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 const PAGE_SIZE = 5
 
-// Rows arrive pre-formatted from the server (subtitle, failureLabel) so the
+// Rows arrive pre-formatted from the server (subtitle, statusNote) so the
 // client render matches the server HTML regardless of locale/timezone.
 export default function AdminInvoiceList({ invoices }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -43,8 +43,10 @@ export default function AdminInvoiceList({ invoices }) {
               >
                 {d.status}
               </span>
-              {d.failureLabel && (
-                <p className="mt-1 text-[11px]" style={{ color: 'var(--a-danger)' }}>{d.failureLabel}</p>
+              {d.statusNote && (
+                <p className="mt-1 text-[11px]" style={{ color: d.status === 'failed' ? 'var(--a-danger)' : 'var(--a-text-muted)' }}>
+                  {d.statusNote}
+                </p>
               )}
             </div>
           </a>

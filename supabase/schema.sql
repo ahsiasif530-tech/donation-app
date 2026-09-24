@@ -60,6 +60,11 @@ alter table donations
   add column if not exists failure_reason text check (failure_reason in ('cancelled', 'checkout_error', 'capture_declined')),
   add column if not exists failure_code text;
 
+-- How far a donor got before leaving, used to explain pending invoices:
+-- 'form' = submitted the form, 'paypal' = a PayPal checkout was opened.
+alter table donations
+  add column if not exists checkout_step text check (checkout_step in ('form', 'paypal'));
+
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================
