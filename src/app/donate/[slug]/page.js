@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import DonationForm from '@/components/DonationForm'
+import RecentDonors from '@/components/RecentDonors'
 
 export default async function DonatePage({ params }) {
   const { slug } = await params
@@ -35,7 +36,13 @@ export default async function DonatePage({ params }) {
     .eq('page_id', page.id)
     .limit(500)
 
-  const donors = (allDonors || []).slice(0, 20)
+  const donors = (allDonors || []).map((d) => ({
+    id: d.id,
+    display_name: d.display_name,
+    amount: d.amount,
+    message: d.message,
+    dateLabel: new Date(d.created_at).toLocaleDateString(),
+  }))
 
   const donorTotals = new Map()
   for (const d of allDonors || []) {
@@ -143,45 +150,7 @@ export default async function DonatePage({ params }) {
             Recent Donors
           </h2>
         </div>
-        {(!donors || donors.length === 0) ? (
-          <p className="text-center text-sm py-6" style={{ color: 'var(--ink-muted)' }}>
-            No donors yet — be the first to support this page.
-          </p>
-        ) : (
-          <div className="flex flex-col">
-            {donors.map((d, i) => (
-              <div
-                key={d.id}
-                className="grid gap-x-3.5 py-4"
-                style={{
-                  gridTemplateColumns: '44px 1fr auto',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                }}
-              >
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center font-semibold"
-                  style={{ background: 'var(--gold-soft)', color: 'var(--gold)', fontFamily: 'var(--font-display)' }}
-                >
-                  {d.display_name?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">{d.display_name}</div>
-                  <div className="text-xs" style={{ color: 'var(--ink-muted)' }}>
-                    {new Date(d.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="font-semibold text-sm tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>
-                  ${Number(d.amount).toFixed(2)}
-                </div>
-                {d.message && (
-                  <div className="col-span-2 col-start-2 mt-2.5 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
-                    &ldquo;{d.message}&rdquo;
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <RecentDonors donors={donors} />
       </div>
     </div>
     </main>
