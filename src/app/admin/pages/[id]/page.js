@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { failureReasonLabel } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
+import AdminInvoiceList from '@/components/AdminInvoiceList'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
 
@@ -77,6 +78,9 @@ export default async function PageInvoicesPage({ params, searchParams }) {
       invoices: rows,
     }
   })
+
+  // Changing any filter remounts the lists so they start again at 5 rows.
+  const listKey = [statusFilter, fromFilter, toFilter, searchQuery].join('|')
 
   const cardStyle = { background: 'var(--a-surface)', borderColor: 'var(--a-border)' }
 
@@ -158,45 +162,16 @@ export default async function PageInvoicesPage({ params, searchParams }) {
                   <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
                 </div>
               </div>
-              {g.invoices.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice নেই।</p>
-              ) : (
-                <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-                  {g.invoices.map((d) => (
-                    <a
-                      key={d.invoice_number}
-                      href={`/admin/invoices/${d.invoice_number}`}
-                      className="flex items-center justify-between gap-3 px-5 py-3 text-sm hover:opacity-80"
-                      style={{ borderColor: 'var(--a-border)' }}
-                    >
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate" style={{ color: 'var(--a-accent-strong)' }}>{d.invoice_number}</p>
-                        <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }}>
-                          {d.donor_name || '—'} · {new Date(d.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-bold tabular-nums">${Number(d.amount).toFixed(2)}</p>
-                        <span
-                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold capitalize"
-                          style={
-                            d.status === 'completed'
-                              ? { background: 'rgba(52,211,153,0.14)', color: 'var(--a-success)' }
-                              : d.status === 'failed'
-                              ? { background: 'rgba(248,113,113,0.14)', color: 'var(--a-danger)' }
-                              : { background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }
-                          }
-                        >
-                          {d.status}
-                        </span>
-                        {failureReasonLabel(d) && (
-                          <p className="mt-1 text-[11px]" style={{ color: 'var(--a-danger)' }}>{failureReasonLabel(d)}</p>
-                        )}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              )}
+              <AdminInvoiceList
+                key={listKey}
+                invoices={g.invoices.map((d) => ({
+                  invoice_number: d.invoice_number,
+                  subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
+                  amount: d.amount,
+                  status: d.status,
+                  failureLabel: failureReasonLabel(d),
+                }))}
+              />
             </div>
           ))}
         </div>
