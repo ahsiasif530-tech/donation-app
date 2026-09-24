@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
+import { findPaypalAccount } from '@/lib/paypalAccounts'
 import PrintButton from '@/components/PrintButton'
 
 export default async function InvoiceDetailPage({ params }) {
@@ -35,6 +36,17 @@ export default async function InvoiceDetailPage({ params }) {
     .select('slug, title, label')
     .eq('id', donation.page_id)
     .single()
+
+  // Which of the saved PayPal accounts this donation was paid into.
+  let paypalAccount = null
+  if (donation.paypal_account_id) {
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('payment_settings')
+      .eq('id', 'global')
+      .single()
+    paypalAccount = findPaypalAccount(settings?.payment_settings?.paypal, donation.paypal_account_id)
+  }
 
   const issuedAt = new Date(donation.created_at)
 
@@ -90,6 +102,11 @@ export default async function InvoiceDetailPage({ params }) {
               <p className="font-medium capitalize">{donation.gateway}</p>
               {donation.gateway_reference && (
                 <p className="text-sm text-slate-500 break-all">Transaction ID: {donation.gateway_reference}</p>
+              )}
+              {donation.paypal_account_id && (
+                <p className="text-sm text-slate-500 break-all">
+                  PayPal account: {paypalAccount ? `${paypalAccount.label}${paypalAccount.email ? ` (${paypalAccount.email})` : ''}` : 'Removed account'}
+                </p>
               )}
               {statusNote(donation) && (
                 <p className="text-sm break-all" style={{ color: donation.status === 'failed' ? '#991B1B' : '#475569' }}>

@@ -65,6 +65,11 @@ alter table donations
 alter table donations
   add column if not exists checkout_step text check (checkout_step in ('form', 'paypal'));
 
+-- Which saved PayPal account (payment_settings.paypal.accounts[].id) a PayPal
+-- order was created with; the capture has to use the same account.
+alter table donations
+  add column if not exists paypal_account_id text;
+
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================

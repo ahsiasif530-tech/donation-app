@@ -196,7 +196,7 @@ export default function DonationForm({
       invoiceDetailsRef.current = details
     }
 
-    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current })
+    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current, clientId: cardClientId })
     if (res.error) {
       setFeedback(res.error)
       throw new Error(res.error)
@@ -337,7 +337,7 @@ export default function DonationForm({
   if (paypalCheckout) {
     const createPaypalButtonOrder = async () => {
       setNotice('')
-      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber })
+      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, clientId: paypalCheckout.clientId })
       if (res.error) {
         setFeedback(res.error)
         throw new Error(res.error)

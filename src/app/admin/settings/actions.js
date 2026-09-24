@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { MAX_PAYPAL_ACCOUNTS } from '@/lib/paypalAccounts'
 
 async function assertAdmin() {
   const supabase = await createClient()
@@ -22,6 +23,11 @@ async function assertAdmin() {
 
 export async function updatePaymentSettings(paymentSettings) {
   await assertAdmin()
+
+  const paypalAccounts = paymentSettings?.paypal?.accounts || []
+  if (paypalAccounts.length > MAX_PAYPAL_ACCOUNTS) {
+    return { error: `You can save at most ${MAX_PAYPAL_ACCOUNTS} PayPal accounts.` }
+  }
 
   const admin = createAdminClient()
   const { error } = await admin

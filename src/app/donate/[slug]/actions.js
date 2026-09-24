@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
 import { COUNTRIES } from '@/lib/countries'
+import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount } from '@/lib/paypalAccounts'
 
 async function getPaypalSettings(supabase) {
   const { data: settings } = await supabase
@@ -14,10 +15,9 @@ async function getPaypalSettings(supabase) {
   return settings?.payment_settings?.paypal || null
 }
 
-async function getPaypalCredentials(supabase) {
-  const paypal = await getPaypalSettings(supabase)
-  if (!paypal?.client_id || !paypal?.secret) return null
-  return { clientId: paypal.client_id, secret: paypal.secret, email: paypal.email, mode: paypal.mode || 'sandbox' }
+function toCredentials(account) {
+  if (!account?.client_id || !account?.secret) return null
+  return { accountId: account.id, clientId: account.client_id, secret: account.secret, mode: account.mode || 'sandbox' }
 }
 
 // The donation form no longer asks for email/address, so the invoice's donor
@@ -39,7 +39,7 @@ function donorInfoFromCapture(capture) {
 export async function getPaypalClientId() {
   const supabase = createAdminClient()
   const paypal = await getPaypalSettings(supabase)
-  return paypal?.client_id || null
+  return getActivePaypalAccount(paypal)?.client_id || null
 }
 
 export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
@@ -90,16 +90,16 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
   let paypalClientId = null
 
   if (gateway === 'paypal' || gateway === 'stripe') {
-    const paypal = await getPaypalSettings(supabase)
+    const account = getActivePaypalAccount(await getPaypalSettings(supabase))
 
-    if (paypal?.client_id && paypal?.secret) {
+    if (account?.client_id && account?.secret) {
       // 'stripe' is this app's internal id for the "Card" option, but it's actually
       // powered by PayPal's Advanced Card Payments (Card Fields), not Stripe.
-      paypalClientId = paypal.client_id
-    } else if (gateway === 'paypal' && paypal?.email) {
+      paypalClientId = account.client_id
+    } else if (gateway === 'paypal' && account?.email) {
       const params = new URLSearchParams({
         cmd: '_donations',
-        business: paypal.email,
+        business: account.email,
         item_name: `Donation — ${data.invoice_number}`,
         amount: numericAmount.toFixed(2),
         currency_code: 'USD',
@@ -114,9 +114,15 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
 
 // The amount charged always comes from the invoice row, never from the
 // browser, so the PayPal order can't differ from what the invoice records.
-export async function createPaypalOrderAction({ invoiceNumber }) {
+// clientId is the one the donor's page loaded PayPal with: using that account
+// (rather than whichever is active now) keeps a page that was opened before the
+// admin switched accounts working.
+export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
   const supabase = createAdminClient()
-  const credentials = await getPaypalCredentials(supabase)
+  const paypal = await getPaypalSettings(supabase)
+  const account =
+    getPaypalAccounts(paypal).find((a) => clientId && a.client_id === clientId) || getActivePaypalAccount(paypal)
+  const credentials = toCredentials(account)
   if (!credentials) return { error: 'PayPal is not configured yet.' }
 
   const { data: donation } = await supabase
@@ -136,12 +142,14 @@ export async function createPaypalOrderAction({ invoiceNumber }) {
       invoiceNumber,
     })
 
-    // Lets the admin tell "never opened PayPal" apart from "opened it and left".
+    // checkout_step lets the admin tell "never opened PayPal" apart from "opened
+    // it and left"; paypal_account_id records which account the money goes to,
+    // and is what the capture must use.
     await supabase
       .from('donations')
-      .update({ checkout_step: 'paypal' })
+      .update({ checkout_step: 'paypal', paypal_account_id: credentials.accountId })
       .eq('invoice_number', invoiceNumber)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'failed'])
 
     return { orderId: order.id }
   } catch {
@@ -153,7 +161,15 @@ export async function createPaypalOrderAction({ invoiceNumber }) {
 // checkout (actions.restart); card fields can't, so they get an error instead.
 export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRestart = false }) {
   const supabase = createAdminClient()
-  const credentials = await getPaypalCredentials(supabase)
+  const paypal = await getPaypalSettings(supabase)
+
+  // An order can only be captured by the account that created it.
+  const { data: donation } = await supabase
+    .from('donations')
+    .select('paypal_account_id')
+    .eq('invoice_number', invoiceNumber)
+    .single()
+  const credentials = toCredentials(findPaypalAccount(paypal, donation?.paypal_account_id) || getActivePaypalAccount(paypal))
   if (!credentials) return { error: 'PayPal is not configured yet.' }
 
   try {
