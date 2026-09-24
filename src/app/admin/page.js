@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
+import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
 import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
@@ -30,8 +31,14 @@ export default async function AdminPage({ searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, page_id, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
     .order('created_at', { ascending: false })
+
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('payment_settings')
+    .eq('id', 'global')
+    .single()
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const completed = (donations || []).filter((d) => d.status === 'completed')
@@ -84,6 +91,23 @@ export default async function AdminPage({ searchParams }) {
       invoices: rows,
     }
   })
+
+  // Completed money per saved PayPal account (PayPal, card, Apple Pay and Google
+  // Pay all go through one). Donations from before accounts were recorded have
+  // no paypal_account_id and are totalled separately.
+  const paypalSettings = settings?.payment_settings?.paypal
+  const activePaypalId = getActivePaypalAccountId(paypalSettings)
+  const paypalCompleted = filteredDonations.filter((d) => d.status === 'completed' && d.gateway !== 'bank')
+  const byPaypalAccount = getPaypalAccounts(paypalSettings).map((a) => ({
+    id: a.id,
+    label: a.label || 'Untitled account',
+    active: a.id === activePaypalId,
+    earning: paypalCompleted.filter((d) => d.paypal_account_id === a.id).reduce((sum, d) => sum + Number(d.amount), 0),
+  }))
+  const knownAccountIds = new Set(byPaypalAccount.map((a) => a.id))
+  const unrecordedEarning = paypalCompleted
+    .filter((d) => !d.paypal_account_id || !knownAccountIds.has(d.paypal_account_id))
+    .reduce((sum, d) => sum + Number(d.amount), 0)
 
   // Changing any filter remounts the lists so they start again at 5 rows.
   const listKey = [statusFilter, pageFilter, fromFilter, toFilter, searchQuery].join('|')
@@ -144,6 +168,36 @@ export default async function AdminPage({ searchParams }) {
                 </a>
               ))}
             </div>
+
+            {(byPaypalAccount.length > 0 || unrecordedEarning > 0) && (
+              <>
+                <p className="text-sm font-semibold mt-4 mb-2" style={{ color: 'var(--a-text-muted)' }}>By PayPal account</p>
+                <div className="flex flex-wrap gap-2">
+                  {byPaypalAccount.map((a) => (
+                    <span
+                      key={a.id}
+                      className="text-sm rounded-lg border px-3 py-1.5"
+                      style={{ borderColor: a.active ? 'var(--a-success)' : 'var(--a-border)', background: 'var(--a-surface-2)' }}
+                      title={a.active ? 'Currently receiving donations' : undefined}
+                    >
+                      {a.active && <span style={{ color: 'var(--a-success)' }}>● </span>}
+                      <span style={{ color: 'var(--a-text-muted)' }}>{a.label}: </span>
+                      <span className="font-bold tabular-nums">${a.earning.toFixed(2)}</span>
+                    </span>
+                  ))}
+                  {unrecordedEarning > 0 && (
+                    <span
+                      className="text-sm rounded-lg border px-3 py-1.5"
+                      style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}
+                      title="Paid before the app started recording which PayPal account received each donation"
+                    >
+                      <span style={{ color: 'var(--a-text-muted)' }}>Account not recorded: </span>
+                      <span className="font-bold tabular-nums">${unrecordedEarning.toFixed(2)}</span>
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
