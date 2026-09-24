@@ -37,10 +37,11 @@ const FAILURE_REASON_LABELS = {
   capture_declined: 'Payment declined',
 }
 
-// e.g. "Payment declined · INSTRUMENT_DECLINED". Null for non-failed invoices
-// and for ones that failed before the reason was being recorded.
+// e.g. "Payment declined · INSTRUMENT_DECLINED". Null for non-failed invoices.
+// Invoices that failed before reasons were recorded have no failure_reason.
 export function failureReasonLabel(donation) {
-  if (donation?.status !== 'failed' || !donation.failure_reason) return null
+  if (donation?.status !== 'failed') return null
+  if (!donation.failure_reason) return 'Reason not recorded'
   const label = FAILURE_REASON_LABELS[donation.failure_reason] || donation.failure_reason
   return donation.failure_code ? `${label} · ${donation.failure_code}` : label
 }
