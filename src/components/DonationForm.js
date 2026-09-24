@@ -180,8 +180,18 @@ export default function DonationForm({
     return res.orderId
   }
 
-  const onApprove = async (data) => {
-    const res = await capturePaypalOrderAction({ orderId: data.orderID, invoiceNumber: invoiceNumberRef.current })
+  // Shared by the card fields (no actions) and the Apple Pay / Google Pay
+  // buttons (actions.restart reopens checkout after a declined card).
+  const onApprove = async (data, actions) => {
+    const res = await capturePaypalOrderAction({
+      orderId: data.orderID,
+      invoiceNumber: invoiceNumberRef.current,
+      canRestart: Boolean(actions?.restart),
+    })
+    if (res.restart) {
+      setFeedback('Your payment method was declined. Please choose another one.')
+      return actions.restart()
+    }
     if (res.error) {
       setStatus('idle')
       setFeedback(res.error)
@@ -308,8 +318,16 @@ export default function DonationForm({
       return res.orderId
     }
 
-    const onApprovePaypalButton = async (data) => {
-      const res = await capturePaypalOrderAction({ orderId: data.orderID, invoiceNumber: paypalCheckout.invoiceNumber })
+    const onApprovePaypalButton = async (data, actions) => {
+      const res = await capturePaypalOrderAction({
+        orderId: data.orderID,
+        invoiceNumber: paypalCheckout.invoiceNumber,
+        canRestart: true,
+      })
+      if (res.restart) {
+        setFeedback('Your payment method was declined. Please choose another one.')
+        return actions.restart()
+      }
       if (res.error) {
         setFeedback(res.error)
         return

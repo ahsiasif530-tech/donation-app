@@ -130,7 +130,9 @@ export async function createPaypalOrderAction({ invoiceNumber, amount }) {
   }
 }
 
-export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
+// canRestart: true when the caller is a PayPal button that can reopen its
+// checkout (actions.restart); card fields can't, so they get an error instead.
+export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRestart = false }) {
   const supabase = createAdminClient()
   const credentials = await getPaypalCredentials(supabase)
   if (!credentials) return { error: 'PayPal is not configured yet.' }
@@ -166,7 +168,16 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
 
     return { success: true }
   } catch (err) {
+    // PayPal's recommended recovery for a declined funding source is to reopen
+    // the checkout so the donor can pick another card or their PayPal balance.
+    // The invoice stays pending meanwhile; cancelling from there marks it failed.
+    if (err?.code === 'INSTRUMENT_DECLINED' && canRestart) {
+      return { restart: true }
+    }
     await setDonationFailed(invoiceNumber, 'capture_declined', err?.code || null)
+    if (err?.code === 'INSTRUMENT_DECLINED') {
+      return { error: 'Your card was declined. Please try another card or payment method.' }
+    }
     return { error: 'Payment could not be confirmed. Please contact support.' }
   }
 }
