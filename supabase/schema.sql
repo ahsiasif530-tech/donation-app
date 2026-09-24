@@ -54,6 +54,12 @@ create table if not exists donations (
   created_at timestamptz not null default now()
 );
 
+-- Why a payment failed (only set while status = 'failed'). failure_code holds
+-- PayPal's own error code for a declined capture, e.g. INSTRUMENT_DECLINED.
+alter table donations
+  add column if not exists failure_reason text check (failure_reason in ('cancelled', 'checkout_error', 'capture_declined')),
+  add column if not exists failure_code text;
+
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================

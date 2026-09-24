@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { failureReasonLabel } from '@/lib/invoices'
 import PrintButton from '@/components/PrintButton'
 
 export default async function InvoiceDetailPage({ params }) {
@@ -89,6 +90,9 @@ export default async function InvoiceDetailPage({ params }) {
               <p className="font-medium capitalize">{donation.gateway}</p>
               {donation.gateway_reference && (
                 <p className="text-sm text-slate-500 break-all">Transaction ID: {donation.gateway_reference}</p>
+              )}
+              {failureReasonLabel(donation) && (
+                <p className="text-sm break-all" style={{ color: '#991B1B' }}>Failure reason: {failureReasonLabel(donation)}</p>
               )}
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { failureReasonLabel } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
@@ -34,7 +35,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, donor_country, created_at')
     .eq('page_id', id)
     .order('created_at', { ascending: false })
 
@@ -188,6 +189,9 @@ export default async function PageInvoicesPage({ params, searchParams }) {
                         >
                           {d.status}
                         </span>
+                        {failureReasonLabel(d) && (
+                          <p className="mt-1 text-[11px]" style={{ color: 'var(--a-danger)' }}>{failureReasonLabel(d)}</p>
+                        )}
                       </div>
                     </a>
                   ))}

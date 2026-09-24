@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { fetchFilteredInvoices } from '@/lib/invoices'
+import { fetchFilteredInvoices, failureReasonLabel } from '@/lib/invoices'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
 
@@ -31,7 +31,7 @@ export async function GET(request) {
     q: searchParams.get('q'),
   })
 
-  const headers = ['Invoice #', 'Date & Time', 'Page', 'Donor', 'Email', 'Country', 'Gateway', 'Transaction ID', 'Status', 'Currency', 'Amount']
+  const headers = ['Invoice #', 'Date & Time', 'Page', 'Donor', 'Email', 'Country', 'Gateway', 'Transaction ID', 'Status', 'Failure Reason', 'Currency', 'Amount']
   const rows = invoices.map((d) => [
     d.invoice_number,
     new Date(d.created_at).toISOString(),
@@ -42,6 +42,7 @@ export async function GET(request) {
     GATEWAY_LABELS[d.gateway] || d.gateway,
     d.gateway_reference || '',
     d.status,
+    failureReasonLabel(d) || '',
     d.currency,
     Number(d.amount).toFixed(2),
   ])

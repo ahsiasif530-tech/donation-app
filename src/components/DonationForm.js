@@ -193,13 +193,13 @@ export default function DonationForm({
 
   const onError = (err) => {
     console.error('PayPal card fields error:', err)
-    markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
+    markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
     setStatus('idle')
     setFeedback('Checkout failed. Please try again.')
   }
 
   const onCancel = () => {
-    markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
+    markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'cancelled' })
     setStatus('idle')
     setFeedback('Payment was cancelled.')
   }
@@ -239,7 +239,7 @@ export default function DonationForm({
         await cardFieldsSubmitRef.current()
       } catch (err) {
         console.error('Card payment submit failed:', err)
-        markDonationFailed({ invoiceNumber: invoiceNumberRef.current })
+        markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
         setStatus('idle')
         setFeedback('Please check your card details and try again.')
       }
@@ -335,11 +335,11 @@ export default function DonationForm({
             createOrder={createPaypalButtonOrder}
             onApprove={onApprovePaypalButton}
             onCancel={() => {
-              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber })
+              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'cancelled' })
               setFeedback('Payment was cancelled.')
             }}
             onError={() => {
-              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber })
+              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'checkout_error' })
               setFeedback('Checkout failed. Please try again.')
             }}
           />

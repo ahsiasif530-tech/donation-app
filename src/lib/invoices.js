@@ -6,7 +6,7 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, page_id, donor_country, created_at')
+    .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, page_id, donor_country, created_at')
     .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
@@ -29,4 +29,18 @@ export async function fetchFilteredInvoices(supabase, { status, page, from, to, 
   })
 
   return { pages: pages || [], pageById, invoices }
+}
+
+const FAILURE_REASON_LABELS = {
+  cancelled: 'Cancelled by donor',
+  checkout_error: 'Checkout error',
+  capture_declined: 'Payment declined',
+}
+
+// e.g. "Payment declined · INSTRUMENT_DECLINED". Null for non-failed invoices
+// and for ones that failed before the reason was being recorded.
+export function failureReasonLabel(donation) {
+  if (donation?.status !== 'failed' || !donation.failure_reason) return null
+  const label = FAILURE_REASON_LABELS[donation.failure_reason] || donation.failure_reason
+  return donation.failure_code ? `${label} · ${donation.failure_code}` : label
 }

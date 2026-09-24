@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { fetchFilteredInvoices } from '@/lib/invoices'
+import { fetchFilteredInvoices, failureReasonLabel } from '@/lib/invoices'
 import PrintButton from '@/components/PrintButton'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
@@ -77,7 +77,10 @@ export default async function ExportInvoicesPrintPage({ searchParams }) {
                     <td className="py-2 pr-3">{d.donor_country || '—'}</td>
                     <td className="py-2 pr-3 capitalize">{GATEWAY_LABELS[d.gateway] || d.gateway}</td>
                     <td className="py-2 pr-3 break-all">{d.gateway_reference || '—'}</td>
-                    <td className="py-2 pr-3 capitalize">{d.status}</td>
+                    <td className="py-2 pr-3">
+                      <span className="capitalize">{d.status}</span>
+                      {failureReasonLabel(d) && <span className="block text-xs text-slate-500">{failureReasonLabel(d)}</span>}
+                    </td>
                     <td className="py-2 pl-3 text-right tabular-nums">
                       {d.currency} {Number(d.amount).toFixed(2)}
                     </td>

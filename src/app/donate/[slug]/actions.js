@@ -143,30 +143,54 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber }) {
       orderId,
     })
 
-    const captureId = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id || orderId
+    const captureResult = capture?.purchase_units?.[0]?.payments?.captures?.[0]
+    const captureId = captureResult?.id || orderId
+
+    // PayPal can answer the capture call successfully while still declining the
+    // payment itself, so the capture's own status has to be checked too.
+    if (captureResult?.status === 'DECLINED') {
+      await setDonationFailed(invoiceNumber, 'capture_declined', captureResult?.status_details?.reason || 'DECLINED')
+      return { error: 'Your payment was declined. Please try another payment method.' }
+    }
 
     await supabase
       .from('donations')
-      .update({ status: 'completed', gateway_reference: captureId, ...donorInfoFromCapture(capture) })
+      .update({
+        status: 'completed',
+        gateway_reference: captureId,
+        failure_reason: null,
+        failure_code: null,
+        ...donorInfoFromCapture(capture),
+      })
       .eq('invoice_number', invoiceNumber)
 
     return { success: true }
-  } catch {
-    await markDonationFailed({ invoiceNumber })
+  } catch (err) {
+    await setDonationFailed(invoiceNumber, 'capture_declined', err?.code || null)
     return { error: 'Payment could not be confirmed. Please contact support.' }
   }
 }
 
-// Called when the donor cancels or the payment errors out. Only touches
-// still-pending online payments, so a completed invoice or a bank transfer
-// awaiting confirmation can never be flipped to failed from the browser.
-export async function markDonationFailed({ invoiceNumber }) {
+const BROWSER_FAILURE_REASONS = ['cancelled', 'checkout_error']
+
+// Called from the browser when the donor cancels or the checkout errors out.
+// The browser can only report cancelled/checkout_error; capture_declined is
+// set server-side from PayPal's own response.
+export async function markDonationFailed({ invoiceNumber, reason }) {
+  const failureReason = BROWSER_FAILURE_REASONS.includes(reason) ? reason : 'checkout_error'
+  await setDonationFailed(invoiceNumber, failureReason, null)
+}
+
+// Only touches online payments that are pending or already failed (a retry on
+// the same invoice can fail again for a different reason), so a completed
+// invoice or a bank transfer awaiting confirmation can never be flipped to failed.
+async function setDonationFailed(invoiceNumber, failureReason, failureCode) {
   if (!invoiceNumber) return
   const supabase = createAdminClient()
   await supabase
     .from('donations')
-    .update({ status: 'failed' })
+    .update({ status: 'failed', failure_reason: failureReason, failure_code: failureCode })
     .eq('invoice_number', invoiceNumber)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'failed'])
     .neq('gateway', 'bank')
 }

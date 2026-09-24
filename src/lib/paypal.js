@@ -57,7 +57,19 @@ export async function capturePaypalOrder({ clientId, secret, mode, orderId }) {
   const body = await res.text()
   if (!res.ok) {
     console.error('PayPal capture order failed:', res.status, body)
-    throw new Error('Failed to capture PayPal order')
+    const error = new Error('Failed to capture PayPal order')
+    error.code = paypalErrorCode(body) || `HTTP_${res.status}`
+    throw error
   }
   return JSON.parse(body)
+}
+
+// PayPal error bodies look like { name, details: [{ issue: 'INSTRUMENT_DECLINED', ... }] }.
+function paypalErrorCode(body) {
+  try {
+    const data = JSON.parse(body)
+    return data?.details?.[0]?.issue || data?.name || null
+  } catch {
+    return null
+  }
 }
