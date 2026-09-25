@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import DateRangePicker from './DateRangePicker'
 
 const PAGE_SIZE = 5
 
@@ -10,6 +11,12 @@ function csvEscape(value) {
   return s
 }
 
+function localDay(date) {
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${m}-${d}`
+}
+
 // Dates are formatted in the viewer's browser so the time shown (and written
 // to the Excel file) is their local time, not the server's. Rows can carry
 // their own page_name when the list mixes several pages; passing `pages`
@@ -17,8 +24,17 @@ function csvEscape(value) {
 export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageName, fileName, pages = [] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [selectedPageId, setSelectedPageId] = useState('all')
+  const [range, setRange] = useState({ from: '', to: '' })
   const selectedPage = pages.find((p) => p.id === selectedPageId)
-  const withdrawals = selectedPage ? allWithdrawals.filter((w) => w.page_id === selectedPage.id) : allWithdrawals
+  // Days are compared in the viewer's local time, matching the times shown.
+  const withdrawals = allWithdrawals.filter((w) => {
+    if (selectedPage && w.page_id !== selectedPage.id) return false
+    const day = localDay(new Date(w.created_at))
+    if (range.from && day < range.from) return false
+    if (range.to && day > range.to) return false
+    return true
+  })
+  const filtered = selectedPage || range.from
   const total = withdrawals.reduce((sum, w) => sum + Number(w.amount), 0)
   const hasMore = visibleCount < withdrawals.length
 
@@ -41,7 +57,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
   }
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
+    <div className="rounded-2xl border" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
       <div className="px-5 py-3.5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
         <h3 className="font-bold">Withdrawals</h3>
         <div className="flex items-center gap-3">
@@ -59,9 +75,17 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
         </div>
       </div>
 
-      {pages.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-5 py-3 border-b" style={{ borderColor: 'var(--a-border)' }}>
-          {[{ id: 'all', name: 'All' }, ...pages].map((p) => {
+      <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b" style={{ borderColor: 'var(--a-border)' }}>
+        <DateRangePicker
+          from={range.from}
+          to={range.to}
+          onChange={(next) => {
+            setRange(next)
+            setVisibleCount(PAGE_SIZE)
+          }}
+        />
+        {pages.length > 0 &&
+          [{ id: 'all', name: 'All' }, ...pages].map((p) => {
             const active = p.id === selectedPageId
             return (
               <button
@@ -82,11 +106,12 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
               </button>
             )
           })}
-        </div>
-      )}
+      </div>
 
       {withdrawals.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono withdraw kora hoyni.</p>
+        <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>
+          {filtered ? 'Ei filter e kono withdraw nei.' : 'Ekhono kono withdraw kora hoyni.'}
+        </p>
       ) : (
         <div>
           <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
