@@ -4,7 +4,7 @@ import { statusNote } from '@/lib/invoices'
 import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
 import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
-import AdminInvoiceList from '@/components/AdminInvoiceList'
+import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
 
@@ -117,6 +117,7 @@ export default async function AdminPage({ searchParams }) {
     active: a.id === activePaypalId,
     earning: paypalCompleted.filter((d) => d.paypal_account_id === a.id).reduce((sum, d) => sum + Number(d.amount), 0),
   }))
+  const paypalAccountTabs = byPaypalAccount.map((a) => ({ id: a.id, label: a.label }))
   const knownAccountIds = new Set(byPaypalAccount.map((a) => a.id))
   const unrecordedEarning = paypalCompleted
     .filter((d) => !d.paypal_account_id || !knownAccountIds.has(d.paypal_account_id))
@@ -306,40 +307,23 @@ export default async function AdminPage({ searchParams }) {
           <InvoiceFilterBar pages={pages || []} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {byGateway.map((g) => (
-              <div key={g.gateway} id={`gateway-${g.gateway}`} className="a-card overflow-hidden scroll-mt-4">
-                <div className="px-5 py-3.5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
-                  <h3 className="font-bold">{g.label}</h3>
-                  <div className="flex items-center gap-3">
-                    <a
-                      href={`/admin/invoices/export?${exportQuery(g.gateway)}`}
-                      className="text-xs font-bold hover:underline"
-                      style={{ color: 'var(--a-text-muted)' }}
-                    >
-                      CSV
-                    </a>
-                    <a
-                      href={`/admin/invoices/export/print?${exportQuery(g.gateway)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-bold hover:underline"
-                      style={{ color: 'var(--a-text-muted)' }}
-                    >
-                      PDF
-                    </a>
-                    <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
-                  </div>
-                </div>
-                <AdminInvoiceList
-                  key={listKey}
-                  invoices={g.invoices.map((d) => ({
-                    invoice_number: d.invoice_number,
-                    subtitle: `${pageById[d.page_id]?.label || pageById[d.page_id]?.title || '—'} · ${d.donor_name || '—'}`,
-                    amount: d.amount,
-                    status: d.status,
-                    statusNote: statusNote(d),
-                  }))}
-                />
-              </div>
+              <GatewayInvoiceCard
+                key={g.gateway}
+                id={`gateway-${g.gateway}`}
+                className="a-card overflow-hidden scroll-mt-4"
+                label={g.label}
+                exportQuery={exportQuery(g.gateway)}
+                listKey={listKey}
+                accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
+                invoices={g.invoices.map((d) => ({
+                  invoice_number: d.invoice_number,
+                  subtitle: `${pageById[d.page_id]?.label || pageById[d.page_id]?.title || '—'} · ${d.donor_name || '—'}`,
+                  amount: d.amount,
+                  status: d.status,
+                  statusNote: statusNote(d),
+                  paypal_account_id: d.paypal_account_id,
+                }))}
+              />
             ))}
             <WithdrawalHistory
               withdrawals={(withdrawals || []).map((w) => ({

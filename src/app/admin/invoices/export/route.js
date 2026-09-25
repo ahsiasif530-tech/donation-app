@@ -29,6 +29,7 @@ export async function GET(request) {
     to: searchParams.get('to'),
     gateway: searchParams.get('gateway'),
     q: searchParams.get('q'),
+    account: searchParams.get('account'),
   })
 
   const headers = ['Invoice #', 'Date & Time', 'Page', 'Donor', 'Email', 'Country', 'Gateway', 'Transaction ID', 'Status', 'Status Note', 'Currency', 'Amount']

@@ -6,7 +6,7 @@ import PrintButton from '@/components/PrintButton'
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
 
 export default async function ExportInvoicesPrintPage({ searchParams }) {
-  const { status, page, from, to, gateway, q } = await searchParams
+  const { status, page, from, to, gateway, q, account } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -18,7 +18,7 @@ export default async function ExportInvoicesPrintPage({ searchParams }) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/dashboard')
 
-  const { invoices } = await fetchFilteredInvoices(supabase, { status, page, from, to, gateway, q })
+  const { invoices } = await fetchFilteredInvoices(supabase, { status, page, from, to, gateway, q, account })
   const total = invoices.filter((d) => d.status === 'completed').reduce((sum, d) => sum + Number(d.amount), 0)
 
   return (

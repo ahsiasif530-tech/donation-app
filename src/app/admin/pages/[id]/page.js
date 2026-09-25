@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
-import AdminInvoiceList from '@/components/AdminInvoiceList'
+import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
+import { getPaypalAccounts } from '@/lib/paypalAccounts'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
 
@@ -38,9 +39,19 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const { data: donations } = await supabase
     .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, donor_country, created_at')
+    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, donor_country, created_at')
     .eq('page_id', id)
     .order('created_at', { ascending: false })
+
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('payment_settings')
+    .eq('id', 'global')
+    .single()
+  const paypalAccountTabs = getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => ({
+    id: a.id,
+    label: a.label || 'Untitled account',
+  }))
 
   const { data: withdrawals } = await supabase
     .from('withdrawals')
@@ -159,40 +170,23 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {byGateway.map((g) => (
-            <div key={g.gateway} className="rounded-2xl border overflow-hidden" style={cardStyle}>
-              <div className="px-5 py-3.5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
-                <h3 className="font-bold">{g.label}</h3>
-                <div className="flex items-center gap-3">
-                  <a
-                    href={`/admin/invoices/export?${exportQuery(g.gateway)}`}
-                    className="text-xs font-bold hover:underline"
-                    style={{ color: 'var(--a-text-muted)' }}
-                  >
-                    CSV
-                  </a>
-                  <a
-                    href={`/admin/invoices/export/print?${exportQuery(g.gateway)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold hover:underline"
-                    style={{ color: 'var(--a-text-muted)' }}
-                  >
-                    PDF
-                  </a>
-                  <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
-                </div>
-              </div>
-              <AdminInvoiceList
-                key={listKey}
-                invoices={g.invoices.map((d) => ({
-                  invoice_number: d.invoice_number,
-                  subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
-                  amount: d.amount,
-                  status: d.status,
-                  statusNote: statusNote(d),
-                }))}
-              />
-            </div>
+            <GatewayInvoiceCard
+              key={g.gateway}
+              className="rounded-2xl border overflow-hidden"
+              style={cardStyle}
+              label={g.label}
+              exportQuery={exportQuery(g.gateway)}
+              listKey={listKey}
+              accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
+              invoices={g.invoices.map((d) => ({
+                invoice_number: d.invoice_number,
+                subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
+                amount: d.amount,
+                status: d.status,
+                statusNote: statusNote(d),
+                paypal_account_id: d.paypal_account_id,
+              }))}
+            />
           ))}
           <WithdrawalHistory
             withdrawals={withdrawals || []}
