@@ -166,10 +166,15 @@ export default async function AdminPage({ searchParams }) {
               ${(totalEarning - totalWithdrawn).toFixed(2)}
             </p>
             {totalWithdrawn > 0 && (
-              <p className="text-xs mt-2" style={{ color: 'var(--a-text-muted)' }}>
-                ${totalEarning.toFixed(2)} earned · <span style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</span>
-              </p>
+              <p className="text-xs mt-2" style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</p>
             )}
+            {/* Every completed donation ever; withdrawals never reduce it. */}
+            <div className="border-t mt-5 pt-4" style={{ borderColor: 'var(--a-border)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Lifetime earning</p>
+              <p className="a-display text-3xl font-semibold mt-1 tabular-nums" style={{ color: 'var(--a-text)' }}>
+                ${totalEarning.toFixed(2)}
+              </p>
+            </div>
           </div>
           <div className="a-card p-6 sm:col-span-2">
             <p className="text-sm font-semibold mb-2" style={{ color: 'var(--a-text-muted)' }}>By gateway</p>
