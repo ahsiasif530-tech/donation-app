@@ -95,6 +95,21 @@ for each row
 execute function prevent_completed_donation_delete();
 
 -- ============================================================
+-- withdrawals: money the admin has taken out, per page; subtracted
+-- from that page's completed earning to show what's left
+-- ============================================================
+create table if not exists withdrawals (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid not null references pages(id) on delete cascade,
+  amount numeric(10, 2) not null check (amount > 0),
+  note text,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists withdrawals_page_id_idx on withdrawals(page_id);
+
+-- ============================================================
 -- settings: one global row holding site-wide payment settings
 -- ============================================================
 create table if not exists settings (
@@ -125,6 +140,7 @@ alter table profiles enable row level security;
 alter table pages enable row level security;
 alter table donations enable row level security;
 alter table settings enable row level security;
+alter table withdrawals enable row level security;
 
 create policy "settings_admin_all" on settings
   for all using (is_admin()) with check (is_admin());
@@ -145,6 +161,14 @@ create policy "donations_admin_all" on donations
   for all using (is_admin()) with check (is_admin());
 
 create policy "donations_member_select_own" on donations
+  for select using (
+    page_id in (select page_id from profiles where id = auth.uid())
+  );
+
+create policy "withdrawals_admin_all" on withdrawals
+  for all using (is_admin()) with check (is_admin());
+
+create policy "withdrawals_member_select_own" on withdrawals
   for select using (
     page_id in (select page_id from profiles where id = auth.uid())
   );

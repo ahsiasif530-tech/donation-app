@@ -5,6 +5,7 @@ import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccount
 import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
+import WithdrawButton from '@/components/WithdrawButton'
 
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
@@ -40,9 +41,14 @@ export default async function AdminPage({ searchParams }) {
     .eq('id', 'global')
     .single()
 
+  const { data: withdrawals } = await supabase
+    .from('withdrawals')
+    .select('page_id, amount')
+
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
+  const totalWithdrawn = (withdrawals || []).reduce((sum, w) => sum + Number(w.amount), 0)
 
   const countryTotals = new Map()
   for (const d of completed) {
@@ -56,9 +62,14 @@ export default async function AdminPage({ searchParams }) {
 
   const byPage = (pages || []).map((p) => {
     const rows = completed.filter((d) => d.page_id === p.id)
+    const withdrawn = (withdrawals || [])
+      .filter((w) => w.page_id === p.id)
+      .reduce((sum, w) => sum + Number(w.amount), 0)
     return {
       ...p,
-      earning: rows.reduce((sum, d) => sum + Number(d.amount), 0),
+      // What's left after withdrawals.
+      earning: rows.reduce((sum, d) => sum + Number(d.amount), 0) - withdrawn,
+      withdrawn,
       count: rows.length,
     }
   })
@@ -150,8 +161,13 @@ export default async function AdminPage({ searchParams }) {
           <div className="a-card a-card-hero p-6">
             <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning</p>
             <p className="a-display a-gold-text text-5xl font-semibold mt-1 tabular-nums">
-              ${totalEarning.toFixed(2)}
+              ${(totalEarning - totalWithdrawn).toFixed(2)}
             </p>
+            {totalWithdrawn > 0 && (
+              <p className="text-xs mt-2" style={{ color: 'var(--a-text-muted)' }}>
+                ${totalEarning.toFixed(2)} earned · <span style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</span>
+              </p>
+            )}
           </div>
           <div className="a-card p-6 sm:col-span-2">
             <p className="text-sm font-semibold mb-2" style={{ color: 'var(--a-text-muted)' }}>By gateway</p>
@@ -246,8 +262,14 @@ export default async function AdminPage({ searchParams }) {
                     <td className="px-6 py-3 font-semibold">{p.label || p.title}</td>
                     <td className="px-6 py-3" style={{ color: 'var(--a-text-muted)' }}>/donate/{p.slug}</td>
                     <td className="px-6 py-3 text-right tabular-nums">{p.count}</td>
-                    <td className="px-6 py-3 text-right tabular-nums font-semibold">${p.earning.toFixed(2)}</td>
+                    <td className="px-6 py-3 text-right tabular-nums font-semibold">
+                      ${p.earning.toFixed(2)}
+                      {p.withdrawn > 0 && (
+                        <p className="text-[11px] font-normal" style={{ color: 'var(--a-danger)' }}>−${p.withdrawn.toFixed(2)} withdrawn</p>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-right whitespace-nowrap">
+                      <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
                       <a
                         href={`/admin/pages/${p.id}`}
                         className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
