@@ -6,6 +6,7 @@ import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
 import WithdrawButton from '@/components/WithdrawButton'
+import WithdrawalHistory from '@/components/WithdrawalHistory'
 
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
@@ -43,7 +44,8 @@ export default async function AdminPage({ searchParams }) {
 
   const { data: withdrawals } = await supabase
     .from('withdrawals')
-    .select('page_id, amount')
+    .select('id, page_id, amount, note, created_at')
+    .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const completed = (donations || []).filter((d) => d.status === 'completed')
@@ -334,6 +336,13 @@ export default async function AdminPage({ searchParams }) {
                 />
               </div>
             ))}
+            <WithdrawalHistory
+              withdrawals={(withdrawals || []).map((w) => ({
+                ...w,
+                page_name: pageById[w.page_id]?.label || pageById[w.page_id]?.title || '—',
+              }))}
+              fileName="all-pages"
+            />
           </div>
         </div>
       </div>

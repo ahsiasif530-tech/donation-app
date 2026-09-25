@@ -11,7 +11,8 @@ function csvEscape(value) {
 }
 
 // Dates are formatted in the viewer's browser so the time shown (and written
-// to the Excel file) is their local time, not the server's.
+// to the Excel file) is their local time, not the server's. Rows can carry
+// their own page_name when the list mixes several pages.
 export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const total = withdrawals.reduce((sum, w) => sum + Number(w.amount), 0)
@@ -21,7 +22,7 @@ export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
     const headers = ['Date', 'Time', 'Page', 'Amount (USD)', 'Note']
     const rows = withdrawals.map((w) => {
       const at = new Date(w.created_at)
-      return [at.toLocaleDateString(), at.toLocaleTimeString(), pageName, Number(w.amount).toFixed(2), w.note || '']
+      return [at.toLocaleDateString(), at.toLocaleTimeString(), w.page_name || pageName, Number(w.amount).toFixed(2), w.note || '']
     })
     rows.push(['', '', 'Total', total.toFixed(2), ''])
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\r\n')
@@ -67,7 +68,9 @@ export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
                     <p className="font-semibold" suppressHydrationWarning>
                       {at.toLocaleDateString()} · {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </p>
-                    <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }}>{w.note || '—'}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }}>
+                      {[w.page_name, w.note].filter(Boolean).join(' · ') || '—'}
+                    </p>
                   </div>
                   <p className="font-bold tabular-nums shrink-0" style={{ color: 'var(--a-danger)' }}>−${Number(w.amount).toFixed(2)}</p>
                 </div>
