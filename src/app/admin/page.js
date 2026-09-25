@@ -342,6 +342,7 @@ export default async function AdminPage({ searchParams }) {
                 page_name: pageById[w.page_id]?.label || pageById[w.page_id]?.title || '—',
               }))}
               fileName="all-pages"
+              pages={(pages || []).map((p) => ({ id: p.id, name: p.label || p.title }))}
             />
           </div>
         </div>

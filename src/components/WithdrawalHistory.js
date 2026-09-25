@@ -12,9 +12,13 @@ function csvEscape(value) {
 
 // Dates are formatted in the viewer's browser so the time shown (and written
 // to the Excel file) is their local time, not the server's. Rows can carry
-// their own page_name when the list mixes several pages.
-export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
+// their own page_name when the list mixes several pages; passing `pages`
+// ([{ id, name }]) then adds a tab per page to show one page at a time.
+export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageName, fileName, pages = [] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [selectedPageId, setSelectedPageId] = useState('all')
+  const selectedPage = pages.find((p) => p.id === selectedPageId)
+  const withdrawals = selectedPage ? allWithdrawals.filter((w) => w.page_id === selectedPage.id) : allWithdrawals
   const total = withdrawals.reduce((sum, w) => sum + Number(w.amount), 0)
   const hasMore = visibleCount < withdrawals.length
 
@@ -31,7 +35,7 @@ export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${fileName}-withdrawals-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `${selectedPage ? selectedPage.name.replace(/[^\w-]+/g, '-') : fileName}-withdrawals-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -54,6 +58,32 @@ export default function WithdrawalHistory({ withdrawals, pageName, fileName }) {
           <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-danger)' }}>−${total.toFixed(2)}</span>
         </div>
       </div>
+
+      {pages.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-5 py-3 border-b" style={{ borderColor: 'var(--a-border)' }}>
+          {[{ id: 'all', name: 'All' }, ...pages].map((p) => {
+            const active = p.id === selectedPageId
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setSelectedPageId(p.id)
+                  setVisibleCount(PAGE_SIZE)
+                }}
+                className="rounded-lg border px-3 py-1 text-xs font-bold hover:opacity-80"
+                style={
+                  active
+                    ? { background: 'var(--a-accent)', borderColor: 'var(--a-accent)', color: 'var(--a-accent-ink)' }
+                    : { background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }
+                }
+              >
+                {p.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {withdrawals.length === 0 ? (
         <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono withdraw kora hoyni.</p>
