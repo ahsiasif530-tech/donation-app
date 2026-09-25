@@ -52,5 +52,6 @@ export async function addWithdrawal({ pageId, amount, note }) {
   if (error) return { error: error.message }
 
   revalidatePath('/admin')
+  revalidatePath(`/admin/pages/${pageId}`)
   return { success: true }
 }

@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import AdminInvoiceList from '@/components/AdminInvoiceList'
+import WithdrawButton from '@/components/WithdrawButton'
+import WithdrawalHistory from '@/components/WithdrawalHistory'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
 
@@ -40,8 +42,16 @@ export default async function PageInvoicesPage({ params, searchParams }) {
     .eq('page_id', id)
     .order('created_at', { ascending: false })
 
+  const { data: withdrawals } = await supabase
+    .from('withdrawals')
+    .select('id, amount, note, created_at')
+    .eq('page_id', id)
+    .order('created_at', { ascending: false })
+
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
+  const totalWithdrawn = (withdrawals || []).reduce((sum, w) => sum + Number(w.amount), 0)
+  const balance = totalEarning - totalWithdrawn
 
   const countryTotals = new Map()
   for (const d of completed) {
@@ -105,10 +115,20 @@ export default async function PageInvoicesPage({ params, searchParams }) {
         </div>
 
         <div className="rounded-2xl border p-6" style={{ ...cardStyle, borderColor: 'var(--a-accent)', boxShadow: '0 0 0 1px var(--a-accent) inset, 0 12px 30px rgba(212,175,55,0.12)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning (completed)</p>
-          <p className="text-4xl font-extrabold mt-1 tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>
-            ${totalEarning.toFixed(2)}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning (completed)</p>
+              <p className="text-4xl font-extrabold mt-1 tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>
+                ${balance.toFixed(2)}
+              </p>
+              {totalWithdrawn > 0 && (
+                <p className="text-xs mt-2" style={{ color: 'var(--a-text-muted)' }}>
+                  ${totalEarning.toFixed(2)} earned · <span style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</span>
+                </p>
+              )}
+            </div>
+            <WithdrawButton pageId={id} pageName={page.label || page.title} available={balance} />
+          </div>
         </div>
 
         <div className="rounded-2xl border overflow-hidden" style={cardStyle}>
@@ -174,6 +194,11 @@ export default async function PageInvoicesPage({ params, searchParams }) {
               />
             </div>
           ))}
+          <WithdrawalHistory
+            withdrawals={withdrawals || []}
+            pageName={page.label || page.title}
+            fileName={page.slug}
+          />
         </div>
       </div>
     </main>
