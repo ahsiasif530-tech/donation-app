@@ -430,15 +430,18 @@ export default function DonationForm({
       </label>
 
       <div>
-        <label className="block text-sm font-bold mb-2 text-center">Choose an amount</label>
-        <div className="grid grid-cols-6 gap-2 max-[420px]:grid-cols-3">
+        <label className="block text-lg font-bold mb-3 text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
+          Choose an amount
+        </label>
+        <div className="grid grid-cols-4 gap-3 max-[420px]:grid-cols-3 max-[420px]:gap-2">
           {PRESET_AMOUNTS.map((a) => (
             <button
               key={a}
               type="button"
               onClick={() => setAmount(a)}
-              className={`rounded-lg border py-2.5 text-sm font-bold tabular-nums transition-colors ${amount === a ? 'd-btn-gold' : ''}`}
-              style={amount === a ? {} : { borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+              aria-pressed={amount === a}
+              className={`d-amount rounded-xl py-4 text-xl font-bold tabular-nums max-[420px]:py-3.5 max-[420px]:text-lg ${amount === a ? 'd-amount-selected' : ''}`}
+              style={{ fontFamily: 'var(--font-display)' }}
             >
               ${a}
             </button>
