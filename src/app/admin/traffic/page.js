@@ -30,6 +30,23 @@ function sinceIso() {
   return new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString()
 }
 
+// A view without a visitor id (storage blocked) counts as its own visitor.
+function addView(stats, visitorId) {
+  stats.views += 1
+  stats.visitors.add(visitorId || `anon-${stats.views}`)
+}
+
+function addDonation(stats, donation) {
+  stats.clicks += 1
+  if (donation.status === 'completed') {
+    stats.paid += 1
+    stats.earned += Number(donation.amount)
+  }
+}
+
+const theadStyle = { background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }
+const muted = { color: 'var(--a-text-muted)' }
+
 function StatCells({ s, strong }) {
   const cls = `px-4 py-2.5 text-right tabular-nums${strong ? ' font-bold' : ''}`
   return (
@@ -42,6 +59,66 @@ function StatCells({ s, strong }) {
       <td className={cls}>{percent(s.clicks, s.visitors.size)}</td>
       <td className={cls}>{percent(s.paid, s.visitors.size)}</td>
     </>
+  )
+}
+
+function PersonCard({ person }) {
+  const dayRows = [...person.days.entries()].sort(([a], [b]) => (a < b ? 1 : -1))
+  const sourceRows = [...person.sources.entries()].sort(([, a], [, b]) => b - a)
+
+  return (
+    <div className="a-card overflow-x-auto">
+      <div className="px-6 py-4 border-b flex flex-wrap items-baseline gap-x-4 gap-y-1" style={{ borderColor: 'var(--a-border)' }}>
+        <h2 className="font-bold text-lg">{person.name}</h2>
+        <span className="text-sm" style={muted}>/donate/{person.slug}</span>
+        <span className="text-sm ml-auto">
+          <span style={muted}>{DAYS} days: </span>
+          <span className="font-bold tabular-nums">{person.total.views} views · {person.total.clicks} clicks · {person.total.paid} paid · ${person.total.earned.toFixed(2)}</span>
+        </span>
+      </div>
+
+      {sourceRows.length > 0 && (
+        <div className="px-6 py-3 border-b flex flex-wrap gap-2 text-sm" style={{ borderColor: 'var(--a-border)' }}>
+          <span style={muted}>Comes from:</span>
+          {sourceRows.map(([source, count]) => (
+            <span key={source} className="rounded-lg border px-2.5 py-0.5" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
+              {source} <span className="font-bold tabular-nums">{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {dayRows.length === 0 ? (
+        <p className="px-6 py-8 text-sm text-center" style={muted}>Ei {DAYS} dine kono data nei.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="text-xs uppercase" style={theadStyle}>
+            <tr>
+              <th className="text-left px-4 py-3 font-semibold">Day</th>
+              <th className="text-right px-4 py-3 font-semibold">Views</th>
+              <th className="text-right px-4 py-3 font-semibold">Visitors</th>
+              <th className="text-right px-4 py-3 font-semibold">Donate clicks</th>
+              <th className="text-right px-4 py-3 font-semibold">Paid</th>
+              <th className="text-right px-4 py-3 font-semibold">Earned</th>
+              <th className="text-right px-4 py-3 font-semibold">Click rate</th>
+              <th className="text-right px-4 py-3 font-semibold">Pay rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dayRows.map(([day, s]) => (
+              <tr key={day} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
+                <td className="px-4 py-2.5 font-semibold">{day}</td>
+                <StatCells s={s} />
+              </tr>
+            ))}
+            <tr className="border-t" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
+              <td className="px-4 py-2.5 font-bold">Total</td>
+              <StatCells s={person.total} strong />
+            </tr>
+          </tbody>
+        </table>
+      )}
+    </div>
   )
 }
 
@@ -76,47 +153,34 @@ export default async function AdminTrafficPage() {
     supabase.from('donations').select('page_id, amount, status, created_at').gte('created_at', since).order('created_at')
   )
 
-  const pageName = Object.fromEntries((pages || []).map((p) => [p.id, p.label || p.title || p.slug]))
+  // One entry per donation page (one per person): 14-day total, per-day stats, and view sources.
+  const people = new Map(
+    (pages || []).map((p) => [
+      p.id,
+      { name: p.label || p.title || p.slug, slug: p.slug, total: emptyStats(), days: new Map(), sources: new Map() },
+    ])
+  )
 
-  // day -> { total, byPage: { pageId -> stats } }
-  const days = new Map()
-  function statsFor(iso, pageId) {
+  function dayStats(person, iso) {
     const day = dayOf(iso)
-    if (!days.has(day)) days.set(day, { total: emptyStats(), byPage: new Map() })
-    const entry = days.get(day)
-    if (!entry.byPage.has(pageId)) entry.byPage.set(pageId, emptyStats())
-    return [entry.total, entry.byPage.get(pageId)]
+    if (!person.days.has(day)) person.days.set(day, emptyStats())
+    return person.days.get(day)
   }
 
-  const sources = new Map()
-
   for (const v of views) {
-    for (const s of statsFor(v.created_at, v.page_id)) {
-      s.views += 1
-      s.visitors.add(v.visitor_id || `anon-${s.views}`)
-    }
-    const src = sources.get(v.source) || { source: v.source, views: 0, visitors: new Set() }
-    src.views += 1
-    src.visitors.add(v.visitor_id || `anon-${src.views}`)
-    sources.set(v.source, src)
+    const person = people.get(v.page_id)
+    if (!person) continue
+    addView(person.total, v.visitor_id)
+    addView(dayStats(person, v.created_at), v.visitor_id)
+    person.sources.set(v.source, (person.sources.get(v.source) || 0) + 1)
   }
 
   for (const d of donations) {
-    for (const s of statsFor(d.created_at, d.page_id)) {
-      s.clicks += 1
-      if (d.status === 'completed') {
-        s.paid += 1
-        s.earned += Number(d.amount)
-      }
-    }
+    const person = people.get(d.page_id)
+    if (!person) continue
+    addDonation(person.total, d)
+    addDonation(dayStats(person, d.created_at), d)
   }
-
-  const dayRows = [...days.entries()].sort(([a], [b]) => (a < b ? 1 : -1))
-  const sourceRows = [...sources.values()].sort((a, b) => b.views - a.views)
-  const totalViews = views.length
-
-  const theadStyle = { background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }
-  const muted = { color: 'var(--a-text-muted)' }
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
@@ -129,75 +193,12 @@ export default async function AdminTrafficPage() {
           </p>
         </div>
 
-        <div className="a-card overflow-x-auto">
-          <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-            <h2 className="font-bold">By day and page</h2>
-          </div>
-          {dayRows.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-center" style={muted}>Ekhono kono data nei.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase" style={theadStyle}>
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold">Day / page</th>
-                  <th className="text-right px-4 py-3 font-semibold">Views</th>
-                  <th className="text-right px-4 py-3 font-semibold">Visitors</th>
-                  <th className="text-right px-4 py-3 font-semibold">Donate clicks</th>
-                  <th className="text-right px-4 py-3 font-semibold">Paid</th>
-                  <th className="text-right px-4 py-3 font-semibold">Earned</th>
-                  <th className="text-right px-4 py-3 font-semibold">Click rate</th>
-                  <th className="text-right px-4 py-3 font-semibold">Pay rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dayRows.map(([day, entry]) => (
-                  <DayRows key={day} day={day} entry={entry} pageName={pageName} />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div className="a-card overflow-hidden">
-          <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-            <h2 className="font-bold">Where visitors come from</h2>
-          </div>
-          {sourceRows.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-center" style={muted}>Ekhono kono view record hoyni.</p>
-          ) : (
-            <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-              {sourceRows.map((s) => (
-                <div key={s.source} className="flex items-center gap-3 px-6 py-3 text-sm">
-                  <span className="flex-1 font-semibold">{s.source}</span>
-                  <span style={muted}>{s.visitors.size} visitors</span>
-                  <span className="font-bold tabular-nums w-16 text-right" style={{ color: 'var(--a-accent-strong)' }}>
-                    {percent(s.views, totalViews)}
-                  </span>
-                  <span className="font-bold tabular-nums w-20 text-right">{s.views} views</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {people.size === 0 ? (
+          <p className="text-sm text-center" style={muted}>Kono page ekhono banano hoyni.</p>
+        ) : (
+          [...people.entries()].map(([id, person]) => <PersonCard key={id} person={person} />)
+        )}
       </div>
     </main>
-  )
-}
-
-function DayRows({ day, entry, pageName }) {
-  const pageRows = [...entry.byPage.entries()].sort(([, a], [, b]) => b.views - a.views || b.clicks - a.clicks)
-  return (
-    <>
-      <tr className="border-t" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
-        <td className="px-4 py-2.5 font-bold">{day}</td>
-        <StatCells s={entry.total} strong />
-      </tr>
-      {pageRows.map(([pageId, s]) => (
-        <tr key={pageId} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
-          <td className="px-4 py-2.5 pl-8" style={{ color: 'var(--a-text-muted)' }}>{pageName[pageId] || '—'}</td>
-          <StatCells s={s} />
-        </tr>
-      ))}
-    </>
   )
 }
