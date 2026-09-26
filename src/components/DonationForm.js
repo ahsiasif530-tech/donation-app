@@ -388,6 +388,11 @@ export default function DonationForm({
         <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
           Sow your seed
         </p>
+        <div className="flex justify-center" aria-hidden="true">
+          <svg className="animate-bounce" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--gold-bright)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 4v15M5 12l7 7 7-7" />
+          </svg>
+        </div>
         <p className="text-center text-sm" style={{ color: 'var(--ink-muted)' }}>
           ${Number(paypalCheckout.amount).toFixed(2)} — invoice {paypalCheckout.invoiceNumber}
         </p>
