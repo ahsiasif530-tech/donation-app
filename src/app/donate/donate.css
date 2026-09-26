@@ -5,10 +5,10 @@
   --bg: #E9EFF9;
   --surface: #FFFFFF;
   --surface-2: #F3F6FC;
-  --ink: #1B2036;
-  --ink-muted: #5B6478;
+  --ink: #0A0A0A;
+  --ink-muted: #2B2B2B;
   --border: #D6E0F0;
-  --heading: #2A2A6B;
+  --heading: #050505;
   --gold: #B8860B;
   --gold-bright: #D4A017;
   --gold-soft: rgba(184, 134, 11, 0.14);
@@ -44,10 +44,10 @@
   --bg: #F4EFFB;
   --surface: #FFFFFF;
   --surface-2: #ECE1F8;
-  --ink: #2B1B47;
-  --ink-muted: #6B5B8A;
+  --ink: #0A0A0A;
+  --ink-muted: #2B2B2B;
   --border: #DECBF2;
-  --heading: #5B2A86;
+  --heading: #050505;
   --gold: #B8860B;
   --gold-bright: #D4A017;
   --gold-soft: rgba(184, 134, 11, 0.15);
@@ -65,10 +65,10 @@
   --bg: #F2F5EF;
   --surface: #FFFFFF;
   --surface-2: #EAF0E6;
-  --ink: #24301F;
-  --ink-muted: #5E6E57;
+  --ink: #0A0A0A;
+  --ink-muted: #2B2B2B;
   --border: #D7E4D2;
-  --heading: #2E4A2A;
+  --heading: #050505;
   --gold: #3B7A4E;
   --gold-bright: #4C9760;
   --gold-soft: rgba(59, 150, 96, 0.12);
@@ -83,10 +83,10 @@
   --bg: #FBF3EC;
   --surface: #FFFFFF;
   --surface-2: #F5E6D8;
-  --ink: #3A2A1F;
-  --ink-muted: #7A6553;
+  --ink: #0A0A0A;
+  --ink-muted: #2B2B2B;
   --border: #E8D3BC;
-  --heading: #8A4A2A;
+  --heading: #050505;
   --gold: #B8622E;
   --gold-bright: #D17A3F;
   --gold-soft: rgba(184, 98, 46, 0.14);
@@ -125,6 +125,18 @@
 .theme-amber > * {
   position: relative;
   z-index: 1;
+}
+
+/* Glossy black headings: a light highlight above and a soft shadow below.
+   Done with text-shadow, not a gradient fill, so emoji in titles still render. */
+.theme-classic :is(h1, h2),
+.theme-royal :is(h1, h2),
+.theme-sage :is(h1, h2),
+.theme-amber :is(h1, h2) {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.28);
 }
 
 .d-card {
