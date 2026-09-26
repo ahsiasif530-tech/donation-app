@@ -382,9 +382,12 @@ export default function DonationForm({
         >
           ← Change amount or payment method
         </button>
-        <h2 className="text-lg font-semibold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-          Complete your donation
+        <h2 className="text-2xl font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)', textWrap: 'balance' }}>
+          Choose the way you would like to support us.
         </h2>
+        <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
+          Sow your seed
+        </p>
         <p className="text-center text-sm" style={{ color: 'var(--ink-muted)' }}>
           ${Number(paypalCheckout.amount).toFixed(2)} — invoice {paypalCheckout.invoiceNumber}
         </p>
