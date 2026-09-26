@@ -402,7 +402,7 @@ export default function DonationForm({
 
         <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD' }}>
           <PayPalButtons
-            style={{ layout: 'vertical' }}
+            style={{ layout: 'vertical', height: 55 }}
             createOrder={createPaypalButtonOrder}
             onApprove={onApprovePaypalButton}
             onCancel={() => {
