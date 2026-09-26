@@ -150,6 +150,13 @@ export default async function AdminPage({ searchParams }) {
           </div>
           <div className="flex items-center gap-5">
             <a
+              href="/admin/traffic"
+              className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
+              style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
+            >
+              Traffic
+            </a>
+            <a
               href="/admin/settings"
               className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
               style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}

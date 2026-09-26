@@ -73,6 +73,24 @@ alter table donations
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================
+-- page_views: one row per visit to a public donation page, so the
+-- admin can compare visits against donate clicks and payments.
+-- visitor_id is a random id kept in the visitor's browser (counts
+-- unique visitors); source is utm_source, else the referrer's site.
+-- Written only by the server (service key), read only by the admin.
+-- ============================================================
+create table if not exists page_views (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid not null references pages(id) on delete cascade,
+  visitor_id text,
+  source text not null default 'direct',
+  referrer text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists page_views_page_created_idx on page_views(page_id, created_at);
+
+-- ============================================================
 -- Completed donations can never be deleted (blocks every role,
 -- including the service key — this is not an RLS policy).
 -- ============================================================
@@ -141,6 +159,7 @@ alter table pages enable row level security;
 alter table donations enable row level security;
 alter table settings enable row level security;
 alter table withdrawals enable row level security;
+alter table page_views enable row level security;
 
 create policy "settings_admin_all" on settings
   for all using (is_admin()) with check (is_admin());
@@ -167,6 +186,9 @@ create policy "donations_member_select_own" on donations
 
 create policy "withdrawals_admin_all" on withdrawals
   for all using (is_admin()) with check (is_admin());
+
+create policy "page_views_admin_select" on page_views
+  for select using (is_admin());
 
 create policy "withdrawals_member_select_own" on withdrawals
   for select using (

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import DonationForm from '@/components/DonationForm'
 import RecentDonors from '@/components/RecentDonors'
+import PageViewTracker from '@/components/PageViewTracker'
 
 export default async function DonatePage({ params }) {
   const { slug } = await params
@@ -56,6 +57,7 @@ export default async function DonatePage({ params }) {
 
   return (
     <main className={`theme-${page.theme || 'classic'} min-h-screen`}>
+    <PageViewTracker slug={slug} />
     <div className="mx-auto max-w-[600px] px-5 py-14 flex flex-col gap-7">
       <div className="flex flex-col items-center text-center gap-4">
         <div className="halo">

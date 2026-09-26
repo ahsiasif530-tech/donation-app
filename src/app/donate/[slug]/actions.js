@@ -1,5 +1,6 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
 import { COUNTRIES } from '@/lib/countries'
@@ -34,6 +35,49 @@ function donorInfoFromCapture(capture) {
     donor_address: [address?.admin_area_2, address?.postal_code, countryCode].filter(Boolean).join(', '),
   }
   return Object.fromEntries(Object.entries(info).filter(([, v]) => v))
+}
+
+const BOT_USER_AGENT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse/i
+
+// Referrer hosts grouped under one readable name; anything else shows as its host.
+const SOURCE_BY_HOST = [
+  [/(^|\.)(facebook\.com|fb\.com|fb\.me)$/, 'facebook'],
+  [/(^|\.)instagram\.com$/, 'instagram'],
+  [/(^|\.)(t\.co|twitter\.com|x\.com)$/, 'twitter'],
+  [/(^|\.)(youtube\.com|youtu\.be)$/, 'youtube'],
+  [/(^|\.)tiktok\.com$/, 'tiktok'],
+  [/(^|\.)whatsapp\.(com|net)$/, 'whatsapp'],
+  [/(^|\.)google\.[a-z.]+$/, 'google'],
+]
+
+function sourceFromReferrer(referrer) {
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, '')
+    return SOURCE_BY_HOST.find(([pattern]) => pattern.test(host))?.[1] || host
+  } catch {
+    return 'direct'
+  }
+}
+
+// Called once from the browser when a donation page opens. Bots and link
+// previews are skipped so the counts reflect real visitors.
+export async function recordPageView({ slug, visitorId, referrer, utmSource }) {
+  const userAgent = (await headers()).get('user-agent') || ''
+  if (!userAgent || BOT_USER_AGENT.test(userAgent)) return
+
+  const supabase = createAdminClient()
+  const { data: page } = await supabase.from('pages').select('id').eq('slug', slug).single()
+  if (!page) return
+
+  const cleanReferrer = typeof referrer === 'string' ? referrer.slice(0, 500) : ''
+  const source = (typeof utmSource === 'string' && utmSource.trim().toLowerCase().slice(0, 50)) || sourceFromReferrer(cleanReferrer)
+
+  await supabase.from('page_views').insert({
+    page_id: page.id,
+    visitor_id: typeof visitorId === 'string' ? visitorId.slice(0, 64) : null,
+    source,
+    referrer: cleanReferrer || null,
+  })
 }
 
 export async function getPaypalClientId() {
