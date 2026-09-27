@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 const PAGE_SIZE = 5
 
@@ -19,7 +20,7 @@ export default function AdminInvoiceList({ invoices }) {
     <div>
       <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
         {invoices.slice(0, visibleCount).map((d) => (
-          <a
+          <Link
             key={d.invoice_number}
             href={`/admin/invoices/${d.invoice_number}`}
             className="flex items-center justify-between gap-3 px-5 py-3 text-sm hover:opacity-80"
@@ -49,7 +50,7 @@ export default function AdminInvoiceList({ invoices }) {
                 </p>
               )}
             </div>
-          </a>
+          </Link>
         ))}
       </div>
 

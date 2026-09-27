@@ -12,19 +12,12 @@ export default async function AdminSettingsPage() {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: settings }] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
+  ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
-
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('payment_settings')
-    .eq('id', 'global')
-    .single()
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10">

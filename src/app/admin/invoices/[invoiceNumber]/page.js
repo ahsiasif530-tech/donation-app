@@ -15,20 +15,13 @@ export default async function InvoiceDetailPage({ params }) {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: donation }, { data: settings }] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('donations').select('*').eq('invoice_number', decodeURIComponent(invoiceNumber)).single(),
+    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
+  ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
-
-  const { data: donation } = await supabase
-    .from('donations')
-    .select('*')
-    .eq('invoice_number', decodeURIComponent(invoiceNumber))
-    .single()
-
   if (!donation) notFound()
 
   const { data: page } = await supabase
@@ -38,15 +31,9 @@ export default async function InvoiceDetailPage({ params }) {
     .single()
 
   // Which of the saved PayPal accounts this donation was paid into.
-  let paypalAccount = null
-  if (donation.paypal_account_id) {
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('payment_settings')
-      .eq('id', 'global')
-      .single()
-    paypalAccount = findPaypalAccount(settings?.payment_settings?.paypal, donation.paypal_account_id)
-  }
+  const paypalAccount = donation.paypal_account_id
+    ? findPaypalAccount(settings?.payment_settings?.paypal, donation.paypal_account_id)
+    : null
 
   const issuedAt = new Date(donation.created_at)
 

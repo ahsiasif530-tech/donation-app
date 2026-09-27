@@ -30,17 +30,14 @@ export default async function DashboardPage() {
     )
   }
 
-  const { data: page } = await supabase
-    .from('pages')
-    .select('id, slug, title, enabled_gateways')
-    .eq('id', profile.page_id)
-    .single()
-
-  const { data: donations } = await supabase
-    .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, created_at')
-    .eq('page_id', profile.page_id)
-    .order('created_at', { ascending: false })
+  const [{ data: page }, { data: donations }] = await Promise.all([
+    supabase.from('pages').select('id, slug, title, enabled_gateways').eq('id', profile.page_id).single(),
+    supabase
+      .from('donations')
+      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, created_at')
+      .eq('page_id', profile.page_id)
+      .order('created_at', { ascending: false }),
+  ])
 
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)

@@ -131,27 +131,20 @@ export default async function AdminTrafficPage() {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') redirect('/dashboard')
-
   const since = sinceIso()
 
-  const { data: pages } = await supabase
-    .from('pages')
-    .select('id, slug, title, label')
-    .order('created_at', { ascending: true })
+  const [{ data: profile }, { data: pages }, views, donations] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
+    fetchAll(() =>
+      supabase.from('page_views').select('page_id, visitor_id, source, created_at').gte('created_at', since).order('created_at')
+    ),
+    fetchAll(() =>
+      supabase.from('donations').select('page_id, amount, status, created_at').gte('created_at', since).order('created_at')
+    ),
+  ])
 
-  const views = await fetchAll(() =>
-    supabase.from('page_views').select('page_id, visitor_id, source, created_at').gte('created_at', since).order('created_at')
-  )
-  const donations = await fetchAll(() =>
-    supabase.from('donations').select('page_id, amount, status, created_at').gte('created_at', since).order('created_at')
-  )
+  if (profile?.role !== 'admin') redirect('/dashboard')
 
   // One entry per donation page (one per person): 14-day total, per-day stats, and view sources.
   const people = new Map(

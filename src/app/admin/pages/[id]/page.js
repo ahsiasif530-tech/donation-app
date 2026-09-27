@@ -21,43 +21,24 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: page }, { data: donations }, { data: settings }, { data: withdrawals }] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('pages').select('id, slug, title, label').eq('id', id).single(),
+    supabase
+      .from('donations')
+      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, donor_country, created_at')
+      .eq('page_id', id)
+      .order('created_at', { ascending: false }),
+    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
+    supabase.from('withdrawals').select('id, amount, note, created_at').eq('page_id', id).order('created_at', { ascending: false }),
+  ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
-
-  const { data: page } = await supabase
-    .from('pages')
-    .select('id, slug, title, label')
-    .eq('id', id)
-    .single()
-
   if (!page) notFound()
-
-  const { data: donations } = await supabase
-    .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, donor_country, created_at')
-    .eq('page_id', id)
-    .order('created_at', { ascending: false })
-
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('payment_settings')
-    .eq('id', 'global')
-    .single()
   const paypalAccountTabs = getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => ({
     id: a.id,
     label: a.label || 'Untitled account',
   }))
-
-  const { data: withdrawals } = await supabase
-    .from('withdrawals')
-    .select('id, amount, note, created_at')
-    .eq('page_id', id)
-    .order('created_at', { ascending: false })
 
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)

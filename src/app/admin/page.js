@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
@@ -18,34 +19,20 @@ export default async function AdminPage({ searchParams }) {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role')
-    .eq('id', user.id)
-    .single()
+  // All reads run at once instead of one after another; the role check still
+  // happens before anything is rendered.
+  const [{ data: profile }, { data: pages }, { data: donations }, { data: settings }, { data: withdrawals }] = await Promise.all([
+    supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
+    supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
+    supabase
+      .from('donations')
+      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
+      .order('created_at', { ascending: false }),
+    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
+    supabase.from('withdrawals').select('id, page_id, amount, note, created_at').order('created_at', { ascending: false }),
+  ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
-
-  const { data: pages } = await supabase
-    .from('pages')
-    .select('id, slug, title, label')
-    .order('created_at', { ascending: true })
-
-  const { data: donations } = await supabase
-    .from('donations')
-    .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
-    .order('created_at', { ascending: false })
-
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('payment_settings')
-    .eq('id', 'global')
-    .single()
-
-  const { data: withdrawals } = await supabase
-    .from('withdrawals')
-    .select('id, page_id, amount, note, created_at')
-    .order('created_at', { ascending: false })
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const completed = (donations || []).filter((d) => d.status === 'completed')
@@ -149,20 +136,20 @@ export default async function AdminPage({ searchParams }) {
             <p className="text-sm mt-0.5" style={{ color: 'var(--a-text-muted)' }}>All pages, all invoices</p>
           </div>
           <div className="flex items-center gap-5">
-            <a
+            <Link
               href="/admin/traffic"
               className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
               style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
             >
               Traffic
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/settings"
               className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
               style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
             >
               Payment Settings
-            </a>
+            </Link>
             <SignOutButton />
           </div>
         </div>
@@ -285,13 +272,13 @@ export default async function AdminPage({ searchParams }) {
                     </td>
                     <td className="px-6 py-3 text-right whitespace-nowrap">
                       <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
-                      <a
+                      <Link
                         href={`/admin/pages/${p.id}`}
                         className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
                         style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
                       >
                         Invoices
-                      </a>
+                      </Link>
                       <a
                         href={`/donate/${p.slug}`}
                         target="_blank"
