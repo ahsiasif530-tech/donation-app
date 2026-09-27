@@ -556,7 +556,7 @@ export default function DonationForm({
           className="d-btn-gold w-full rounded-xl py-3.5 text-base font-bold disabled:opacity-60"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : 'Donate Now'}
+          {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : gateway === 'paypal' ? 'Continue to PayPal →' : 'Donate Now'}
         </button>
       )}
     </form>
