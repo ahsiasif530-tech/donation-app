@@ -38,5 +38,7 @@ export async function updatePaymentSettings(paymentSettings) {
   if (error) return { error: error.message }
 
   revalidatePath('/admin/settings')
+  // Enabled gateways are read by the cached donation pages.
+  revalidatePath('/donate/[slug]', 'page')
   return { success: true }
 }

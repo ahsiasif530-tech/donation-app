@@ -1,6 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
 import { COUNTRIES } from '@/lib/countries'
@@ -244,6 +245,9 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
         ...donorInfoFromCapture(capture),
       })
       .eq('invoice_number', invoiceNumber)
+
+    // Show the new donor on the cached donation pages right away.
+    revalidatePath('/donate/[slug]', 'page')
 
     return { success: true }
   } catch (err) {

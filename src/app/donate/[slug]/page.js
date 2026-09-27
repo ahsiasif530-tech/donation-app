@@ -1,28 +1,40 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
+import { preconnect } from 'react-dom'
+import { createPublicClient } from '@/lib/supabase/public'
 import { createAdminClient } from '@/lib/supabase/admin'
 import DonationForm from '@/components/DonationForm'
 import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
 
+// Donation pages are cached and served instantly, rebuilt in the background at
+// most once a minute. A completed donation or a settings change refreshes them
+// right away (revalidatePath in the donate and settings actions).
+export const revalidate = 60
+
+// No pages are built ahead of time; each one is cached on its first visit.
+export async function generateStaticParams() {
+  return []
+}
+
 export default async function DonatePage({ params }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
-  const { data: page } = await supabase
-    .from('pages')
-    .select('id, title, subtitle, hero_image_url, enabled_gateways, theme')
-    .eq('slug', slug)
-    .single()
+  // Opens the connection to PayPal while the donor is still filling in the form.
+  preconnect('https://www.paypal.com')
+  preconnect('https://www.paypalobjects.com')
+
+  const [{ data: page }, { data: settings }] = await Promise.all([
+    supabase
+      .from('pages')
+      .select('id, title, subtitle, hero_image_url, enabled_gateways, theme')
+      .eq('slug', slug)
+      .single(),
+    createAdminClient().from('settings').select('payment_settings').eq('id', 'global').single(),
+  ])
 
   if (!page) notFound()
-
-  const { data: settings } = await createAdminClient()
-    .from('settings')
-    .select('payment_settings')
-    .eq('id', 'global')
-    .single()
 
   const cardEnabled = settings?.payment_settings?.card?.enabled ?? true
   const paypalEnabled = settings?.payment_settings?.paypal?.enabled ?? true
