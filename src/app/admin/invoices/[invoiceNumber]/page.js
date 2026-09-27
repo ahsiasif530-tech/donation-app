@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import { findPaypalAccount } from '@/lib/paypalAccounts'
+import { browserLabel } from '@/lib/userAgent'
 import PrintButton from '@/components/PrintButton'
 
 export default async function InvoiceDetailPage({ params }) {
@@ -93,6 +94,11 @@ export default async function InvoiceDetailPage({ params }) {
               {donation.paypal_account_id && (
                 <p className="text-sm text-slate-500 break-all">
                   PayPal account: {paypalAccount ? `${paypalAccount.label}${paypalAccount.email ? ` (${paypalAccount.email})` : ''}` : 'Removed account'}
+                </p>
+              )}
+              {donation.user_agent && (
+                <p className="text-sm text-slate-500 break-all" title={donation.user_agent}>
+                  Device: {browserLabel(donation.user_agent)}
                 </p>
               )}
               {statusNote(donation) && (

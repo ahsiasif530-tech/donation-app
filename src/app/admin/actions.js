@@ -3,6 +3,32 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { recoverApprovedPaypalOrders } from '@/lib/paypalDonations'
+
+// Asks PayPal about unfinished checkouts and captures the ones the donor
+// approved but whose page closed before the payment was taken.
+export async function recoverPaypalPayments() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not signed in' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  if (profile?.role !== 'admin') return { error: 'Not authorized' }
+
+  const result = await recoverApprovedPaypalOrders(createAdminClient())
+
+  if (result.recovered.length > 0) {
+    revalidatePath('/admin')
+    revalidatePath('/donate/[slug]', 'page')
+  }
+  return result
+}
 
 // Records money taken out of a page's earning. The amount can't exceed what's
 // left (completed donations minus earlier withdrawals).

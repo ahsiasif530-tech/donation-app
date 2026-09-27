@@ -64,6 +64,22 @@ export async function capturePaypalOrder({ clientId, secret, mode, orderId }) {
   return JSON.parse(body)
 }
 
+// Current state of an order: CREATED (donor never approved), APPROVED (approved
+// but not captured yet), COMPLETED (captured), VOIDED, etc.
+export async function getPaypalOrder({ clientId, secret, mode, orderId }) {
+  const token = await getAccessToken(clientId, secret, mode)
+  const res = await fetch(`${apiBase(mode)}/v2/checkout/orders/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const body = await res.text()
+  if (!res.ok) {
+    const error = new Error('Failed to read PayPal order')
+    error.code = paypalErrorCode(body) || `HTTP_${res.status}`
+    throw error
+  }
+  return JSON.parse(body)
+}
+
 // PayPal error bodies look like { name, details: [{ issue: 'INSTRUMENT_DECLINED', ... }] }.
 function paypalErrorCode(body) {
   try {

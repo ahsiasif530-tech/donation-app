@@ -8,6 +8,7 @@ import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
+import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
@@ -297,7 +298,10 @@ export default async function AdminPage({ searchParams }) {
         </div>
 
         <div id="invoices" className="scroll-mt-4">
-          <h2 className="font-bold mb-3">All invoices, by gateway</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <h2 className="font-bold">All invoices, by gateway</h2>
+            <RecoverPaypalButton />
+          </div>
           <InvoiceFilterBar pages={pages || []} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {byGateway.map((g) => (

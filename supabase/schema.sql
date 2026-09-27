@@ -70,6 +70,14 @@ alter table donations
 alter table donations
   add column if not exists paypal_account_id text;
 
+-- paypal_order_id: the PayPal order of the latest checkout attempt, so an order
+-- the donor approved but that was never captured (page closed) can be captured
+-- later from the admin. user_agent: the donor's browser, to see where
+-- checkouts get stuck.
+alter table donations
+  add column if not exists paypal_order_id text,
+  add column if not exists user_agent text;
+
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================

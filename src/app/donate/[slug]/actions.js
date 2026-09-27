@@ -4,8 +4,8 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
-import { COUNTRIES } from '@/lib/countries'
 import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount } from '@/lib/paypalAccounts'
+import { toCredentials, donorInfoFromCapture } from '@/lib/paypalDonations'
 
 async function getPaypalSettings(supabase) {
   const { data: settings } = await supabase
@@ -15,27 +15,6 @@ async function getPaypalSettings(supabase) {
     .single()
 
   return settings?.payment_settings?.paypal || null
-}
-
-function toCredentials(account) {
-  if (!account?.client_id || !account?.secret) return null
-  return { accountId: account.id, clientId: account.client_id, secret: account.secret, mode: account.mode || 'sandbox' }
-}
-
-// The donation form no longer asks for email/address, so the invoice's donor
-// details are filled in from what PayPal returns (PayPal account for PayPal /
-// Apple Pay / Google Pay, the card's billing info for card payments).
-function donorInfoFromCapture(capture) {
-  const card = capture?.payment_source?.card
-  const address = capture?.payer?.address || card?.billing_address || capture?.purchase_units?.[0]?.shipping?.address
-  const countryCode = address?.country_code
-  const info = {
-    donor_email: capture?.payer?.email_address,
-    donor_phone: capture?.payer?.phone?.phone_number?.national_number,
-    donor_country: COUNTRIES.find((c) => c.code === countryCode)?.name || countryCode,
-    donor_address: [address?.admin_area_2, address?.postal_code, countryCode].filter(Boolean).join(', '),
-  }
-  return Object.fromEntries(Object.entries(info).filter(([, v]) => v))
 }
 
 const BOT_USER_AGENT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse/i
@@ -131,6 +110,13 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
     return { error: 'Something went wrong. Please try again.' }
   }
 
+  // The donor's browser, to see where checkouts get stuck (e.g. Facebook's
+  // in-app browser). Saved separately so a missing column can never block a donation.
+  const userAgent = (await headers()).get('user-agent')
+  if (userAgent) {
+    await supabase.from('donations').update({ user_agent: userAgent.slice(0, 500) }).eq('invoice_number', data.invoice_number)
+  }
+
   let redirectUrl = null
   let paypalClientId = null
 
@@ -196,6 +182,15 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
       .eq('invoice_number', invoiceNumber)
       .in('status', ['pending', 'failed'])
 
+    // Lets the admin's PayPal recovery capture this order later if the donor
+    // approves it but the page is gone before it can capture. Saved separately
+    // so a missing column can never block the checkout.
+    await supabase
+      .from('donations')
+      .update({ paypal_order_id: order.id })
+      .eq('invoice_number', invoiceNumber)
+      .in('status', ['pending', 'failed'])
+
     return { orderId: order.id }
   } catch {
     return { error: 'Could not start PayPal checkout. Please try again.' }
@@ -256,6 +251,11 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
     // The invoice stays pending meanwhile; cancelling from there marks it failed.
     if (err?.code === 'INSTRUMENT_DECLINED' && canRestart) {
       return { restart: true }
+    }
+    // The admin's PayPal recovery captured this order first: the money is in.
+    if (err?.code === 'ORDER_ALREADY_CAPTURED') {
+      const { data: current } = await supabase.from('donations').select('status').eq('invoice_number', invoiceNumber).single()
+      if (current?.status === 'completed') return { success: true }
     }
     await setDonationFailed(invoiceNumber, 'capture_declined', err?.code || null)
     if (err?.code === 'INSTRUMENT_DECLINED') {
