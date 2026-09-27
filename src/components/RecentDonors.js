@@ -61,7 +61,7 @@ export default function RecentDonors({ donors }) {
           className="mt-3 self-center rounded-full border px-5 py-2 text-sm font-semibold hover:opacity-80"
           style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', color: 'var(--heading)' }}
         >
-          Load more ({donors.length - visibleCount} more)
+          Load more
         </button>
       )}
     </div>
