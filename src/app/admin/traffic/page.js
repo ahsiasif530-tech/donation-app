@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import TrafficDayRows from '@/components/TrafficDayRows'
 
 const DAYS = 14
 const TIME_ZONE = 'Asia/Dhaka'
@@ -105,12 +106,15 @@ function PersonCard({ person }) {
             </tr>
           </thead>
           <tbody>
-            {dayRows.map(([day, s]) => (
-              <tr key={day} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
-                <td className="px-4 py-2.5 font-semibold">{day}</td>
-                <StatCells s={s} />
-              </tr>
-            ))}
+            <TrafficDayRows
+              hasToday={dayRows[0]?.[0] === dayOf(new Date().toISOString())}
+              rows={dayRows.map(([day, s]) => (
+                <tr key={day} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
+                  <td className="px-4 py-2.5 font-semibold">{day}</td>
+                  <StatCells s={s} />
+                </tr>
+              ))}
+            />
             <tr className="border-t" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
               <td className="px-4 py-2.5 font-bold">Total</td>
               <StatCells s={person.total} strong />
