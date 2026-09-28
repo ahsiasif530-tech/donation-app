@@ -60,12 +60,6 @@ export async function recordPageView({ slug, visitorId, referrer, utmSource }) {
   })
 }
 
-export async function getPaypalClientId() {
-  const supabase = createAdminClient()
-  const paypal = await getPaypalSettings(supabase)
-  return getActivePaypalAccount(paypal)?.client_id || null
-}
-
 export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
   const numericAmount = Number(amount)
 

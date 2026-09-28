@@ -4,6 +4,7 @@ import { preconnect } from 'react-dom'
 import { createPublicClient } from '@/lib/supabase/public'
 import { createAdminClient } from '@/lib/supabase/admin'
 import DonationForm from '@/components/DonationForm'
+import { getActivePaypalAccount } from '@/lib/paypalAccounts'
 import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
 
@@ -42,6 +43,9 @@ export default async function DonatePage({ params }) {
   const bankDetails = settings?.payment_settings?.bank || null
   const applepayEnabled = settings?.payment_settings?.applepay?.enabled ?? false
   const googlepayEnabled = settings?.payment_settings?.googlepay?.enabled ?? false
+  // Only the public client id goes to the browser. Rendered with the page (which
+  // a settings change refreshes), so the PayPal script needn't wait on a request for it.
+  const paypalClientId = getActivePaypalAccount(settings?.payment_settings?.paypal)?.client_id || null
 
   const { data: allDonors } = await supabase
     .from('public_donor_wall')
@@ -102,6 +106,7 @@ export default async function DonatePage({ params }) {
         bankDetails={bankDetails}
         applepayEnabled={applepayEnabled}
         googlepayEnabled={googlepayEnabled}
+        paypalClientId={paypalClientId}
       />
 
       <div className="flex flex-col items-center gap-3 pt-1">

@@ -8,7 +8,7 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
-import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, getPaypalClientId, markDonationFailed } from '@/app/donate/[slug]/actions'
+import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
@@ -108,6 +108,7 @@ export default function DonationForm({
   bankDetails = null,
   applepayEnabled = false,
   googlepayEnabled = false,
+  paypalClientId = null,
 }) {
   const orderedGateways = GATEWAY_ORDER.filter(
     (g) =>
@@ -130,21 +131,12 @@ export default function DonationForm({
   // Calm, non-error message (e.g. after the donor cancels), shown instead of the red feedback.
   const [notice, setNotice] = useState('')
   const [paypalCheckout, setPaypalCheckout] = useState(null)
-  const [cardClientId, setCardClientId] = useState(null)
-  const [clientIdLoaded, setClientIdLoaded] = useState(false)
+  // Comes with the page itself, so the PayPal script starts loading on first render.
+  const cardClientId = paypalClientId
 
   const invoiceNumberRef = useRef(null)
   const invoiceDetailsRef = useRef(null)
   const cardFieldsSubmitRef = useRef(null)
-
-  useEffect(() => {
-    if (!orderedGateways.some((g) => g === 'paypal' || g === 'stripe' || EXPRESS_GATEWAYS.includes(g))) return
-    getPaypalClientId()
-      .then(setCardClientId)
-      .catch(() => {})
-      .finally(() => setClientIdLoaded(true))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const cardScriptOptions = useMemo(
     () => ({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }),
@@ -167,9 +159,7 @@ export default function DonationForm({
   // The PayPal buttons sit right under the form, so the invoice is only created
   // once the donor actually clicks one (in createOrder). Without API credentials
   // (email-only account) the old submit button and redirect flow is used instead.
-  const paypalInline = gateway === 'paypal' && Boolean(cardClientId)
-  const paypalLoading = gateway === 'paypal' && !clientIdLoaded
-  const showPaypalButtons = paypalInline || paypalLoading
+  const showPaypalButtons = gateway === 'paypal' && Boolean(cardClientId)
 
   // Runs before the PayPal popup opens: rejecting here keeps it closed while the
   // donor fixes the form, instead of opening and immediately erroring out.
@@ -596,20 +586,16 @@ export default function DonationForm({
               <path d="M12 4v15M5 12l7 7 7-7" />
             </svg>
           </div>
-          {paypalInline ? (
-            <PayPalScriptProvider options={paypalScriptOptions}>
-              <PayPalButtons
-                style={{ layout: 'vertical', height: 55 }}
-                onClick={onPaypalClick}
-                createOrder={createOrder}
-                onApprove={onApprove}
-                onCancel={onCancel}
-                onError={onError}
-              />
-            </PayPalScriptProvider>
-          ) : (
-            <p className="text-sm text-center" style={{ color: 'var(--ink-muted)' }}>Loading PayPal…</p>
-          )}
+          <PayPalScriptProvider options={paypalScriptOptions}>
+            <PayPalButtons
+              style={{ layout: 'vertical', height: 55 }}
+              onClick={onPaypalClick}
+              createOrder={createOrder}
+              onApprove={onApprove}
+              onCancel={onCancel}
+              onError={onError}
+            />
+          </PayPalScriptProvider>
         </div>
       )}
 
