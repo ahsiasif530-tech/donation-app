@@ -1,6 +1,8 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { after } from 'next/server'
+import { sendDueReminders } from '@/lib/donationReminders'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
@@ -58,6 +60,43 @@ export async function recordPageView({ slug, visitorId, referrer, utmSource }) {
     source,
     referrer: cleanReferrer || null,
   })
+
+  // Visits are frequent enough to send due payment reminders from here,
+  // after the response, instead of needing a scheduler.
+  const requestHeaders = await headers()
+  const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')
+  const protocol = requestHeaders.get('x-forwarded-proto') || (host?.startsWith('localhost') ? 'http' : 'https')
+  if (host) after(() => sendDueReminders(supabase, `${protocol}://${host}`))
+}
+
+const RESUME_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
+
+// Lets a donor who left without paying pick up the same invoice again, from
+// the link in their reminder email or from this browser's memory of it. Only
+// unfinished online payments from the last few days can be resumed.
+export async function getResumableDonation({ slug, invoiceNumber }) {
+  if (typeof invoiceNumber !== 'string' || !/^INV-[A-Z0-9]{8}$/.test(invoiceNumber)) return null
+
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('donations')
+    .select('invoice_number, amount, donor_name, is_anonymous, message, gateway, status, failure_reason, created_at, pages!inner(slug)')
+    .eq('invoice_number', invoiceNumber)
+    .eq('pages.slug', slug)
+    .in('status', ['pending', 'failed'])
+    .neq('gateway', 'bank')
+    .gte('created_at', new Date(Date.now() - RESUME_MAX_AGE_MS).toISOString())
+    .maybeSingle()
+  if (!data || data.failure_reason === 'capture_declined') return null
+
+  return {
+    invoiceNumber: data.invoice_number,
+    amount: Number(data.amount),
+    name: data.donor_name || '',
+    anonymous: data.is_anonymous,
+    message: data.message || '',
+    gateway: data.gateway,
+  }
 }
 
 export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
@@ -68,6 +107,9 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
   }
   if (!isAnonymous && !donorName?.trim()) {
     return { error: 'Please enter your name, or choose to donate anonymously.' }
+  }
+  if (donorEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donorEmail.trim())) {
+    return { error: 'Please enter a valid email address, or leave it empty.' }
   }
   const supabase = createAdminClient()
 

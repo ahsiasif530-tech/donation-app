@@ -9,7 +9,7 @@ import {
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
 import InAppBrowserNotice from '@/components/InAppBrowserNotice'
-import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed } from '@/app/donate/[slug]/actions'
+import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
@@ -17,6 +17,31 @@ const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Credit or Debit Card', bank: 'Bank Transfer' }
 const EXPRESS_GATEWAYS = ['applepay', 'googlepay']
 const CANCELLED_NOTICE = 'No payment was taken. Whenever you’re ready, you can try again or choose a different payment method.'
+
+// The unfinished invoice on this page, kept in the browser so a donor who comes
+// back later continues it instead of leaving another pending one behind.
+// Storage can be blocked (private mode, in-app browsers); resuming then just doesn't happen.
+const pendingInvoiceKey = (slug) => `bh_pending_invoice_${slug}`
+
+function rememberPendingInvoice(slug, invoiceNumber) {
+  try {
+    localStorage.setItem(pendingInvoiceKey(slug), invoiceNumber)
+  } catch {}
+}
+
+function forgetPendingInvoice(slug) {
+  try {
+    localStorage.removeItem(pendingInvoiceKey(slug))
+  } catch {}
+}
+
+function readPendingInvoice(slug) {
+  try {
+    return localStorage.getItem(pendingInvoiceKey(slug))
+  } catch {
+    return null
+  }
+}
 
 function GatewayIcon({ gateway }) {
   if (gateway === 'paypal') {
@@ -125,6 +150,7 @@ export default function DonationForm({
   const [anonymous, setAnonymous] = useState(false)
   const [amount, setAmount] = useState(25)
   const [message, setMessage] = useState('')
+  const [email, setEmail] = useState('')
   const [gateway, setGateway] = useState(orderedGateways[0])
 
   const [status, setStatus] = useState('idle')
@@ -138,6 +164,40 @@ export default function DonationForm({
   const invoiceNumberRef = useRef(null)
   const invoiceDetailsRef = useRef(null)
   const cardFieldsSubmitRef = useRef(null)
+
+  // Picks up an unfinished donation: from ?resume= (the reminder email's link)
+  // or from this browser. The form is refilled with that invoice's details, so
+  // paying now completes it rather than creating a new one.
+  useEffect(() => {
+    const fromLink = new URLSearchParams(window.location.search).get('resume')
+    const invoiceNumber = fromLink || readPendingInvoice(slug)
+    if (!invoiceNumber) return
+
+    getResumableDonation({ slug, invoiceNumber })
+      .then((donation) => {
+        if (!donation || !orderedGateways.includes(donation.gateway)) {
+          if (!fromLink) forgetPendingInvoice(slug)
+          return
+        }
+        setName(donation.name)
+        setAnonymous(donation.anonymous)
+        setAmount(donation.amount)
+        setMessage(donation.message)
+        setGateway(donation.gateway)
+        invoiceNumberRef.current = donation.invoiceNumber
+        invoiceDetailsRef.current = JSON.stringify({
+          name: donation.name,
+          anonymous: donation.anonymous,
+          amount: donation.amount,
+          message: donation.message,
+          gateway: donation.gateway,
+          email: '',
+        })
+        setNotice(`Welcome back! Your $${donation.amount.toFixed(2)} donation wasn’t finished, and nothing was charged. Tap the button below to complete it.`)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const cardScriptOptions = useMemo(
     () => ({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }),
@@ -187,7 +247,7 @@ export default function DonationForm({
     // A retry after cancelling reuses the same invoice, unless the donor has
     // since changed the amount or other details: then that invoice no longer
     // matches, so it's closed as cancelled and a fresh one is made.
-    const details = JSON.stringify({ name, anonymous, amount, message, gateway })
+    const details = JSON.stringify({ name, anonymous, amount, message, gateway, email })
     if (invoiceNumberRef.current && invoiceDetailsRef.current !== details) {
       markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'cancelled' })
       invoiceNumberRef.current = null
@@ -203,6 +263,7 @@ export default function DonationForm({
       const donationResult = await submitDonation({
         slug,
         donorName: name,
+        donorEmail: email,
         isAnonymous: anonymous,
         amount,
         message,
@@ -214,6 +275,7 @@ export default function DonationForm({
       }
       invoiceNumberRef.current = donationResult.invoiceNumber
       invoiceDetailsRef.current = details
+      rememberPendingInvoice(slug, donationResult.invoiceNumber)
     }
 
     const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current, clientId: cardClientId })
@@ -241,6 +303,7 @@ export default function DonationForm({
       setFeedback(res.error)
       return
     }
+    forgetPendingInvoice(slug)
     setStatus('done')
     setFeedback(`Thank you for your kindness! Your donation (invoice ${invoiceNumberRef.current}) has been received. May God bless you and your family.`)
   }
@@ -262,6 +325,7 @@ export default function DonationForm({
   function validateDetails() {
     if (!anonymous && !name.trim()) return 'Please enter your name, or choose to donate anonymously.'
     if (!amount || amount < 1 || amount > 10000) return 'Amount must be between $1 and $10,000.'
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Please enter a valid email address, or leave it empty.'
     return null
   }
 
@@ -312,6 +376,7 @@ export default function DonationForm({
     const result = await submitDonation({
       slug,
       donorName: name,
+      donorEmail: email,
       isAnonymous: anonymous,
       amount,
       message,
@@ -455,6 +520,13 @@ export default function DonationForm({
         <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
         Donate anonymously
       </label>
+
+      <div>
+        <Field id="donor-email" label="Email (optional)" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <p className="mt-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>
+          Only used to send you a link if your payment doesn’t go through.
+        </p>
+      </div>
 
       <div>
         <label className="block text-lg font-bold mb-3 text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>

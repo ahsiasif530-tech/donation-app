@@ -78,6 +78,11 @@ alter table donations
   add column if not exists paypal_order_id text,
   add column if not exists user_agent text;
 
+-- When the "your donation wasn't completed" email went out (or was skipped
+-- because the donor gave on a later invoice), so each invoice gets at most one.
+alter table donations
+  add column if not exists reminder_sent_at timestamptz;
+
 create index if not exists donations_page_id_idx on donations(page_id);
 
 -- ============================================================
