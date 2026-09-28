@@ -8,6 +8,7 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
+import InAppBrowserNotice from '@/components/InAppBrowserNotice'
 import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
@@ -446,6 +447,8 @@ export default function DonationForm({
 
   return (
     <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <InAppBrowserNotice />
+
       <Field id="donor-name" label="Your Name" required value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
 
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
