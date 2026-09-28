@@ -6,6 +6,14 @@
 
 export const MAX_PAYPAL_ACCOUNTS = 20
 
+// The name donors see at the top of PayPal's checkout (payment_settings.paypal.brand_name).
+// PayPal allows at most 127 characters.
+export const DEFAULT_BRAND_NAME = 'Bless Hands'
+
+export function getBrandName(paypal) {
+  return (paypal?.brand_name?.trim() || DEFAULT_BRAND_NAME).slice(0, 127)
+}
+
 const LEGACY_ACCOUNT_ID = 'default'
 
 export function getPaypalAccounts(paypal) {

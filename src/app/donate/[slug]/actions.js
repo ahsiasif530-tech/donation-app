@@ -6,7 +6,7 @@ import { sendDueReminders } from '@/lib/donationReminders'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
-import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount } from '@/lib/paypalAccounts'
+import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount, getBrandName } from '@/lib/paypalAccounts'
 import { toCredentials, donorInfoFromCapture } from '@/lib/paypalDonations'
 
 async function getPaypalSettings(supabase) {
@@ -207,6 +207,7 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
       mode: credentials.mode,
       amount: donation.amount,
       invoiceNumber,
+      brandName: getBrandName(paypal),
     })
 
     // checkout_step lets the admin tell "never opened PayPal" apart from "opened

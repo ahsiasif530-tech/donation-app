@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updatePaymentSettings } from '@/app/admin/settings/actions'
-import { getPaypalAccounts, getActivePaypalAccountId, MAX_PAYPAL_ACCOUNTS } from '@/lib/paypalAccounts'
+import { getPaypalAccounts, getActivePaypalAccountId, MAX_PAYPAL_ACCOUNTS, DEFAULT_BRAND_NAME } from '@/lib/paypalAccounts'
 
 function Field({ label, ...props }) {
   return (
@@ -171,6 +171,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
   const [paypalEnabled, setPaypalEnabled] = useState(s.paypal?.enabled ?? true)
   const [paypalAccounts, setPaypalAccounts] = useState(() => getPaypalAccounts(s.paypal))
   const [activePaypalId, setActivePaypalId] = useState(() => getActivePaypalAccountId(s.paypal))
+  const [paypalBrandName, setPaypalBrandName] = useState(s.paypal?.brand_name || '')
 
   const [bankEnabled, setBankEnabled] = useState(s.bank?.enabled ?? false)
   const [bankAccountName, setBankAccountName] = useState(s.bank?.account_name || '')
@@ -205,7 +206,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
     setStatus('saving')
 
     const result = await updatePaymentSettings({
-      paypal: { enabled: paypalEnabled, active_account_id: activePaypalId, accounts: paypalAccounts },
+      paypal: { enabled: paypalEnabled, brand_name: paypalBrandName.trim(), active_account_id: activePaypalId, accounts: paypalAccounts },
       bank: {
         enabled: bankEnabled,
         account_name: bankAccountName,
@@ -241,6 +242,18 @@ export default function PaymentSettingsForm({ initialSettings }) {
           <input type="checkbox" checked={paypalEnabled} onChange={(e) => setPaypalEnabled(e.target.checked)} />
           Show &quot;PayPal&quot; as a payment option on donation pages
         </label>
+        <div className="mb-4">
+          <Field
+            label="Name shown at the top of PayPal checkout"
+            value={paypalBrandName}
+            onChange={(e) => setPaypalBrandName(e.target.value)}
+            placeholder={DEFAULT_BRAND_NAME}
+            maxLength={127}
+          />
+          <p className="mt-1.5 text-xs" style={{ color: 'var(--a-text-muted)' }}>
+            Left empty, &quot;{DEFAULT_BRAND_NAME}&quot; is used. Receipts and the donor&apos;s PayPal history still show the PayPal account&apos;s own business name.
+          </p>
+        </div>
         <PaypalAccountsEditor
           accounts={paypalAccounts}
           setAccounts={setPaypalAccounts}

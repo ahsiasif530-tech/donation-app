@@ -19,7 +19,7 @@ async function getAccessToken(clientId, secret, mode) {
   return data.access_token
 }
 
-export async function createPaypalOrder({ clientId, secret, mode, amount, invoiceNumber }) {
+export async function createPaypalOrder({ clientId, secret, mode, amount, invoiceNumber, brandName }) {
   const token = await getAccessToken(clientId, secret, mode)
   const res = await fetch(`${apiBase(mode)}/v2/checkout/orders`, {
     method: 'POST',
@@ -36,6 +36,8 @@ export async function createPaypalOrder({ clientId, secret, mode, amount, invoic
           amount: { currency_code: 'USD', value: Number(amount).toFixed(2) },
         },
       ],
+      // Shown at the top of PayPal's checkout in place of the account's own name.
+      ...(brandName && { application_context: { brand_name: brandName } }),
     }),
   })
   if (!res.ok) {
