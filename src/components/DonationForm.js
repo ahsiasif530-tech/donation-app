@@ -131,14 +131,18 @@ export default function DonationForm({
   const [notice, setNotice] = useState('')
   const [paypalCheckout, setPaypalCheckout] = useState(null)
   const [cardClientId, setCardClientId] = useState(null)
+  const [clientIdLoaded, setClientIdLoaded] = useState(false)
 
   const invoiceNumberRef = useRef(null)
   const invoiceDetailsRef = useRef(null)
   const cardFieldsSubmitRef = useRef(null)
 
   useEffect(() => {
-    if (!orderedGateways.some((g) => g === 'stripe' || EXPRESS_GATEWAYS.includes(g))) return
-    getPaypalClientId().then(setCardClientId)
+    if (!orderedGateways.some((g) => g === 'paypal' || g === 'stripe' || EXPRESS_GATEWAYS.includes(g))) return
+    getPaypalClientId()
+      .then(setCardClientId)
+      .catch(() => {})
+      .finally(() => setClientIdLoaded(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -154,6 +158,31 @@ export default function DonationForm({
     () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons,applepay,googlepay' }),
     [cardClientId]
   )
+
+  const paypalScriptOptions = useMemo(
+    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons' }),
+    [cardClientId]
+  )
+
+  // The PayPal buttons sit right under the form, so the invoice is only created
+  // once the donor actually clicks one (in createOrder). Without API credentials
+  // (email-only account) the old submit button and redirect flow is used instead.
+  const paypalInline = gateway === 'paypal' && Boolean(cardClientId)
+  const paypalLoading = gateway === 'paypal' && !clientIdLoaded
+  const showPaypalButtons = paypalInline || paypalLoading
+
+  // Runs before the PayPal popup opens: rejecting here keeps it closed while the
+  // donor fixes the form, instead of opening and immediately erroring out.
+  const onPaypalClick = (data, actions) => {
+    setFeedback('')
+    setNotice('')
+    const validationError = validateDetails()
+    if (validationError) {
+      setFeedback(validationError)
+      return actions.reject()
+    }
+    return actions.resolve()
+  }
 
   // Called by the PayPal SDK itself once the popup/bridge is already open, so the
   // donation row is created here (not before cardFieldsForm.submit()) to avoid
@@ -249,6 +278,11 @@ export default function DonationForm({
     e.preventDefault()
     setFeedback('')
     setNotice('')
+
+    if (showPaypalButtons) {
+      setFeedback('Please use the PayPal button below to complete your donation.')
+      return
+    }
 
     if (EXPRESS_GATEWAYS.includes(gateway)) {
       setFeedback(`Please use the ${GATEWAY_LABELS[gateway]} button above to complete your donation.`)
@@ -549,7 +583,34 @@ export default function DonationForm({
       {notice && <Notice text={notice} />}
       {feedback && <p className="text-sm text-red-600">{feedback}</p>}
 
-      {!EXPRESS_GATEWAYS.includes(gateway) && (
+      {showPaypalButtons && (
+        <div className="space-y-3">
+          <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
+            Sow your seed
+          </p>
+          <div className="flex justify-center" aria-hidden="true">
+            <svg className="animate-bounce" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--gold-bright)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 4v15M5 12l7 7 7-7" />
+            </svg>
+          </div>
+          {paypalInline ? (
+            <PayPalScriptProvider options={paypalScriptOptions}>
+              <PayPalButtons
+                style={{ layout: 'vertical', height: 55 }}
+                onClick={onPaypalClick}
+                createOrder={createOrder}
+                onApprove={onApprove}
+                onCancel={onCancel}
+                onError={onError}
+              />
+            </PayPalScriptProvider>
+          ) : (
+            <p className="text-sm text-center" style={{ color: 'var(--ink-muted)' }}>Loading PayPal…</p>
+          )}
+        </div>
+      )}
+
+      {!EXPRESS_GATEWAYS.includes(gateway) && !showPaypalButtons && (
         <button
           type="submit"
           disabled={status === 'loading'}

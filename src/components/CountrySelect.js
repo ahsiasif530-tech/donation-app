@@ -25,6 +25,7 @@ export default function CountrySelect({ value, onChange }) {
         className="w-full flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm text-left focus:outline-none"
         style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- tiny external flag icons, optimizer adds no value */}
         <img src={`https://flagcdn.com/24x18/${selected.code.toLowerCase()}.png`} alt="" width="22" height="16" className="rounded-[2px] shrink-0" />
         <span className="flex-1">{selected.name}</span>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--ink-muted)' }}>
@@ -48,6 +49,7 @@ export default function CountrySelect({ value, onChange }) {
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:opacity-80"
               style={{ background: c.name === selected.name ? 'var(--surface-2)' : 'transparent' }}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- tiny external flag icons, optimizer adds no value */}
               <img src={`https://flagcdn.com/24x18/${c.code.toLowerCase()}.png`} alt="" width="22" height="16" className="rounded-[2px] shrink-0" />
               <span>{c.name}</span>
             </button>
