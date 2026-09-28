@@ -514,6 +514,8 @@ export default function DonationForm({
         />
       </div>
 
+      {/* With PayPal as the only option there's nothing to choose: its buttons below are enough. */}
+      {!(orderedGateways.length === 1 && orderedGateways[0] === 'paypal') && (
       <div>
         <label className="block text-sm font-bold mb-2">Payment method</label>
         <div className="rounded-xl border divide-y overflow-hidden" style={{ borderColor: 'var(--border)' }}>
@@ -541,6 +543,7 @@ export default function DonationForm({
           ))}
         </div>
       </div>
+      )}
 
       {gateway === 'stripe' && (
         <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
