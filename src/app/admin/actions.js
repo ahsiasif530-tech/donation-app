@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recoverApprovedPaypalOrders } from '@/lib/paypalDonations'
 
@@ -9,9 +9,7 @@ import { recoverApprovedPaypalOrders } from '@/lib/paypalDonations'
 // approved but whose page closed before the payment was taken.
 export async function recoverPaypalPayments() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
   if (!user) return { error: 'Not signed in' }
 
   const { data: profile } = await supabase
@@ -34,9 +32,7 @@ export async function recoverPaypalPayments() {
 // left (completed donations minus earlier withdrawals).
 export async function addWithdrawal({ pageId, amount, note }) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
   if (!user) return { error: 'Not signed in' }
 
   const { data: profile } = await supabase

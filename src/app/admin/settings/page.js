@@ -1,14 +1,12 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import PaymentSettingsForm from '@/components/PaymentSettingsForm'
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 

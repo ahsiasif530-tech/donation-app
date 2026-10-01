@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { fetchFilteredInvoices, statusNote } from '@/lib/invoices'
 import PrintButton from '@/components/PrintButton'
 
@@ -9,9 +9,7 @@ export default async function ExportInvoicesPrintPage({ searchParams }) {
   const { status, page, from, to, gateway, q, account } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 

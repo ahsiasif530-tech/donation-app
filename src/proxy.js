@@ -25,9 +25,10 @@ export async function proxy(request) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getClaims() refreshes an expired session and verifies the JWT locally,
+  // without a round trip to Supabase Auth on every admin/dashboard request.
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims?.sub ? { id: data.claims.sub } : null
 
   const path = request.nextUrl.pathname
   const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p))

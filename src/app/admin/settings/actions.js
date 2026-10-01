@@ -1,15 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { MAX_PAYPAL_ACCOUNTS } from '@/lib/paypalAccounts'
 
 async function assertAdmin() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
   if (!user) throw new Error('Not signed in')
 
   const { data: profile } = await supabase

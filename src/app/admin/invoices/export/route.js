@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { fetchFilteredInvoices, statusNote } from '@/lib/invoices'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
@@ -12,9 +12,7 @@ function csvEscape(value) {
 export async function GET(request) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) return new Response('Unauthorized', { status: 401 })
 

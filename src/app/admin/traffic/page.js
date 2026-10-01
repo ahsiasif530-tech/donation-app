@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import TrafficDayRows from '@/components/TrafficDayRows'
 
 const DAYS = 14
@@ -129,9 +129,7 @@ function PersonCard({ person }) {
 export default async function AdminTrafficPage() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 

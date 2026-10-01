@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
 import SignOutButton from '@/components/SignOutButton'
@@ -14,9 +14,7 @@ export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 

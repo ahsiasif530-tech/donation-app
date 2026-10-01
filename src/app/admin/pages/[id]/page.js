@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
@@ -15,9 +15,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
   const { status: statusFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 

@@ -3,25 +3,18 @@ import { getPaypalAccounts } from '@/lib/paypalAccounts'
 // account: a saved PayPal account id, or 'none' for invoices with no recorded
 // account (or one that has since been removed).
 export async function fetchFilteredInvoices(supabase, { status, page, from, to, gateway, q, account } = {}) {
-  const { data: pages } = await supabase
-    .from('pages')
-    .select('id, slug, title, label')
-    .order('created_at', { ascending: true })
+  const [{ data: pages }, { data: donations }, { data: settings }] = await Promise.all([
+    supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
+    supabase
+      .from('donations')
+      .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
+      .order('created_at', { ascending: false }),
+    account === 'none'
+      ? supabase.from('settings').select('payment_settings').eq('id', 'global').single()
+      : { data: null },
+  ])
 
-  const { data: donations } = await supabase
-    .from('donations')
-    .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
-    .order('created_at', { ascending: false })
-
-  let knownAccountIds = new Set()
-  if (account === 'none') {
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('payment_settings')
-      .eq('id', 'global')
-      .single()
-    knownAccountIds = new Set(getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => a.id))
-  }
+  const knownAccountIds = new Set(getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => a.id))
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
   const fromDate = from ? new Date(`${from}T00:00:00`) : null

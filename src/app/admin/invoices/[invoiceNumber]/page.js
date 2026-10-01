@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
 import { findPaypalAccount } from '@/lib/paypalAccounts'
 import { browserLabel } from '@/lib/userAgent'
@@ -10,9 +10,7 @@ export default async function InvoiceDetailPage({ params }) {
   const { invoiceNumber } = await params
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSignedInUser(supabase)
 
   if (!user) redirect('/login')
 
