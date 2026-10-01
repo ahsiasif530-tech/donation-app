@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getSettingsPasswordHash, MIN_PASSWORD_LENGTH } from '@/lib/settingsLock'
 import PaymentSettingsLock from '@/components/PaymentSettingsLock'
 
 export default async function AdminSettingsPage() {
@@ -15,6 +17,9 @@ export default async function AdminSettingsPage() {
 
   if (profile?.role !== 'admin') redirect('/dashboard')
 
+  // No password yet means this is the first visit: the lock asks to create one.
+  const hasPassword = Boolean(await getSettingsPasswordHash(createAdminClient()))
+
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -25,7 +30,7 @@ export default async function AdminSettingsPage() {
         </div>
 
         <div className="rounded-2xl border p-6" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
-          <PaymentSettingsLock />
+          <PaymentSettingsLock hasPassword={hasPassword} minLength={MIN_PASSWORD_LENGTH} />
         </div>
       </div>
     </main>

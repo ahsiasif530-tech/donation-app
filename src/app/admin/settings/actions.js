@@ -1,10 +1,16 @@
 'use server'
 
-import { createHash, timingSafeEqual } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { MAX_PAYPAL_ACCOUNTS } from '@/lib/paypalAccounts'
+import {
+  MIN_PASSWORD_LENGTH,
+  getSettingsPasswordHash,
+  passwordMatches,
+  createSettingsPasswordHash,
+  replaceSettingsPasswordHash,
+} from '@/lib/settingsLock'
 
 async function assertAdmin() {
   const supabase = await createClient()
@@ -20,41 +26,62 @@ async function assertAdmin() {
   if (profile?.role !== 'admin') throw new Error('Not authorized')
 }
 
-// Payment settings sit behind their own password (SETTINGS_PASSWORD on the
-// server): asked every time the page is opened, and checked again on save.
-// Both sides are hashed first so the comparison takes the same time whatever
-// the length or content of the guess.
-function settingsPasswordMatches(password) {
-  const expected = process.env.SETTINGS_PASSWORD
-  if (!expected || typeof password !== 'string') return false
-  const hash = (value) => createHash('sha256').update(value).digest()
-  return timingSafeEqual(hash(password), hash(expected))
+// Payment settings sit behind their own password (see lib/settingsLock):
+// asked every time the page is opened, and checked again on every save.
+const slowDownGuessing = () => new Promise((resolve) => setTimeout(resolve, 1000))
+
+async function settingsPasswordIsCorrect(admin, password) {
+  if (passwordMatches(password, await getSettingsPasswordHash(admin))) return true
+  await slowDownGuessing()
+  return false
 }
 
-const slowDownGuessing = () => new Promise((resolve) => setTimeout(resolve, 1000))
+function passwordProblem(password) {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`
+  }
+  return null
+}
+
+async function readPaymentSettings(admin) {
+  const { data: settings } = await admin.from('settings').select('payment_settings').eq('id', 'global').single()
+  return settings?.payment_settings || {}
+}
 
 export async function unlockPaymentSettings(password) {
   await assertAdmin()
-  if (!process.env.SETTINGS_PASSWORD) {
-    return { error: 'The settings password is not set up yet (SETTINGS_PASSWORD on Vercel).' }
-  }
-  if (!settingsPasswordMatches(password)) {
-    await slowDownGuessing()
-    return { error: 'Wrong password.' }
-  }
+  const admin = createAdminClient()
+  if (!(await settingsPasswordIsCorrect(admin, password))) return { error: 'Wrong password.' }
+  return { settings: await readPaymentSettings(admin) }
+}
 
-  const { data: settings } = await createAdminClient()
-    .from('settings')
-    .select('payment_settings')
-    .eq('id', 'global')
-    .single()
-  return { settings: settings?.payment_settings || {} }
+// First visit only: sets the password, then opens the settings with it.
+export async function createSettingsPassword(password) {
+  await assertAdmin()
+  const problem = passwordProblem(password)
+  if (problem) return { error: problem }
+
+  const admin = createAdminClient()
+  const { error } = await createSettingsPasswordHash(admin, password)
+  if (error) return { error: 'A settings password already exists. Reload the page and enter it.' }
+  return { settings: await readPaymentSettings(admin) }
+}
+
+export async function changeSettingsPassword(currentPassword, newPassword) {
+  await assertAdmin()
+  const admin = createAdminClient()
+  if (!(await settingsPasswordIsCorrect(admin, currentPassword))) return { error: 'Current password is wrong.' }
+  const problem = passwordProblem(newPassword)
+  if (problem) return { error: problem }
+
+  const { error } = await replaceSettingsPasswordHash(admin, newPassword)
+  if (error) return { error: error.message }
+  return { success: true }
 }
 
 export async function updatePaymentSettings(paymentSettings, password) {
   await assertAdmin()
-  if (!settingsPasswordMatches(password)) {
-    await slowDownGuessing()
+  if (!(await settingsPasswordIsCorrect(createAdminClient(), password))) {
     return { error: 'Wrong settings password. Reload the page and unlock it again.' }
   }
 
