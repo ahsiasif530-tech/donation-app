@@ -5,7 +5,7 @@ import { after } from 'next/server'
 import { sendDueReminders } from '@/lib/donationReminders'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createPaypalOrder, capturePaypalOrder } from '@/lib/paypal'
+import { createPaypalOrder, capturePaypalOrder, getPaypalOrder } from '@/lib/paypal'
 import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount, getBrandName } from '@/lib/paypalAccounts'
 import { toCredentials, donorInfoFromCapture } from '@/lib/paypalDonations'
 
@@ -243,13 +243,32 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
   // An order can only be captured by the account that created it.
   const { data: donation } = await supabase
     .from('donations')
-    .select('paypal_account_id')
+    .select('amount, paypal_account_id')
     .eq('invoice_number', invoiceNumber)
     .single()
-  const credentials = toCredentials(findPaypalAccount(paypal, donation?.paypal_account_id) || getActivePaypalAccount(paypal))
+  if (!donation) return { error: 'Payment could not be confirmed. Please contact support.' }
+  const credentials = toCredentials(findPaypalAccount(paypal, donation.paypal_account_id) || getActivePaypalAccount(paypal))
   if (!credentials) return { error: 'PayPal is not configured yet.' }
 
   try {
+    // Both ids come from the browser, and anyone with the public client id can
+    // create an order, so the order has to be checked against this invoice
+    // before capturing: otherwise a small order could complete a larger invoice.
+    const order = await getPaypalOrder({
+      clientId: credentials.clientId,
+      secret: credentials.secret,
+      mode: credentials.mode,
+      orderId,
+    })
+    const unit = order?.purchase_units?.[0]
+    if (
+      unit?.invoice_id !== invoiceNumber ||
+      unit?.amount?.currency_code !== 'USD' ||
+      Number(unit?.amount?.value) !== Number(donation.amount)
+    ) {
+      return { error: 'Payment could not be confirmed. Please contact support.' }
+    }
+
     const capture = await capturePaypalOrder({
       clientId: credentials.clientId,
       secret: credentials.secret,
