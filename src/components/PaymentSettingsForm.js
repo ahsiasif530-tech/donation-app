@@ -184,9 +184,6 @@ export default function PaymentSettingsForm({ initialSettings }) {
   const [otherDetails, setOtherDetails] = useState(s.other?.details || s.payoneer?.details || '')
 
   const [cardEnabled, setCardEnabled] = useState(s.card?.enabled ?? true)
-  const [cardProcessor, setCardProcessor] = useState(s.card?.processor || 'Stripe')
-  const [cardPublishableKey, setCardPublishableKey] = useState(s.card?.publishable_key || '')
-  const [cardSecretKey, setCardSecretKey] = useState(s.card?.secret_key || '')
 
   const [applepayEnabled, setApplepayEnabled] = useState(s.applepay?.enabled ?? false)
   const [googlepayEnabled, setGooglepayEnabled] = useState(s.googlepay?.enabled ?? false)
@@ -215,12 +212,7 @@ export default function PaymentSettingsForm({ initialSettings }) {
         iban: bankIban,
         swift: bankSwift,
       },
-      card: {
-        enabled: cardEnabled,
-        processor: cardProcessor,
-        publishable_key: cardPublishableKey,
-        secret_key: cardSecretKey,
-      },
+      card: { enabled: cardEnabled },
       other: {
         name: otherName,
         details: otherDetails,
@@ -298,13 +290,8 @@ export default function PaymentSettingsForm({ initialSettings }) {
           Show &quot;Credit or Debit Card&quot; as a payment option on donation pages
         </label>
         <p className="text-xs mb-3" style={{ color: 'var(--a-text-muted)' }}>
-          Powered by PayPal&apos;s own Advanced Card Payments using the active PayPal account above — turning this off leaves only PayPal as an option. The fields below are unused placeholders for a future separate processor.
+          Powered by PayPal&apos;s own Advanced Card Payments using the active PayPal account above — turning this off leaves only PayPal as an option.
         </p>
-        <div className="space-y-3">
-          <Field label="Processor" value={cardProcessor} onChange={(e) => setCardProcessor(e.target.value)} />
-          <Field label="Publishable key" value={cardPublishableKey} onChange={(e) => setCardPublishableKey(e.target.value)} />
-          <Field label="Secret key" type="password" value={cardSecretKey} onChange={(e) => setCardSecretKey(e.target.value)} />
-        </div>
       </div>
 
       <div>
