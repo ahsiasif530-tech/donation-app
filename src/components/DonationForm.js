@@ -212,8 +212,10 @@ export default function DonationForm({
     [cardClientId]
   )
 
+  // PayPal's own black card button is always hidden: its form always asks for a
+  // billing address, while the Card option only needs the card.
   const paypalScriptOptions = useMemo(
-    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons' }),
+    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons', disableFunding: 'card' }),
     [cardClientId]
   )
 
@@ -490,7 +492,7 @@ export default function DonationForm({
         {notice && <Notice text={notice} />}
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
-        <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD' }}>
+        <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD', disableFunding: 'card' }}>
           <PayPalButtons
             style={{ layout: 'vertical', height: 55 }}
             createOrder={createPaypalButtonOrder}
