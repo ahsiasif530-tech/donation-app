@@ -10,6 +10,7 @@ import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
 import InvoiceSections from '@/components/InvoiceSections'
+import CountryBreakdown from '@/components/CountryBreakdown'
 import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 
@@ -262,27 +263,7 @@ export default async function AdminPage({ searchParams }) {
           </div>
         </div>
 
-        <div className="a-card overflow-hidden">
-          <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-            <h2 className="font-bold">By country</h2>
-          </div>
-          {byCountry.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono completed donation নেই।</p>
-          ) : (
-            <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-              {byCountry.map((c) => (
-                <div key={c.country} className="flex items-center gap-3 px-6 py-3 text-sm">
-                  <span className="flex-1 font-semibold">{c.country}</span>
-                  <span style={{ color: 'var(--a-text-muted)' }}>{c.count} {c.count === 1 ? 'donor' : 'donors'}</span>
-                  <span className="font-bold tabular-nums w-16 text-right" style={{ color: 'var(--a-accent-strong)' }}>
-                    {((c.total / totalEarning) * 100).toFixed(0)}%
-                  </span>
-                  <span className="font-bold tabular-nums w-20 text-right">${c.total.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
 
         <div className="a-card overflow-hidden">
           <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>

@@ -9,6 +9,7 @@ import { getPaypalAccounts } from '@/lib/paypalAccounts'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
 import InvoiceSections from '@/components/InvoiceSections'
+import CountryBreakdown from '@/components/CountryBreakdown'
 import { parseHiddenSections } from '@/lib/invoiceSections'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
@@ -156,27 +157,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border overflow-hidden" style={cardStyle}>
-          <div className="px-5 py-3.5 border-b" style={{ borderColor: 'var(--a-border)' }}>
-            <h3 className="font-bold">By country</h3>
-          </div>
-          {byCountry.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono completed donation নেই।</p>
-          ) : (
-            <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-              {byCountry.map((c) => (
-                <div key={c.country} className="flex items-center gap-3 px-5 py-3 text-sm">
-                  <span className="flex-1 font-semibold">{c.country}</span>
-                  <span style={{ color: 'var(--a-text-muted)' }}>{c.count} {c.count === 1 ? 'donor' : 'donors'}</span>
-                  <span className="font-bold tabular-nums w-16 text-right" style={{ color: 'var(--a-accent-strong)' }}>
-                    {((c.total / totalEarning) * 100).toFixed(0)}%
-                  </span>
-                  <span className="font-bold tabular-nums w-20 text-right">${c.total.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
 
         <div id="invoices" className="scroll-mt-4">
           <InvoiceFilterBar fixedPageId={id} basePath={`/admin/pages/${id}`} />
