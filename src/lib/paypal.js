@@ -4,7 +4,15 @@ function apiBase(mode) {
   return mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'
 }
 
+// PayPal access tokens last hours, so a warm server reuses one instead of
+// spending an extra PayPal request on every checkout click and capture.
+const tokenCache = new Map()
+
 async function getAccessToken(clientId, secret, mode) {
+  const cacheKey = `${mode}:${clientId}:${secret}`
+  const cached = tokenCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.token
+
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
   const res = await fetch(`${apiBase(mode)}/v1/oauth2/token`, {
     method: 'POST',
@@ -16,6 +24,9 @@ async function getAccessToken(clientId, secret, mode) {
   })
   if (!res.ok) throw new Error('Failed to authenticate with PayPal')
   const data = await res.json()
+  // Refreshed 5 minutes early so a token never expires mid-request.
+  const expiresInMs = (Number(data.expires_in) || 0) * 1000 - 5 * 60 * 1000
+  if (expiresInMs > 0) tokenCache.set(cacheKey, { token: data.access_token, expiresAt: Date.now() + expiresInMs })
   return data.access_token
 }
 

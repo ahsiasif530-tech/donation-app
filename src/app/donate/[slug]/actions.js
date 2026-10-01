@@ -113,11 +113,13 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
   }
   const supabase = createAdminClient()
 
-  const { data: page, error: pageError } = await supabase
-    .from('pages')
-    .select('id')
-    .eq('slug', slug)
-    .single()
+  // Fetched together (and the PayPal settings up front) so the donor's click
+  // doesn't wait on one request after another.
+  const [{ data: page, error: pageError }, paypalSettings, requestHeaders] = await Promise.all([
+    supabase.from('pages').select('id').eq('slug', slug).single(),
+    gateway === 'paypal' || gateway === 'stripe' ? getPaypalSettings(supabase) : null,
+    headers(),
+  ])
 
   if (pageError || !page) {
     return { error: 'This donation page could not be found.' }
@@ -138,6 +140,8 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
       gateway,
       status: 'pending',
       checkout_step: 'form',
+      // The donor's browser, to see where checkouts get stuck (e.g. Facebook's in-app browser).
+      user_agent: requestHeaders.get('user-agent')?.slice(0, 500) || null,
     })
     .select('invoice_number')
     .single()
@@ -146,18 +150,11 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
     return { error: 'Something went wrong. Please try again.' }
   }
 
-  // The donor's browser, to see where checkouts get stuck (e.g. Facebook's
-  // in-app browser). Saved separately so a missing column can never block a donation.
-  const userAgent = (await headers()).get('user-agent')
-  if (userAgent) {
-    await supabase.from('donations').update({ user_agent: userAgent.slice(0, 500) }).eq('invoice_number', data.invoice_number)
-  }
-
   let redirectUrl = null
   let paypalClientId = null
 
   if (gateway === 'paypal' || gateway === 'stripe') {
-    const account = getActivePaypalAccount(await getPaypalSettings(supabase))
+    const account = getActivePaypalAccount(paypalSettings)
 
     if (account?.client_id && account?.secret) {
       // 'stripe' is this app's internal id for the "Card" option, but it's actually
@@ -186,18 +183,14 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
 // admin switched accounts working.
 export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
   const supabase = createAdminClient()
-  const paypal = await getPaypalSettings(supabase)
+  const [paypal, { data: donation }] = await Promise.all([
+    getPaypalSettings(supabase),
+    supabase.from('donations').select('amount').eq('invoice_number', invoiceNumber).in('status', ['pending', 'failed']).single(),
+  ])
   const account =
     getPaypalAccounts(paypal).find((a) => clientId && a.client_id === clientId) || getActivePaypalAccount(paypal)
   const credentials = toCredentials(account)
   if (!credentials) return { error: 'PayPal is not configured yet.' }
-
-  const { data: donation } = await supabase
-    .from('donations')
-    .select('amount')
-    .eq('invoice_number', invoiceNumber)
-    .in('status', ['pending', 'failed'])
-    .single()
   if (!donation) return { error: 'Could not start PayPal checkout. Please try again.' }
 
   try {
@@ -212,19 +205,12 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
 
     // checkout_step lets the admin tell "never opened PayPal" apart from "opened
     // it and left"; paypal_account_id records which account the money goes to,
-    // and is what the capture must use.
+    // and is what the capture must use; paypal_order_id lets the admin's PayPal
+    // recovery capture this order later if the donor approves it but the page
+    // is gone before it can capture.
     await supabase
       .from('donations')
-      .update({ checkout_step: 'paypal', paypal_account_id: credentials.accountId })
-      .eq('invoice_number', invoiceNumber)
-      .in('status', ['pending', 'failed'])
-
-    // Lets the admin's PayPal recovery capture this order later if the donor
-    // approves it but the page is gone before it can capture. Saved separately
-    // so a missing column can never block the checkout.
-    await supabase
-      .from('donations')
-      .update({ paypal_order_id: order.id })
+      .update({ checkout_step: 'paypal', paypal_account_id: credentials.accountId, paypal_order_id: order.id })
       .eq('invoice_number', invoiceNumber)
       .in('status', ['pending', 'failed'])
 
