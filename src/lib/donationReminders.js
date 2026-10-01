@@ -6,7 +6,7 @@ import { getPaypalOrder } from '@/lib/paypal'
 // A donor who left an email but didn't finish paying gets one reminder with a
 // link that reopens the same invoice. Sent through Resend; without
 // RESEND_API_KEY and REMINDER_FROM_EMAIL set, nothing is sent.
-const MIN_AGE_MS = 60 * 60 * 1000
+const MIN_AGE_MS = 10 * 60 * 60 * 1000
 const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
 const BATCH_SIZE = 10
 
