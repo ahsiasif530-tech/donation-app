@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
@@ -8,6 +9,8 @@ import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
+import InvoiceSections from '@/components/InvoiceSections'
+import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 
 export default async function AdminPage({ searchParams }) {
@@ -111,6 +114,47 @@ export default async function AdminPage({ searchParams }) {
 
   // Changing any filter remounts the lists so they start again at 5 rows.
   const listKey = [statusFilter, pageFilter, fromFilter, toFilter, searchQuery].join('|')
+
+  // The invoice boxes, each of which the admin can switch off under "Sections".
+  const hiddenSections = parseHiddenSections(await cookies())
+  const invoiceSections = [
+    ...byGateway.map((g) => ({
+      key: g.gateway,
+      label: g.label,
+      content: (
+        <GatewayInvoiceCard
+          id={`gateway-${g.gateway}`}
+          className="a-card overflow-hidden scroll-mt-4"
+          label={g.label}
+          exportQuery={exportQuery(g.gateway)}
+          listKey={listKey}
+          accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
+          invoices={g.invoices.map((d) => ({
+            invoice_number: d.invoice_number,
+            subtitle: `${pageById[d.page_id]?.label || pageById[d.page_id]?.title || '—'} · ${d.donor_name || '—'}`,
+            amount: d.amount,
+            status: d.status,
+            statusNote: statusNote(d),
+            paypal_account_id: d.paypal_account_id,
+          }))}
+        />
+      ),
+    })),
+    {
+      key: 'withdrawals',
+      label: 'Withdrawals',
+      content: (
+        <WithdrawalHistory
+          withdrawals={(withdrawals || []).map((w) => ({
+            ...w,
+            page_name: pageById[w.page_id]?.label || pageById[w.page_id]?.title || '—',
+          }))}
+          fileName="all-pages"
+          pages={(pages || []).map((p) => ({ id: p.id, name: p.label || p.title }))}
+        />
+      ),
+    },
+  ]
 
   const theadStyle = { background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }
 
@@ -301,35 +345,7 @@ export default async function AdminPage({ searchParams }) {
             <RecoverPaypalButton />
           </div>
           <InvoiceFilterBar pages={pages || []} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {byGateway.map((g) => (
-              <GatewayInvoiceCard
-                key={g.gateway}
-                id={`gateway-${g.gateway}`}
-                className="a-card overflow-hidden scroll-mt-4"
-                label={g.label}
-                exportQuery={exportQuery(g.gateway)}
-                listKey={listKey}
-                accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
-                invoices={g.invoices.map((d) => ({
-                  invoice_number: d.invoice_number,
-                  subtitle: `${pageById[d.page_id]?.label || pageById[d.page_id]?.title || '—'} · ${d.donor_name || '—'}`,
-                  amount: d.amount,
-                  status: d.status,
-                  statusNote: statusNote(d),
-                  paypal_account_id: d.paypal_account_id,
-                }))}
-              />
-            ))}
-            <WithdrawalHistory
-              withdrawals={(withdrawals || []).map((w) => ({
-                ...w,
-                page_name: pageById[w.page_id]?.label || pageById[w.page_id]?.title || '—',
-              }))}
-              fileName="all-pages"
-              pages={(pages || []).map((p) => ({ id: p.id, name: p.label || p.title }))}
-            />
-          </div>
+          <InvoiceSections initialHidden={hiddenSections} sections={invoiceSections} />
         </div>
       </div>
     </main>

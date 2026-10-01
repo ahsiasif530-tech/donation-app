@@ -1,4 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
@@ -7,6 +8,8 @@ import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import { getPaypalAccounts } from '@/lib/paypalAccounts'
 import WithdrawButton from '@/components/WithdrawButton'
 import WithdrawalHistory from '@/components/WithdrawalHistory'
+import InvoiceSections from '@/components/InvoiceSections'
+import { parseHiddenSections } from '@/lib/invoiceSections'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
 
@@ -84,6 +87,38 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   const cardStyle = { background: 'var(--a-surface)', borderColor: 'var(--a-border)' }
 
+  // The invoice boxes, each of which the admin can switch off under "Sections".
+  const hiddenSections = parseHiddenSections(await cookies())
+  const invoiceSections = [
+    ...byGateway.map((g) => ({
+      key: g.gateway,
+      label: g.label,
+      content: (
+        <GatewayInvoiceCard
+          className="rounded-2xl border overflow-hidden"
+          style={cardStyle}
+          label={g.label}
+          exportQuery={exportQuery(g.gateway)}
+          listKey={listKey}
+          accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
+          invoices={g.invoices.map((d) => ({
+            invoice_number: d.invoice_number,
+            subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
+            amount: d.amount,
+            status: d.status,
+            statusNote: statusNote(d),
+            paypal_account_id: d.paypal_account_id,
+          }))}
+        />
+      ),
+    })),
+    {
+      key: 'withdrawals',
+      label: 'Withdrawals',
+      content: <WithdrawalHistory withdrawals={withdrawals || []} pageName={page.label || page.title} fileName={page.slug} />,
+    },
+  ]
+
   function exportQuery(gateway) {
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
@@ -147,32 +182,7 @@ export default async function PageInvoicesPage({ params, searchParams }) {
           <InvoiceFilterBar fixedPageId={id} basePath={`/admin/pages/${id}`} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {byGateway.map((g) => (
-            <GatewayInvoiceCard
-              key={g.gateway}
-              className="rounded-2xl border overflow-hidden"
-              style={cardStyle}
-              label={g.label}
-              exportQuery={exportQuery(g.gateway)}
-              listKey={listKey}
-              accounts={g.gateway === 'paypal' ? paypalAccountTabs : null}
-              invoices={g.invoices.map((d) => ({
-                invoice_number: d.invoice_number,
-                subtitle: `${d.donor_name || '—'} · ${new Date(d.created_at).toLocaleDateString()}`,
-                amount: d.amount,
-                status: d.status,
-                statusNote: statusNote(d),
-                paypal_account_id: d.paypal_account_id,
-              }))}
-            />
-          ))}
-          <WithdrawalHistory
-            withdrawals={withdrawals || []}
-            pageName={page.label || page.title}
-            fileName={page.slug}
-          />
-        </div>
+        <InvoiceSections initialHidden={hiddenSections} sections={invoiceSections} />
       </div>
     </main>
   )
