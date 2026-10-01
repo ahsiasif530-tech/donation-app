@@ -12,13 +12,13 @@ function percentLabel(share) {
   return `${Math.round(share)}%`
 }
 
-// Tiles shrink with rank: #1 is a tall hero tile beside a wide #2, #3–#4 are
-// medium, and the rest are compact. On phones #1 and #2 take a full row each.
+// Built for a narrow (one-third) column: tiles shrink with rank. #1 and #2
+// take a full row, then two compact tiles per row.
 const TIERS = [
-  { span: 'col-span-2 md:col-span-6 md:row-span-2', pad: 'p-6', flag: 32, name: 'text-base', amount: 'text-5xl', bar: 'h-2' },
-  { span: 'col-span-2 md:col-span-6', pad: 'p-5', flag: 26, name: 'text-base', amount: 'text-3xl', bar: 'h-1.5' },
-  { span: 'md:col-span-3', pad: 'p-4', flag: 22, name: 'text-sm', amount: 'text-2xl', bar: 'h-1.5' },
-  { span: 'md:col-span-3', pad: 'p-3.5', flag: 18, name: 'text-xs', amount: 'text-lg', bar: 'h-1' },
+  { span: 'col-span-2', pad: 'p-4', flag: 26, name: 'text-sm', amount: 'text-3xl', bar: 'h-1.5' },
+  { span: 'col-span-2', pad: 'p-3.5', flag: 20, name: 'text-sm', amount: 'text-xl', bar: 'h-1' },
+  { span: 'col-span-1', pad: 'p-3', flag: 18, name: 'text-xs', amount: 'text-lg', bar: 'h-1' },
+  { span: 'col-span-1', pad: 'p-2.5', flag: 16, name: 'text-xs', amount: 'text-base', bar: 'h-0.5' },
 ]
 
 function tierFor(rank) {
@@ -32,7 +32,7 @@ function tierFor(rank) {
 export default function CountryBreakdown({ byCountry, totalEarning }) {
   return (
     <div className="a-card overflow-hidden">
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
+      <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
         <h2 className="font-bold">By country</h2>
         {byCountry.length > 0 && (
           <span className="text-xs font-semibold" style={{ color: 'var(--a-text-muted)' }}>
@@ -43,7 +43,7 @@ export default function CountryBreakdown({ byCountry, totalEarning }) {
       {byCountry.length === 0 ? (
         <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono completed donation নেই।</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-12 gap-3 p-4">
+        <div className="grid grid-cols-2 gap-2.5 p-3.5">
           {byCountry.map((c, i) => {
             const share = totalEarning > 0 ? (c.total / totalEarning) * 100 : 0
             const code = flagCode(c.country)
@@ -52,7 +52,7 @@ export default function CountryBreakdown({ byCountry, totalEarning }) {
             return (
               <div
                 key={c.country}
-                className={`${tier.span} ${tier.pad} rounded-xl border flex flex-col gap-2 min-w-0`}
+                className={`${tier.span} ${tier.pad} rounded-xl border flex flex-col gap-1.5 min-w-0`}
                 style={{
                   background: top
                     ? 'radial-gradient(120% 90% at 0% 0%, rgba(212,175,55,0.16), transparent 60%), var(--a-surface-2)'

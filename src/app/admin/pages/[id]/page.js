@@ -133,31 +133,33 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <Link href="/admin" className="text-sm font-medium" style={{ color: 'var(--a-text-muted)' }}>← Back to admin</Link>
           <h1 className="text-2xl font-bold mt-2">{page.label || page.title} — invoices</h1>
           <p className="text-sm" style={{ color: 'var(--a-text-muted)' }}>/donate/{page.slug}</p>
         </div>
 
-        <div className="rounded-2xl border p-6" style={{ ...cardStyle, borderColor: 'var(--a-accent)', boxShadow: '0 0 0 1px var(--a-accent) inset, 0 12px 30px rgba(212,175,55,0.12)' }}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning (completed)</p>
-              <p className="text-4xl font-extrabold mt-1 tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>
-                ${balance.toFixed(2)}
-              </p>
-              {totalWithdrawn > 0 && (
-                <p className="text-xs mt-2" style={{ color: 'var(--a-text-muted)' }}>
-                  ${totalEarning.toFixed(2)} earned · <span style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+          <div className="rounded-2xl border p-6 lg:col-span-2" style={{ ...cardStyle, borderColor: 'var(--a-accent)', boxShadow: '0 0 0 1px var(--a-accent) inset, 0 12px 30px rgba(212,175,55,0.12)' }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning (completed)</p>
+                <p className="text-4xl font-extrabold mt-1 tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>
+                  ${balance.toFixed(2)}
                 </p>
-              )}
+                {totalWithdrawn > 0 && (
+                  <p className="text-xs mt-2" style={{ color: 'var(--a-text-muted)' }}>
+                    ${totalEarning.toFixed(2)} earned · <span style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</span>
+                  </p>
+                )}
+              </div>
+              <WithdrawButton pageId={id} pageName={page.label || page.title} available={balance} />
             </div>
-            <WithdrawButton pageId={id} pageName={page.label || page.title} available={balance} />
           </div>
-        </div>
 
-        <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
+          <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
+        </div>
 
         <div id="invoices" className="scroll-mt-4">
           <InvoiceFilterBar fixedPageId={id} basePath={`/admin/pages/${id}`} />

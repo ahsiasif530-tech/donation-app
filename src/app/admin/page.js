@@ -172,7 +172,7 @@ export default async function AdminPage({ searchParams }) {
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <p className="a-brand a-gold-text">BlessedHands</p>
         <div className="flex items-center justify-between">
           <div>
@@ -263,61 +263,64 @@ export default async function AdminPage({ searchParams }) {
           </div>
         </div>
 
-        <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
-
-        <div className="a-card overflow-hidden">
-          <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-            <h2 className="font-bold">Pages</h2>
-          </div>
-          {(!pages || pages.length === 0) ? (
-            <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Kono page ekhono banano hoyni.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase" style={theadStyle}>
-                <tr>
-                  <th className="text-left px-6 py-3 font-semibold">Page</th>
-                  <th className="text-left px-6 py-3 font-semibold">URL</th>
-                  <th className="text-right px-6 py-3 font-semibold">Donations</th>
-                  <th className="text-right px-6 py-3 font-semibold">Earning</th>
-                  <th className="text-right px-6 py-3 font-semibold"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {byPage.map((p) => (
-                  <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
-                    <td className="px-6 py-3 font-semibold">{p.label || p.title}</td>
-                    <td className="px-6 py-3" style={{ color: 'var(--a-text-muted)' }}>/donate/{p.slug}</td>
-                    <td className="px-6 py-3 text-right tabular-nums">{p.count}</td>
-                    <td className="px-6 py-3 text-right tabular-nums font-semibold">
-                      ${p.earning.toFixed(2)}
-                      {p.withdrawn > 0 && (
-                        <p className="text-[11px] font-normal" style={{ color: 'var(--a-danger)' }}>−${p.withdrawn.toFixed(2)} withdrawn</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right whitespace-nowrap">
-                      <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
-                      <Link
-                        href={`/admin/pages/${p.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
-                        style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
-                      >
-                        Invoices
-                      </Link>
-                      <a
-                        href={`/donate/${p.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"
-                        style={{ background: 'var(--a-accent)', color: 'var(--a-accent-ink)' }}
-                      >
-                        Open
-                      </a>
-                    </td>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+          <div className="a-card overflow-hidden lg:col-span-2">
+            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
+              <h2 className="font-bold">Pages</h2>
+            </div>
+            {(!pages || pages.length === 0) ? (
+              <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Kono page ekhono banano hoyni.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase" style={theadStyle}>
+                  <tr>
+                    <th className="text-left px-6 py-3 font-semibold">Page</th>
+                    <th className="text-right px-6 py-3 font-semibold">Donations</th>
+                    <th className="text-right px-6 py-3 font-semibold">Earning</th>
+                    <th className="text-right px-6 py-3 font-semibold"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {byPage.map((p) => (
+                    <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
+                      <td className="px-6 py-4">
+                        <p className="text-base font-semibold">{p.label || p.title}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>/donate/{p.slug}</p>
+                      </td>
+                      <td className="px-6 py-4 text-right tabular-nums text-base">{p.count}</td>
+                      <td className="px-6 py-4 text-right tabular-nums font-semibold text-base">
+                        ${p.earning.toFixed(2)}
+                        {p.withdrawn > 0 && (
+                          <p className="text-[11px] font-normal" style={{ color: 'var(--a-danger)' }}>−${p.withdrawn.toFixed(2)} withdrawn</p>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
+                        <Link
+                          href={`/admin/pages/${p.id}`}
+                          className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
+                          style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
+                        >
+                          Invoices
+                        </Link>
+                        <a
+                          href={`/donate/${p.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"
+                          style={{ background: 'var(--a-accent)', color: 'var(--a-accent-ink)' }}
+                        >
+                          Open
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
         </div>
 
         <div id="invoices" className="scroll-mt-4">

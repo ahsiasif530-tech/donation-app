@@ -4,7 +4,7 @@ export default function AdminLoading() {
 
   return (
     <main className="admin-theme min-h-screen px-4 py-10" aria-busy="true">
-      <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
+      <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
         <p className="a-brand a-gold-text">BlessedHands</p>
         <div className="h-8 w-64 rounded-lg" style={block} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
