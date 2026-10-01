@@ -1,14 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-
-const PAGE_SIZE = 5
+const MAX_DONORS = 7
 
 // Donors arrive with dateLabel already formatted on the server, so the client
 // render matches the server HTML regardless of the viewer's locale/timezone.
 export default function RecentDonors({ donors }) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-
   if (donors.length === 0) {
     return (
       <p className="text-center text-sm py-6" style={{ color: 'var(--ink-muted)' }}>
@@ -17,8 +13,7 @@ export default function RecentDonors({ donors }) {
     )
   }
 
-  const visibleDonors = donors.slice(0, visibleCount)
-  const hasMore = visibleCount < donors.length
+  const visibleDonors = donors.slice(0, MAX_DONORS)
 
   return (
     <div className="flex flex-col">
@@ -53,17 +48,6 @@ export default function RecentDonors({ donors }) {
           )}
         </div>
       ))}
-
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-          className="mt-3 self-center rounded-full border px-5 py-2 text-sm font-semibold hover:opacity-80"
-          style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', color: 'var(--heading)' }}
-        >
-          Load more
-        </button>
-      )}
     </div>
   )
 }
