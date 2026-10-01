@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
 
-  const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
+  const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
   const byGateway = Object.keys(GATEWAY_LABELS).map((g) => {
     const rows = (donations || []).filter((d) => d.gateway === g)
     return {

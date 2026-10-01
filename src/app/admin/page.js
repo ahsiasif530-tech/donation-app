@@ -64,7 +64,7 @@ export default async function AdminPage({ searchParams }) {
     }
   })
 
-  const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
+  const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
 
   const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
   const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null

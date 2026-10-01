@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchFilteredInvoices, statusNote } from '@/lib/invoices'
 import PrintButton from '@/components/PrintButton'
 
-const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (Stripe)', bank: 'Bank Transfer' }
+const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
 
 export default async function ExportInvoicesPrintPage({ searchParams }) {
   const { status, page, from, to, gateway, q, account } = await searchParams
