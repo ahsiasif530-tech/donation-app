@@ -1,5 +1,6 @@
 'use server'
 
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -19,8 +20,43 @@ async function assertAdmin() {
   if (profile?.role !== 'admin') throw new Error('Not authorized')
 }
 
-export async function updatePaymentSettings(paymentSettings) {
+// Payment settings sit behind their own password (SETTINGS_PASSWORD on the
+// server): asked every time the page is opened, and checked again on save.
+// Both sides are hashed first so the comparison takes the same time whatever
+// the length or content of the guess.
+function settingsPasswordMatches(password) {
+  const expected = process.env.SETTINGS_PASSWORD
+  if (!expected || typeof password !== 'string') return false
+  const hash = (value) => createHash('sha256').update(value).digest()
+  return timingSafeEqual(hash(password), hash(expected))
+}
+
+const slowDownGuessing = () => new Promise((resolve) => setTimeout(resolve, 1000))
+
+export async function unlockPaymentSettings(password) {
   await assertAdmin()
+  if (!process.env.SETTINGS_PASSWORD) {
+    return { error: 'The settings password is not set up yet (SETTINGS_PASSWORD on Vercel).' }
+  }
+  if (!settingsPasswordMatches(password)) {
+    await slowDownGuessing()
+    return { error: 'Wrong password.' }
+  }
+
+  const { data: settings } = await createAdminClient()
+    .from('settings')
+    .select('payment_settings')
+    .eq('id', 'global')
+    .single()
+  return { settings: settings?.payment_settings || {} }
+}
+
+export async function updatePaymentSettings(paymentSettings, password) {
+  await assertAdmin()
+  if (!settingsPasswordMatches(password)) {
+    await slowDownGuessing()
+    return { error: 'Wrong settings password. Reload the page and unlock it again.' }
+  }
 
   const paypalAccounts = paymentSettings?.paypal?.accounts || []
   if (paypalAccounts.length > MAX_PAYPAL_ACCOUNTS) {

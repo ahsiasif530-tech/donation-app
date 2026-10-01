@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
-import PaymentSettingsForm from '@/components/PaymentSettingsForm'
+import PaymentSettingsLock from '@/components/PaymentSettingsLock'
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient()
@@ -10,10 +10,8 @@ export default async function AdminSettingsPage() {
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: settings }] = await Promise.all([
-    supabase.from('profiles').select('role').eq('id', user.id).single(),
-    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
-  ])
+  // The settings are only sent once the settings password is entered.
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
 
   if (profile?.role !== 'admin') redirect('/dashboard')
 
@@ -27,7 +25,7 @@ export default async function AdminSettingsPage() {
         </div>
 
         <div className="rounded-2xl border p-6" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
-          <PaymentSettingsForm initialSettings={settings?.payment_settings} />
+          <PaymentSettingsLock />
         </div>
       </div>
     </main>

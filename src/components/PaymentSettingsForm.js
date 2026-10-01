@@ -165,7 +165,8 @@ function PaypalAccountsEditor({ accounts, setAccounts, activeId, setActiveId }) 
   )
 }
 
-export default function PaymentSettingsForm({ initialSettings }) {
+// settingsPassword: the password the page was unlocked with, sent again on save.
+export default function PaymentSettingsForm({ initialSettings, settingsPassword }) {
   const s = initialSettings || {}
 
   const [paypalEnabled, setPaypalEnabled] = useState(s.paypal?.enabled ?? true)
@@ -219,9 +220,9 @@ export default function PaymentSettingsForm({ initialSettings }) {
       },
       applepay: { enabled: applepayEnabled },
       googlepay: { enabled: googlepayEnabled },
-    })
+    }, settingsPassword)
 
-    setSaveError(result.error ? 'Save failed' : '')
+    setSaveError(result.error || '')
     setStatus(result.error ? 'error' : 'saved')
     setTimeout(() => setStatus('idle'), 2000)
   }
