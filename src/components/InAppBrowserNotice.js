@@ -16,7 +16,15 @@ function getPlatform() {
 
 const subscribe = () => () => {}
 
-export default function InAppBrowserNotice() {
+// With an invoice, the link carries ?resume= so the real browser continues that
+// same invoice instead of leaving it pending and starting another.
+function pageUrl(invoiceNumber) {
+  const url = new URL(window.location.href)
+  if (invoiceNumber) url.searchParams.set('resume', invoiceNumber)
+  return url
+}
+
+export default function InAppBrowserNotice({ invoiceNumber = null }) {
   // null on the server: the page is cached HTML, so the user agent is only known in the browser.
   const platform = useSyncExternalStore(subscribe, getPlatform, () => null)
   const [copied, setCopied] = useState(false)
@@ -26,23 +34,28 @@ export default function InAppBrowserNotice() {
   // Android hands an intent:// link to Chrome; if Chrome isn't there the fallback
   // just reloads the page where it is.
   const openInChrome = () => {
-    const { host, pathname, search, href } = window.location
-    window.location.href = `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(href)};end`
+    const url = pageUrl(invoiceNumber)
+    window.location.href = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url.href)};end`
   }
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(pageUrl(invoiceNumber).href)
       setCopied(true)
     } catch {
       // Clipboard can be blocked in in-app browsers; the ••• menu instructions still apply.
     }
   }
 
+  const appName = /Instagram/i.test(navigator.userAgent) ? 'Instagram' : 'Facebook'
+
   return (
-    <div className="rounded-xl border px-4 py-4 space-y-3 text-center" style={{ borderColor: 'var(--gold-bright)', background: 'var(--gold-soft)' }}>
-      <p className="text-sm font-bold" style={{ color: 'var(--heading)' }}>
-        For a smooth PayPal payment, please open this page in your browser.
+    <div className="rounded-xl border-2 px-4 py-4 space-y-3 text-center" style={{ borderColor: 'var(--gold-bright)', background: 'var(--gold-soft)' }}>
+      <p className="text-base font-bold" style={{ color: 'var(--heading)' }}>
+        <span aria-hidden="true">⚠️ </span>PayPal often doesn&apos;t work inside the {appName} app.
+      </p>
+      <p className="text-sm" style={{ color: 'var(--ink)' }}>
+        To make sure your donation goes through, please open this page in {platform === 'android' ? 'Chrome' : 'Safari'} first.
       </p>
 
       {platform === 'android' ? (

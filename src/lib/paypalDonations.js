@@ -95,6 +95,12 @@ export async function recoverApprovedPaypalOrders(supabase) {
 
       result.recovered.push({ invoiceNumber: donation.invoice_number, amount: Number(donation.amount) })
     } catch (err) {
+      // PayPal deletes orders the donor never approved after a few hours, so a
+      // missing order is an abandoned checkout, not a failure to check it.
+      if (err?.code === 'INVALID_RESOURCE_ID') {
+        result.notApproved += 1
+        continue
+      }
       console.error('PayPal recovery failed for', donation.invoice_number, err?.code || err)
       result.errors += 1
     }
