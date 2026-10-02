@@ -11,6 +11,10 @@ const SENDER_NAME = 'Sow a Seed in the Name of Jesus'
 const MIN_AGE_MS = 5 * 60 * 1000
 const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
 const BATCH_SIZE = 10
+// Invoices looked at per run. Some are skipped without being marked (a paid
+// order left for recovery), so more are read than sent to keep them from
+// filling every batch.
+const CANDIDATE_LIMIT = 50
 
 // PayPal orders the donor never approved. An approved one is left for the
 // admin's PayPal recovery, so no one is asked to pay twice.
@@ -23,6 +27,10 @@ async function orderIsUnpaid(paypal, donation) {
   if (!credentials) return false
   try {
     const order = await getPaypalOrder({ ...credentials, orderId: donation.paypal_order_id })
+    // A declined card leaves the order with no status of its own, only the
+    // declined capture; the donor wasn't charged.
+    const capture = order?.purchase_units?.[0]?.payments?.captures?.[0]
+    if (capture?.status === 'DECLINED') return true
     return UNPAID_ORDER_STATES.includes(order.status)
   } catch (err) {
     // PayPal drops orders nobody approved after a few hours.
@@ -102,22 +110,34 @@ export async function sendDueReminders(supabase, origin) {
     .is('reminder_sent_at', null)
     .gte('created_at', new Date(now - MAX_AGE_MS).toISOString())
     .lte('created_at', new Date(now - MIN_AGE_MS).toISOString())
-    .limit(BATCH_SIZE)
+    .order('created_at', { ascending: false })
+    .limit(CANDIDATE_LIMIT)
   if (error || !due?.length) return
 
   const { data: settings } = await supabase.from('settings').select('payment_settings').eq('id', 'global').single()
   const paypal = settings?.payment_settings?.paypal
 
+  let sent = 0
   for (const donation of due) {
+    if (sent >= BATCH_SIZE) break
     try {
-      // Someone who went on to give with a fresh invoice needs no reminder.
-      const { count } = await supabase
-        .from('donations')
-        .select('id', { count: 'exact', head: true })
-        .eq('donor_email', donation.donor_email)
-        .eq('status', 'completed')
-        .gte('created_at', donation.created_at)
-      if (count) {
+      // Someone who went on to give with a fresh invoice needs no reminder,
+      // and a donor who tried several times gets one reminder, not one per invoice.
+      const [{ count: completed }, { count: reminded }] = await Promise.all([
+        supabase
+          .from('donations')
+          .select('id', { count: 'exact', head: true })
+          .eq('donor_email', donation.donor_email)
+          .eq('status', 'completed')
+          .gte('created_at', donation.created_at),
+        supabase
+          .from('donations')
+          .select('id', { count: 'exact', head: true })
+          .eq('donor_email', donation.donor_email)
+          .not('reminder_sent_at', 'is', null)
+          .gte('created_at', new Date(now - MAX_AGE_MS).toISOString()),
+      ])
+      if (completed || reminded) {
         await supabase.from('donations').update({ reminder_sent_at: new Date().toISOString() }).eq('invoice_number', donation.invoice_number)
         continue
       }
@@ -140,6 +160,7 @@ export async function sendDueReminders(supabase, origin) {
         amount: donation.amount,
         link: `${origin}/donate/${slug}?resume=${encodeURIComponent(donation.invoice_number)}`,
       })
+      sent += 1
     } catch (err) {
       console.error('Donation reminder failed for', donation.invoice_number, err?.message || err)
     }
