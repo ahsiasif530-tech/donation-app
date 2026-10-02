@@ -13,6 +13,8 @@ import PageViewTracker from '@/components/PageViewTracker'
 // right away (revalidatePath in the donate and settings actions).
 export const revalidate = 60
 
+const RECENT_DONORS_SHOWN = 7
+
 // No pages are built ahead of time; each one is cached on its first visit.
 export async function generateStaticParams() {
   return []
@@ -53,7 +55,9 @@ export default async function DonatePage({ params }) {
     .eq('page_id', page.id)
     .limit(500)
 
-  const donors = (allDonors || []).map((d) => ({
+  // Every donor is read for the Top Donors totals, but only the few Recent
+  // Donors shows are sent to the browser, so the page doesn't grow with them.
+  const donors = (allDonors || []).slice(0, RECENT_DONORS_SHOWN).map((d) => ({
     id: d.id,
     display_name: d.display_name,
     amount: d.amount,

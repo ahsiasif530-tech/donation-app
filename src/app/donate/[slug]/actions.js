@@ -99,18 +99,48 @@ export async function getResumableDonation({ slug, invoiceNumber }) {
   }
 }
 
-export async function submitDonation({ slug, donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
+function donationProblem({ donorName, donorEmail, isAnonymous, amount }) {
   const numericAmount = Number(amount)
-
   if (!numericAmount || numericAmount < 1 || numericAmount > 10000) {
-    return { error: 'Amount must be between $1 and $10,000.' }
+    return 'Amount must be between $1 and $10,000.'
   }
   if (!isAnonymous && !donorName?.trim()) {
-    return { error: 'Please enter your name, or choose to donate anonymously.' }
+    return 'Please enter your name, or choose to donate anonymously.'
   }
   if (donorEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donorEmail.trim())) {
-    return { error: 'Please enter a valid email address, or leave it empty.' }
+    return 'Please enter a valid email address, or leave it empty.'
   }
+  return null
+}
+
+async function insertDonation(supabase, pageId, requestHeaders, { donorName, donorEmail, donorAddress, donorPhone, donorCountry, isAnonymous, amount, message, gateway }) {
+  return supabase
+    .from('donations')
+    .insert({
+      page_id: pageId,
+      donor_name: donorName?.trim() || null,
+      donor_email: donorEmail?.trim() || null,
+      donor_address: donorAddress?.trim() || null,
+      donor_phone: donorPhone?.trim() || null,
+      donor_country: donorCountry?.trim() || null,
+      is_anonymous: isAnonymous,
+      amount: Number(amount),
+      message: message?.trim() || null,
+      gateway,
+      status: 'pending',
+      checkout_step: 'form',
+      // The donor's browser, to see where checkouts get stuck (e.g. Facebook's in-app browser).
+      user_agent: requestHeaders.get('user-agent')?.slice(0, 500) || null,
+    })
+    .select('invoice_number, amount')
+    .single()
+}
+
+export async function submitDonation(fields) {
+  const { slug, gateway } = fields
+  const problem = donationProblem(fields)
+  if (problem) return { error: problem }
+  const numericAmount = Number(fields.amount)
   const supabase = createAdminClient()
 
   // Fetched together (and the PayPal settings up front) so the donor's click
@@ -125,26 +155,7 @@ export async function submitDonation({ slug, donorName, donorEmail, donorAddress
     return { error: 'This donation page could not be found.' }
   }
 
-  const { data, error } = await supabase
-    .from('donations')
-    .insert({
-      page_id: page.id,
-      donor_name: donorName?.trim() || null,
-      donor_email: donorEmail?.trim() || null,
-      donor_address: donorAddress?.trim() || null,
-      donor_phone: donorPhone?.trim() || null,
-      donor_country: donorCountry?.trim() || null,
-      is_anonymous: isAnonymous,
-      amount: numericAmount,
-      message: message?.trim() || null,
-      gateway,
-      status: 'pending',
-      checkout_step: 'form',
-      // The donor's browser, to see where checkouts get stuck (e.g. Facebook's in-app browser).
-      user_agent: requestHeaders.get('user-agent')?.slice(0, 500) || null,
-    })
-    .select('invoice_number')
-    .single()
+  const { data, error } = await insertDonation(supabase, page.id, requestHeaders, fields)
 
   if (error) {
     return { error: 'Something went wrong. Please try again.' }
@@ -187,18 +198,47 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
     getPaypalSettings(supabase),
     supabase.from('donations').select('amount').eq('invoice_number', invoiceNumber).in('status', ['pending', 'failed']).single(),
   ])
+  if (!donation) return { error: 'Could not start PayPal checkout. Please try again.' }
+  return createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount: donation.amount })
+}
+
+// One round trip for the PayPal buttons and card fields: creates the invoice
+// (unless invoiceNumber is a retry of an existing one) and its PayPal order
+// together, so PayPal's card form opens sooner after the click.
+export async function startPaypalCheckout({ invoiceNumber, clientId, details }) {
+  if (invoiceNumber) return createPaypalOrderAction({ invoiceNumber, clientId })
+
+  const problem = donationProblem(details)
+  if (problem) return { error: problem }
+  const supabase = createAdminClient()
+
+  const [{ data: page }, paypal, requestHeaders] = await Promise.all([
+    supabase.from('pages').select('id').eq('slug', details.slug).single(),
+    getPaypalSettings(supabase),
+    headers(),
+  ])
+  if (!page) return { error: 'This donation page could not be found.' }
+
+  const { data, error } = await insertDonation(supabase, page.id, requestHeaders, details)
+  if (error) return { error: 'Something went wrong. Please try again.' }
+
+  const result = await createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber: data.invoice_number, amount: data.amount })
+  // The invoice exists either way, so a retry continues it instead of making another.
+  return { ...result, invoiceNumber: data.invoice_number }
+}
+
+async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount }) {
   const account =
     getPaypalAccounts(paypal).find((a) => clientId && a.client_id === clientId) || getActivePaypalAccount(paypal)
   const credentials = toCredentials(account)
   if (!credentials) return { error: 'PayPal is not configured yet.' }
-  if (!donation) return { error: 'Could not start PayPal checkout. Please try again.' }
 
   try {
     const order = await createPaypalOrder({
       clientId: credentials.clientId,
       secret: credentials.secret,
       mode: credentials.mode,
-      amount: donation.amount,
+      amount,
       invoiceNumber,
       brandName: getBrandName(paypal),
     })
@@ -207,12 +247,16 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
     // it and left"; paypal_account_id records which account the money goes to,
     // and is what the capture must use; paypal_order_id lets the admin's PayPal
     // recovery capture this order later if the donor approves it but the page
-    // is gone before it can capture.
-    await supabase
-      .from('donations')
-      .update({ checkout_step: 'paypal', paypal_account_id: credentials.accountId, paypal_order_id: order.id })
-      .eq('invoice_number', invoiceNumber)
-      .in('status', ['pending', 'failed'])
+    // is gone before it can capture. Saved after the response, so PayPal's form
+    // doesn't wait on it; the capture falls back to the active account if it
+    // ever runs first.
+    after(async () => {
+      await supabase
+        .from('donations')
+        .update({ checkout_step: 'paypal', paypal_account_id: credentials.accountId, paypal_order_id: order.id })
+        .eq('invoice_number', invoiceNumber)
+        .in('status', ['pending', 'failed'])
+    })
 
     return { orderId: order.id }
   } catch {

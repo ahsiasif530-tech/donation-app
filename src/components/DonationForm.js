@@ -8,7 +8,7 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
-import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
+import { submitDonation, createPaypalOrderAction, startPaypalCheckout, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
@@ -260,26 +260,19 @@ export default function DonationForm({
         setFeedback(validationError)
         throw new Error(validationError)
       }
-
-      const donationResult = await submitDonation({
-        slug,
-        donorName: name,
-        donorEmail: email,
-        isAnonymous: anonymous,
-        amount,
-        message,
-        gateway,
-      })
-      if (donationResult.error) {
-        setFeedback(donationResult.error)
-        throw new Error(donationResult.error)
-      }
-      invoiceNumberRef.current = donationResult.invoiceNumber
-      invoiceDetailsRef.current = details
-      rememberPendingInvoice(slug, donationResult.invoiceNumber)
     }
 
-    const res = await createPaypalOrderAction({ invoiceNumber: invoiceNumberRef.current, clientId: cardClientId })
+    // The invoice and its PayPal order are made in a single request.
+    const res = await startPaypalCheckout({
+      invoiceNumber: invoiceNumberRef.current,
+      clientId: cardClientId,
+      details: { slug, donorName: name, donorEmail: email, isAnonymous: anonymous, amount, message, gateway },
+    })
+    if (res.invoiceNumber) {
+      invoiceNumberRef.current = res.invoiceNumber
+      invoiceDetailsRef.current = details
+      rememberPendingInvoice(slug, res.invoiceNumber)
+    }
     if (res.error) {
       setFeedback(res.error)
       throw new Error(res.error)
