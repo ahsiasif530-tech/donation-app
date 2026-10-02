@@ -6,13 +6,14 @@ import { getPaypalOrder } from '@/lib/paypal'
 // A donor who left an email but didn't finish paying gets one reminder with a
 // link that reopens the same invoice. Sent through Resend; without
 // RESEND_API_KEY and REMINDER_FROM_EMAIL set, nothing is sent.
-const MIN_AGE_MS = 10 * 60 * 60 * 1000
+const MIN_AGE_MS = 5 * 60 * 1000
 const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
 const BATCH_SIZE = 10
 
 // PayPal orders the donor never approved. An approved one is left for the
 // admin's PayPal recovery, so no one is asked to pay twice.
-const UNPAID_ORDER_STATES = ['CREATED', 'VOIDED', 'RESOURCE_NOT_FOUND']
+// A deleted order comes back as INVALID_RESOURCE_ID (the error's detail issue).
+const UNPAID_ORDER_STATES = ['CREATED', 'VOIDED', 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID']
 
 async function orderIsUnpaid(paypal, donation) {
   if (!donation.paypal_order_id) return true
