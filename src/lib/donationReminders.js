@@ -35,7 +35,7 @@ function escapeHtml(text) {
 }
 
 async function sendReminderEmail({ to, name, amount, link }) {
-  const subject = name ? `${name}, your seed is still waiting 💛` : 'Your seed is still waiting 💛'
+  const subject = 'Your Seed of Faith Is Still Waiting 🙏'
   const greeting = name ? `Dear ${name},` : 'Dear friend,'
   const amountText = `$${Number(amount).toFixed(2)}`
   const buttonText = '💛 Complete My Seed of Faith'
@@ -43,35 +43,35 @@ async function sendReminderEmail({ to, name, amount, link }) {
   const text = [
     greeting,
     '',
-    `Thank you for opening your heart to ${SENDER_NAME}. You began a ${amountText} gift, but the payment didn't go through, so nothing was charged.`,
+    `Thank you for opening your heart to ${SENDER_NAME}.`,
     '',
-    'Sometimes a page closes or the connection drops. It happens to all of us. Your gift is saved just as you left it.',
+    `We noticed that your ${amountText} gift was not completed, so no payment was charged to you.`,
     '',
-    'Somewhere today, a family is praying for a miracle. Your seed could be the answer to their prayer. 🙏',
+    'Sometimes a page closes, a connection drops, or a payment simply doesn’t go through. It happens—and there’s no need to worry. Your gift was not processed.',
+    '',
+    'If you would still like to complete your gift, you can continue safely using the button below:',
     '',
     `${buttonText}: ${link}`,
     '',
-    'It only takes a moment, and your faith can change a life forever.',
+    'Your kindness and generosity mean a lot to us and help us continue sharing messages of faith, prayer, and hope with people around the world.',
     '',
-    'Every seed sown in faith, big or small, brings hope to someone who needs it today. Your kindness truly matters to us.',
-    '',
-    "If you've already given, thank you from the bottom of our hearts. Please ignore this email.",
+    'If you’ve already completed your gift since then, thank you so much—and please ignore this email.',
     '',
     'With love and gratitude,',
-    'God bless you and your family 🙏',
+    'God bless you and your family. 🙏',
   ].join('\n')
 
   const p = 'margin:0 0 16px;font-size:16px;line-height:1.6;color:#2b2b2b'
   const html = `<div style="max-width:560px;margin:0 auto;padding:24px;font-family:Georgia,'Times New Roman',serif">
 <p style="${p}">${escapeHtml(greeting)}</p>
-<p style="${p}">Thank you for opening your heart to <strong>${SENDER_NAME}</strong>. You began a <strong>${amountText}</strong> gift, but the payment didn't go through, so nothing was charged.</p>
-<p style="${p}">Sometimes a page closes or the connection drops. It happens to all of us. Your gift is saved just as you left it.</p>
-<p style="${p};font-style:italic">Somewhere today, a family is praying for a miracle. Your seed could be the answer to their prayer. 🙏</p>
+<p style="${p}">Thank you for opening your heart to <strong>${SENDER_NAME}</strong>.</p>
+<p style="${p}">We noticed that your <strong>${amountText}</strong> gift was not completed, so no payment was charged to you.</p>
+<p style="${p}">Sometimes a page closes, a connection drops, or a payment simply doesn’t go through. It happens—and there’s no need to worry. Your gift was not processed.</p>
+<p style="${p}">If you would still like to complete your gift, you can continue safely using the button below:</p>
 <p style="margin:24px 0;text-align:center"><a href="${escapeHtml(link)}" style="display:inline-block;padding:16px 28px;background:#D4A017;color:#1a1a1a;border-radius:12px;font-size:18px;font-weight:bold;text-decoration:none;font-family:Arial,sans-serif">${buttonText}</a></p>
-<p style="${p};text-align:center;font-style:italic;color:#666">It only takes a moment, and your faith can change a life forever.</p>
-<p style="${p}">Every seed sown in faith, big or small, brings hope to someone who needs it today. Your kindness truly matters to us.</p>
-<p style="${p}">If you've already given, thank you from the bottom of our hearts. Please ignore this email.</p>
-<p style="${p}">With love and gratitude,<br>God bless you and your family 🙏</p>
+<p style="${p}">Your kindness and generosity mean a lot to us and help us continue sharing messages of faith, prayer, and hope with people around the world.</p>
+<p style="${p}">If you’ve already completed your gift since then, thank you so much—and please ignore this email.</p>
+<p style="${p}">With love and gratitude,<br>God bless you and your family. 🙏</p>
 </div>`
 
   await sendGmail({
