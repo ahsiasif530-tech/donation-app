@@ -8,7 +8,6 @@ import {
   PayPalCardFieldsForm,
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
-import InAppBrowserNotice from '@/components/InAppBrowserNotice'
 import { submitDonation, createPaypalOrderAction, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
@@ -489,7 +488,6 @@ export default function DonationForm({
           ${Number(paypalCheckout.amount).toFixed(2)} — invoice {paypalCheckout.invoiceNumber}
         </p>
 
-        <InAppBrowserNotice invoiceNumber={paypalCheckout.invoiceNumber} />
         {notice && <Notice text={notice} />}
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
@@ -515,7 +513,6 @@ export default function DonationForm({
 
   return (
     <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-      <InAppBrowserNotice />
 
       <Field id="donor-name" label="Your Name" required value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
 
@@ -656,8 +653,6 @@ export default function DonationForm({
 
       {showPaypalButtons && (
         <div className="space-y-3">
-          {/* Repeated right above the button: donors scroll past the one at the top. */}
-          <InAppBrowserNotice invoiceNumber={invoiceNumberRef.current} />
           <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
             Sow your seed
           </p>
