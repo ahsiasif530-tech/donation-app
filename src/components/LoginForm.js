@@ -27,7 +27,10 @@ export default function LoginForm() {
       return
     }
 
-    router.push(searchParams.get('next') || '/dashboard')
+    // Only a path on this site: "?next=https://..." or "//host" would send the
+    // admin to another site right after signing in.
+    const next = searchParams.get('next')
+    router.push(next && /^\/(?![/\\])/.test(next) ? next : '/dashboard')
     router.refresh()
   }
 
