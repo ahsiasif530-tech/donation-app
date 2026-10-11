@@ -9,16 +9,21 @@ import {
   usePayPalCardFields,
 } from '@paypal/react-paypal-js'
 import { submitDonation, createPaypalOrderAction, startPaypalCheckout, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
+import { getMessages } from '@/lib/i18n'
 
 // Same caps as the server's check in donationProblem (donate/[slug]/actions.js).
 const LIMITS = { name: 80, email: 254, message: 500 }
 
-const PRESET_AMOUNTS =[5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
+const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
 const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
-const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Credit or Debit Card', bank: 'Bank Transfer' }
 const EXPRESS_GATEWAYS = ['applepay', 'googlepay']
-const CANCELLED_NOTICE = 'No payment was taken. Whenever you’re ready, you can try again or choose a different payment method.'
+
+// PayPal's buttons and card form in the page's language (null: PayPal's default).
+function withLocale(options, locale) {
+  const paypalLocale = getMessages(locale).paypalLocale
+  return paypalLocale ? { ...options, locale: paypalLocale } : options
+}
 
 // The unfinished invoice on this page, kept in the browser so a donor who comes
 // back later continues it instead of leaving another pending one behind.
@@ -137,7 +142,12 @@ export default function DonationForm({
   applepayEnabled = false,
   googlepayEnabled = false,
   paypalClientId = null,
+  locale,
 }) {
+  const messages = getMessages(locale)
+  const t = messages.form
+  const gatewayLabels = t.gateways
+
   const orderedGateways = GATEWAY_ORDER.filter(
     (g) =>
       enabledGateways.includes(g) &&
@@ -195,30 +205,30 @@ export default function DonationForm({
           gateway: donation.gateway,
           email: '',
         })
-        setNotice(`Welcome back! Your $${donation.amount.toFixed(2)} donation wasn’t finished, and nothing was charged. Tap the button below to complete it.`)
+        setNotice(t.welcomeBack(donation.amount.toFixed(2)))
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const cardScriptOptions = useMemo(
-    () => ({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }),
-    [cardClientId]
+    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }, locale),
+    [cardClientId, locale]
   )
 
   // Apple Pay / Google Pay ride on the same PayPal merchant app as PayPal itself,
   // rendered as PayPal's own official button widgets (required by both Apple's and
   // Google's branding rules — a custom button can't trigger their payment sheets).
   const expressScriptOptions = useMemo(
-    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons,applepay,googlepay' }),
-    [cardClientId]
+    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'buttons,applepay,googlepay' }, locale),
+    [cardClientId, locale]
   )
 
   // PayPal's own black card button stays (it asks for a billing address, but the
   // account isn't approved for the address-free Card option); Pay Later is hidden.
   const paypalScriptOptions = useMemo(
-    () => ({ clientId: cardClientId, currency: 'USD', components: 'buttons', disableFunding: 'paylater' }),
-    [cardClientId]
+    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'buttons', disableFunding: 'paylater' }, locale),
+    [cardClientId, locale]
   )
 
   // The PayPal buttons sit right under the form, so the invoice is only created
@@ -269,7 +279,7 @@ export default function DonationForm({
     const res = await startPaypalCheckout({
       invoiceNumber: invoiceNumberRef.current,
       clientId: cardClientId,
-      details: { slug, donorName: name, donorEmail: email, isAnonymous: anonymous, amount, message, gateway },
+      details: { slug, donorName: name, donorEmail: email, isAnonymous: anonymous, amount, message, gateway, locale },
     })
     if (res.invoiceNumber) {
       invoiceNumberRef.current = res.invoiceNumber
@@ -290,9 +300,10 @@ export default function DonationForm({
       orderId: data.orderID,
       invoiceNumber: invoiceNumberRef.current,
       canRestart: Boolean(actions?.restart),
+      locale,
     })
     if (res.restart) {
-      setFeedback('Your payment method was declined. Please choose another one.')
+      setFeedback(t.methodDeclined)
       return actions.restart()
     }
     if (res.error) {
@@ -302,27 +313,27 @@ export default function DonationForm({
     }
     forgetPendingInvoice(slug)
     setStatus('done')
-    setFeedback(`Thank you for your kindness! Your donation (invoice ${invoiceNumberRef.current}) has been received. May God bless you and your family.`)
+    setFeedback(t.thankYouPaid(invoiceNumberRef.current))
   }
 
   const onError = (err) => {
     console.error('PayPal card fields error:', err)
     markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
     setStatus('idle')
-    setFeedback('Checkout failed. Please try again.')
+    setFeedback(t.checkoutFailed)
   }
 
   const onCancel = () => {
     markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'cancelled' })
     setStatus('idle')
     setFeedback('')
-    setNotice(CANCELLED_NOTICE)
+    setNotice(t.cancelled)
   }
 
   function validateDetails() {
-    if (!anonymous && !name.trim()) return 'Please enter your name, or choose to donate anonymously.'
-    if (!amount || amount < 1 || amount > 10000) return 'Amount must be between $1 and $10,000.'
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Please enter a valid email address, or leave it empty.'
+    if (!anonymous && !name.trim()) return messages.errors.nameRequired
+    if (!amount || amount < 1 || amount > 10000) return messages.errors.amountRange
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return messages.errors.emailInvalid
     return null
   }
 
@@ -332,12 +343,12 @@ export default function DonationForm({
     setNotice('')
 
     if (showPaypalButtons) {
-      setFeedback('Please use the PayPal button below to complete your donation.')
+      setFeedback(t.usePaypalButton)
       return
     }
 
     if (EXPRESS_GATEWAYS.includes(gateway)) {
-      setFeedback(`Please use the ${GATEWAY_LABELS[gateway]} button above to complete your donation.`)
+      setFeedback(t.useExpressButton(gatewayLabels[gateway]))
       return
     }
 
@@ -349,11 +360,11 @@ export default function DonationForm({
 
     if (gateway === 'stripe') {
       if (!cardClientId) {
-        setFeedback('Card payment is not set up yet. Please try PayPal instead.')
+        setFeedback(t.cardNotSetUp)
         return
       }
       if (!cardFieldsSubmitRef.current) {
-        setFeedback('The card form is still loading. Please try again in a moment.')
+        setFeedback(t.cardStillLoading)
         return
       }
       setStatus('loading')
@@ -363,7 +374,7 @@ export default function DonationForm({
         console.error('Card payment submit failed:', err)
         markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
         setStatus('idle')
-        setFeedback('Please check your card details and try again.')
+        setFeedback(t.checkCard)
       }
       return
     }
@@ -378,6 +389,7 @@ export default function DonationForm({
       amount,
       message,
       gateway,
+      locale,
     })
 
     if (result.error) {
@@ -398,23 +410,23 @@ export default function DonationForm({
     }
 
     setStatus('done')
-    setFeedback(`Your generosity means the world to us. Your donation (invoice ${result.invoiceNumber}) has been recorded, and you'll receive a confirmation once payment is processed. May God bless you abundantly.`)
+    setFeedback(t.thankYouRecorded(result.invoiceNumber))
   }
 
   if (status === 'done') {
     return (
       <div className="d-card rounded-2xl border p-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-        <p className="text-lg font-semibold" style={{ color: 'var(--heading)', fontFamily: 'var(--font-display)' }}>God Bless You 🙏</p>
+        <p className="text-lg font-semibold" style={{ color: 'var(--heading)', fontFamily: 'var(--font-display)' }}>{t.godBless}</p>
         <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>{feedback}</p>
 
         {gateway === 'bank' && bankDetails && (
           <div className="mt-6 rounded-xl border p-5 text-left space-y-2" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
-            <p className="text-sm font-bold mb-1">Please send your donation to:</p>
-            {bankDetails.account_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Account holder:</span> {bankDetails.account_name}</p>}
-            {bankDetails.bank_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Bank:</span> {bankDetails.bank_name}</p>}
-            {bankDetails.account_number && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>Account number:</span> {bankDetails.account_number}</p>}
-            {bankDetails.iban && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>IBAN:</span> {bankDetails.iban}</p>}
-            {bankDetails.swift && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>SWIFT / BIC:</span> {bankDetails.swift}</p>}
+            <p className="text-sm font-bold mb-1">{t.bankTitle}</p>
+            {bankDetails.account_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>{t.bankFields.account_name}:</span> {bankDetails.account_name}</p>}
+            {bankDetails.bank_name && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>{t.bankFields.bank_name}:</span> {bankDetails.bank_name}</p>}
+            {bankDetails.account_number && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>{t.bankFields.account_number}:</span> {bankDetails.account_number}</p>}
+            {bankDetails.iban && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>{t.bankFields.iban}:</span> {bankDetails.iban}</p>}
+            {bankDetails.swift && <p className="text-sm"><span style={{ color: 'var(--ink-muted)' }}>{t.bankFields.swift}:</span> {bankDetails.swift}</p>}
           </div>
         )}
       </div>
@@ -424,7 +436,7 @@ export default function DonationForm({
   if (paypalCheckout) {
     const createPaypalButtonOrder = async () => {
       setNotice('')
-      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, clientId: paypalCheckout.clientId })
+      const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, clientId: paypalCheckout.clientId, locale })
       if (res.error) {
         setFeedback(res.error)
         throw new Error(res.error)
@@ -437,9 +449,10 @@ export default function DonationForm({
         orderId: data.orderID,
         invoiceNumber: paypalCheckout.invoiceNumber,
         canRestart: true,
+        locale,
       })
       if (res.restart) {
-        setFeedback('Your payment method was declined. Please choose another one.')
+        setFeedback(t.methodDeclined)
         return actions.restart()
       }
       if (res.error) {
@@ -447,7 +460,7 @@ export default function DonationForm({
         return
       }
       setStatus('done')
-      setFeedback(`Thank you for your kindness! Your donation (invoice ${paypalCheckout.invoiceNumber}) has been received. May God bless you and your family.`)
+      setFeedback(t.thankYouPaid(paypalCheckout.invoiceNumber))
     }
 
     // Back to the form with everything the donor typed still filled in. This
@@ -467,13 +480,13 @@ export default function DonationForm({
           className="text-sm font-medium hover:underline"
           style={{ color: 'var(--ink-muted)' }}
         >
-          ← Change amount or payment method
+          {t.changeAmount}
         </button>
         <h2 className="text-2xl font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)', textWrap: 'balance' }}>
-          Choose the way you would like to support us.
+          {t.chooseWay}
         </h2>
         <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-          Sow your seed
+          {t.sowSeed}
         </p>
         <div className="flex justify-center" aria-hidden="true">
           <svg className="animate-bounce" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--gold-bright)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -481,13 +494,13 @@ export default function DonationForm({
           </svg>
         </div>
         <p className="text-center text-sm" style={{ color: 'var(--ink-muted)' }}>
-          ${Number(paypalCheckout.amount).toFixed(2)} — invoice {paypalCheckout.invoiceNumber}
+          {t.invoiceLine(Number(paypalCheckout.amount).toFixed(2), paypalCheckout.invoiceNumber)}
         </p>
 
         {notice && <Notice text={notice} />}
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
-        <PayPalScriptProvider options={{ clientId: paypalCheckout.clientId, currency: 'USD', disableFunding: 'paylater' }}>
+        <PayPalScriptProvider options={withLocale({ clientId: paypalCheckout.clientId, currency: 'USD', disableFunding: 'paylater' }, locale)}>
           <PayPalButtons
             style={{ layout: 'vertical', height: 55 }}
             createOrder={createPaypalButtonOrder}
@@ -495,11 +508,11 @@ export default function DonationForm({
             onCancel={() => {
               markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'cancelled' })
               setFeedback('')
-              setNotice(CANCELLED_NOTICE)
+              setNotice(t.cancelled)
             }}
             onError={() => {
               markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'checkout_error' })
-              setFeedback('Checkout failed. Please try again.')
+              setFeedback(t.checkoutFailed)
             }}
           />
         </PayPalScriptProvider>
@@ -510,23 +523,23 @@ export default function DonationForm({
   return (
     <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
 
-      <Field id="donor-name" label="Your Name" required autoComplete="name" maxLength={LIMITS.name} value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
+      <Field id="donor-name" label={t.name} required autoComplete="name" maxLength={LIMITS.name} value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? t.nameHidden : t.namePlaceholder} />
 
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
         <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
-        Donate anonymously
+        {t.anonymous}
       </label>
 
       <div>
-        <Field id="donor-email" label="Email (optional)" type="email" inputMode="email" autoComplete="email" maxLength={LIMITS.email} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <Field id="donor-email" label={t.email} type="email" inputMode="email" autoComplete="email" maxLength={LIMITS.email} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
         <p className="mt-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>
-          Only used to send you a link if your payment doesn’t go through.
+          {t.emailHint}
         </p>
       </div>
 
       <div>
         <label className="block text-lg font-bold mb-3 text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-          Choose an amount
+          {t.chooseAmount}
         </label>
         <div className="grid grid-cols-4 gap-3 max-[420px]:grid-cols-3 max-[420px]:gap-2">
           {PRESET_AMOUNTS.map((a) => (
@@ -547,7 +560,7 @@ export default function DonationForm({
 
       <div>
         <label htmlFor="amount-input" className="block text-sm font-bold mb-2">
-          Amount (USD) <span style={{ color: 'var(--gold-bright)' }}>*</span>
+          {t.amount} <span style={{ color: 'var(--gold-bright)' }}>*</span>
         </label>
         <input
           id="amount-input"
@@ -561,18 +574,18 @@ export default function DonationForm({
           className="w-full rounded-lg border px-3 py-3 text-center text-2xl font-bold tabular-nums focus:outline-none"
           style={{ borderColor: 'var(--border)', background: 'var(--surface-2)', fontFamily: 'var(--font-display)' }}
         />
-        <p className="mt-2 text-center text-xs" style={{ color: 'var(--ink-muted)' }}>Min $1 &middot; Max $10,000</p>
+        <p className="mt-2 text-center text-xs" style={{ color: 'var(--ink-muted)' }}>{t.amountRange}</p>
       </div>
 
       <div>
-        <label htmlFor="message" className="block text-sm font-bold mb-2">Message</label>
+        <label htmlFor="message" className="block text-sm font-bold mb-2">{t.message}</label>
         <textarea
           id="message"
           rows={3}
           maxLength={LIMITS.message}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Leave a kind message (optional)"
+          placeholder={t.messagePlaceholder}
           className="w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none"
           style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
         />
@@ -581,7 +594,7 @@ export default function DonationForm({
       {/* With PayPal as the only option there's nothing to choose: its buttons below are enough. */}
       {!(orderedGateways.length === 1 && orderedGateways[0] === 'paypal') && (
       <div>
-        <label className="block text-sm font-bold mb-2">Payment method</label>
+        <label className="block text-sm font-bold mb-2">{t.paymentMethod}</label>
         <div className="rounded-xl border divide-y overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           {orderedGateways.map((g) => (
             <label
@@ -599,7 +612,7 @@ export default function DonationForm({
               <span className="scale-125 origin-left">
                 <GatewayIcon gateway={g} />
               </span>
-              <span className="font-bold text-lg">{GATEWAY_LABELS[g]}</span>
+              <span className="font-bold text-lg">{gatewayLabels[g]}</span>
             </label>
           ))}
         </div>
@@ -609,7 +622,7 @@ export default function DonationForm({
       {gateway === 'stripe' && (
         <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
           <label className="block text-sm font-bold">
-            Card details <span style={{ color: 'var(--gold-bright)' }}>*</span>
+            {t.cardDetails} <span style={{ color: 'var(--gold-bright)' }}>*</span>
           </label>
           {cardClientId ? (
             <PayPalScriptProvider options={cardScriptOptions}>
@@ -619,14 +632,14 @@ export default function DonationForm({
               </PayPalCardFieldsProvider>
             </PayPalScriptProvider>
           ) : (
-            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading card form…</p>
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>{t.loadingCard}</p>
           )}
         </div>
       )}
 
       {EXPRESS_GATEWAYS.includes(gateway) && (
         <div className="border-t pt-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
-          <label className="block text-sm font-bold">Complete with {GATEWAY_LABELS[gateway]}</label>
+          <label className="block text-sm font-bold">{t.completeWith(gatewayLabels[gateway])}</label>
           {cardClientId ? (
             <PayPalScriptProvider options={expressScriptOptions}>
               <PayPalButtons
@@ -639,7 +652,7 @@ export default function DonationForm({
               />
             </PayPalScriptProvider>
           ) : (
-            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading {GATEWAY_LABELS[gateway]}…</p>
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>{t.loading(gatewayLabels[gateway])}</p>
           )}
         </div>
       )}
@@ -650,7 +663,7 @@ export default function DonationForm({
       {showPaypalButtons && (
         <div className="space-y-3">
           <p className="text-base font-bold text-center" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-            Sow your seed
+            {t.sowSeed}
           </p>
           <div className="flex justify-center" aria-hidden="true">
             <svg className="animate-bounce" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--gold-bright)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -677,7 +690,7 @@ export default function DonationForm({
           className="d-btn-gold d-btn-shine w-full rounded-full py-4 text-xl font-black tracking-wide disabled:opacity-60"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : gateway === 'paypal' ? 'Continue to PayPal →' : 'Donate Now'}
+          {status === 'loading' ? t.processing : gateway === 'stripe' ? t.pay : gateway === 'paypal' ? t.continueToPaypal : t.donateNow}
         </button>
       )}
     </form>

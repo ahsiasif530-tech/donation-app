@@ -8,6 +8,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createPaypalOrder, capturePaypalOrder, getPaypalOrder } from '@/lib/paypal'
 import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount, getBrandName } from '@/lib/paypalAccounts'
 import { toCredentials, donorInfoFromCapture } from '@/lib/paypalDonations'
+import { getMessages } from '@/lib/i18n'
+
+// Messages for the donor, in their donation page's language.
+const errorsFor = (locale) => getMessages(locale).errors
 
 async function getPaypalSettings(supabase) {
   const { data: settings } = await supabase
@@ -117,22 +121,23 @@ const FIELD_LIMITS = { donorName: 80, donorEmail: 254, message: 500, donorAddres
 
 function donationProblem(fields) {
   const { donorName, donorEmail, isAnonymous, amount } = fields
+  const errors = errorsFor(fields.locale)
   for (const [field, limit] of Object.entries(FIELD_LIMITS)) {
     const value = fields[field]
     if (value != null && (typeof value !== 'string' || value.length > limit)) {
-      return 'One of the details is too long. Please shorten it and try again.'
+      return errors.tooLong
     }
   }
-  if (typeof isAnonymous !== 'boolean') return 'Something went wrong. Please try again.'
+  if (typeof isAnonymous !== 'boolean') return errors.generic
   const numericAmount = Number(amount)
   if (!numericAmount || numericAmount < 1 || numericAmount > 10000) {
-    return 'Amount must be between $1 and $10,000.'
+    return errors.amountRange
   }
   if (!isAnonymous && !donorName?.trim()) {
-    return 'Please enter your name, or choose to donate anonymously.'
+    return errors.nameRequired
   }
   if (donorEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donorEmail.trim())) {
-    return 'Please enter a valid email address, or leave it empty.'
+    return errors.emailInvalid
   }
   return null
 }
@@ -162,6 +167,7 @@ async function insertDonation(supabase, pageId, requestHeaders, { donorName, don
 
 export async function submitDonation(fields) {
   const { slug, gateway } = fields
+  const errors = errorsFor(fields.locale)
   const problem = donationProblem(fields)
   if (problem) return { error: problem }
   const numericAmount = Number(fields.amount)
@@ -176,13 +182,13 @@ export async function submitDonation(fields) {
   ])
 
   if (pageError || !page) {
-    return { error: 'This donation page could not be found.' }
+    return { error: errors.pageNotFound }
   }
 
   const { data, error } = await insertDonation(supabase, page.id, requestHeaders, fields)
 
   if (error) {
-    return { error: 'Something went wrong. Please try again.' }
+    return { error: errors.generic }
   }
 
   let redirectUrl = null
@@ -199,7 +205,7 @@ export async function submitDonation(fields) {
       const params = new URLSearchParams({
         cmd: '_donations',
         business: account.email,
-        item_name: `Donation — ${data.invoice_number}`,
+        item_name: `${getMessages(fields.locale).donationItem} — ${data.invoice_number}`,
         amount: numericAmount.toFixed(2),
         currency_code: 'USD',
         custom: data.invoice_number,
@@ -216,22 +222,22 @@ export async function submitDonation(fields) {
 // clientId is the one the donor's page loaded PayPal with: using that account
 // (rather than whichever is active now) keeps a page that was opened before the
 // admin switched accounts working.
-export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
-  if (!isInvoiceNumber(invoiceNumber)) return { error: 'Could not start PayPal checkout. Please try again.' }
+export async function createPaypalOrderAction({ invoiceNumber, clientId, locale }) {
+  if (!isInvoiceNumber(invoiceNumber)) return { error: errorsFor(locale).paypalStart }
   const supabase = createAdminClient()
   const [paypal, { data: donation }] = await Promise.all([
     getPaypalSettings(supabase),
     supabase.from('donations').select('amount').eq('invoice_number', invoiceNumber).in('status', ['pending', 'failed']).single(),
   ])
-  if (!donation) return { error: 'Could not start PayPal checkout. Please try again.' }
-  return createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount: donation.amount })
+  if (!donation) return { error: errorsFor(locale).paypalStart }
+  return createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount: donation.amount, locale })
 }
 
 // One round trip for the PayPal buttons and card fields: creates the invoice
 // (unless invoiceNumber is a retry of an existing one) and its PayPal order
 // together, so PayPal's card form opens sooner after the click.
 export async function startPaypalCheckout({ invoiceNumber, clientId, details }) {
-  if (invoiceNumber) return createPaypalOrderAction({ invoiceNumber, clientId })
+  if (invoiceNumber) return createPaypalOrderAction({ invoiceNumber, clientId, locale: details?.locale })
 
   const problem = donationProblem(details)
   if (problem) return { error: problem }
@@ -242,21 +248,22 @@ export async function startPaypalCheckout({ invoiceNumber, clientId, details }) 
     getPaypalSettings(supabase),
     headers(),
   ])
-  if (!page) return { error: 'This donation page could not be found.' }
+  if (!page) return { error: errorsFor(details.locale).pageNotFound }
 
   const { data, error } = await insertDonation(supabase, page.id, requestHeaders, details)
-  if (error) return { error: 'Something went wrong. Please try again.' }
+  if (error) return { error: errorsFor(details.locale).generic }
 
-  const result = await createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber: data.invoice_number, amount: data.amount })
+  const result = await createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber: data.invoice_number, amount: data.amount, locale: details.locale })
   // The invoice exists either way, so a retry continues it instead of making another.
   return { ...result, invoiceNumber: data.invoice_number }
 }
 
-async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount }) {
+async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount, locale }) {
+  const errors = errorsFor(locale)
   const account =
     getPaypalAccounts(paypal).find((a) => clientId && a.client_id === clientId) || getActivePaypalAccount(paypal)
   const credentials = toCredentials(account)
-  if (!credentials) return { error: 'PayPal is not configured yet.' }
+  if (!credentials) return { error: errors.paypalNotConfigured }
 
   try {
     const order = await createPaypalOrder({
@@ -285,15 +292,16 @@ async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber
 
     return { orderId: order.id }
   } catch {
-    return { error: 'Could not start PayPal checkout. Please try again.' }
+    return { error: errors.paypalStart }
   }
 }
 
 // canRestart: true when the caller is a PayPal button that can reopen its
 // checkout (actions.restart); card fields can't, so they get an error instead.
-export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRestart = false }) {
+export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRestart = false, locale }) {
+  const errors = errorsFor(locale)
   if (!isInvoiceNumber(invoiceNumber) || typeof orderId !== 'string') {
-    return { error: 'Payment could not be confirmed. Please contact support.' }
+    return { error: errors.paymentUnconfirmed }
   }
   const supabase = createAdminClient()
   const paypal = await getPaypalSettings(supabase)
@@ -304,9 +312,9 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
     .select('amount, paypal_account_id')
     .eq('invoice_number', invoiceNumber)
     .single()
-  if (!donation) return { error: 'Payment could not be confirmed. Please contact support.' }
+  if (!donation) return { error: errors.paymentUnconfirmed }
   const credentials = toCredentials(findPaypalAccount(paypal, donation.paypal_account_id) || getActivePaypalAccount(paypal))
-  if (!credentials) return { error: 'PayPal is not configured yet.' }
+  if (!credentials) return { error: errors.paypalNotConfigured }
 
   try {
     // Both ids come from the browser, and anyone with the public client id can
@@ -324,7 +332,7 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
       unit?.amount?.currency_code !== 'USD' ||
       Number(unit?.amount?.value) !== Number(donation.amount)
     ) {
-      return { error: 'Payment could not be confirmed. Please contact support.' }
+      return { error: errors.paymentUnconfirmed }
     }
 
     const capture = await capturePaypalOrder({
@@ -341,7 +349,7 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
     // payment itself, so the capture's own status has to be checked too.
     if (captureResult?.status === 'DECLINED') {
       await setDonationFailed(invoiceNumber, 'capture_declined', captureResult?.status_details?.reason || 'DECLINED')
-      return { error: 'Your payment was declined. Please try another payment method.' }
+      return { error: errors.paymentDeclined }
     }
 
     await supabase
@@ -373,9 +381,9 @@ export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRest
     }
     await setDonationFailed(invoiceNumber, 'capture_declined', err?.code || null)
     if (err?.code === 'INSTRUMENT_DECLINED') {
-      return { error: 'Your card was declined. Please try another card or payment method.' }
+      return { error: errors.cardDeclined }
     }
-    return { error: 'Payment could not be confirmed. Please contact support.' }
+    return { error: errors.paymentUnconfirmed }
   }
 }
 

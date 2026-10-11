@@ -8,6 +8,7 @@ import { getActivePaypalAccount } from '@/lib/paypalAccounts'
 import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
 import OpenInBrowser from '@/components/OpenInBrowser'
+import { getMessages } from '@/lib/i18n'
 
 // Donation pages are cached and served instantly, rebuilt in the background at
 // most once a minute. A completed donation or a settings change refreshes them
@@ -32,13 +33,16 @@ export default async function DonatePage({ params }) {
   const [{ data: page }, { data: settings }] = await Promise.all([
     supabase
       .from('pages')
-      .select('id, title, subtitle, hero_image_url, enabled_gateways, theme')
+      // All columns, so a page still opens (in English) on a database that
+      // doesn't have the locale column yet.
+      .select('*')
       .eq('slug', slug)
       .single(),
     createAdminClient().from('settings').select('payment_settings').eq('id', 'global').single(),
   ])
 
   if (!page) notFound()
+  const t = getMessages(page.locale)
 
   const cardEnabled = settings?.payment_settings?.card?.enabled ?? true
   const paypalEnabled = settings?.payment_settings?.paypal?.enabled ?? true
@@ -60,10 +64,10 @@ export default async function DonatePage({ params }) {
   // Donors shows are sent to the browser, so the page doesn't grow with them.
   const donors = (allDonors || []).slice(0, RECENT_DONORS_SHOWN).map((d) => ({
     id: d.id,
-    display_name: d.display_name,
+    display_name: d.display_name === 'Anonymous' ? t.anonymous : d.display_name,
     amount: d.amount,
     message: d.message,
-    dateLabel: new Date(d.created_at).toLocaleDateString(),
+    dateLabel: new Date(d.created_at).toLocaleDateString(t.dateLocale),
   }))
 
   const donorTotals = new Map()
@@ -77,9 +81,9 @@ export default async function DonatePage({ params }) {
   const topDonors = [...donorTotals.values()].sort((a, b) => b.total - a.total).slice(0, 3)
 
   return (
-    <main className={`theme-${page.theme || 'classic'} min-h-screen`}>
+    <main lang={t.htmlLang} className={`theme-${page.theme || 'classic'} min-h-screen`}>
     <PageViewTracker slug={slug} />
-    <OpenInBrowser />
+    <OpenInBrowser locale={page.locale} />
     <div className="mx-auto max-w-[600px] px-5 py-14 flex flex-col gap-7">
       <div className="flex flex-col items-center text-center gap-4">
         <div className="halo">
@@ -113,6 +117,7 @@ export default async function DonatePage({ params }) {
         applepayEnabled={applepayEnabled}
         googlepayEnabled={googlepayEnabled}
         paypalClientId={paypalClientId}
+        locale={page.locale}
       />
 
       <div className="flex flex-col items-center gap-3 pt-1">
@@ -120,10 +125,10 @@ export default async function DonatePage({ params }) {
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--gold-bright)" strokeWidth="1.8">
             <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
           </svg>
-          Secure &amp; trusted payment
+          {t.page.secure}
         </div>
         <div className="flex gap-2 flex-wrap justify-center">
-          {['SSL encrypted', 'PCI compliant'].map((label) => (
+          {t.page.badges.map((label) => (
             <span
               key={label}
               className="flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
@@ -141,7 +146,7 @@ export default async function DonatePage({ params }) {
       {topDonors.length > 0 && (
         <div className="d-card rounded-2xl border p-7" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <h2 className="text-xl font-bold text-center mb-5" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-            🏆 Top Donors
+            {t.page.topDonors}
           </h2>
           <div className="flex flex-col gap-3">
             {topDonors.map((d, i) => (
@@ -158,7 +163,7 @@ export default async function DonatePage({ params }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm truncate">{d.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>{d.count} {d.count === 1 ? 'gift' : 'gifts'}</p>
+                  <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>{t.page.gifts(d.count)}</p>
                 </div>
                 <p className="font-bold tabular-nums shrink-0" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
                   ${d.total.toFixed(2)}
@@ -172,10 +177,10 @@ export default async function DonatePage({ params }) {
       <div className="d-card rounded-2xl border p-7" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <div className="flex flex-col items-center gap-1 mb-5">
           <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--heading)' }}>
-            Recent Donors
+            {t.page.recentDonors}
           </h2>
         </div>
-        <RecentDonors donors={donors} />
+        <RecentDonors donors={donors} emptyText={t.page.noDonors} />
       </div>
     </div>
     </main>

@@ -29,6 +29,10 @@ create table if not exists pages (
   created_at timestamptz not null default now()
 );
 
+-- The language a donation page is shown in (words in src/lib/i18n.js).
+alter table pages
+  add column if not exists locale text not null default 'en' check (locale in ('en', 'es'));
+
 alter table profiles
   add column if not exists page_id uuid references pages(id) on delete set null;
 

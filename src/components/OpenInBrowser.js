@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useSyncExternalStore } from 'react'
+import { getMessages } from '@/lib/i18n'
 import { inAppBrowserPlatform, externalBrowserTried, markExternalBrowserTried, tapRedirectTried, markTapRedirectTried } from '@/lib/inAppBrowser'
 
 const subscribeNever = () => () => {}
@@ -25,7 +26,8 @@ function androidChromeLink(url) {
 // Inside Facebook/Instagram's browser: on Android the page moves itself to
 // Chrome once; on iPhone (where no site may switch browsers on its own) a
 // banner offers Safari (x-safari-https works on iOS 17+) and the menu steps.
-export default function OpenInBrowser() {
+export default function OpenInBrowser({ locale }) {
+  const t = getMessages(locale).openInBrowser
   const platform = useSyncExternalStore(subscribeNever, () => inAppBrowserPlatform(navigator.userAgent), () => null)
   const href = platform === 'android' ? androidChromeLink(externalUrl()) : platform === 'ios' ? `x-safari-${externalUrl().href}` : null
 
@@ -59,23 +61,19 @@ export default function OpenInBrowser() {
     <div className="sticky top-0 z-30 px-4 py-3 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
       <div className="mx-auto max-w-[600px] flex flex-col gap-2.5 text-center">
         <p className="text-sm font-semibold">
-          <span aria-hidden="true">🕊️ </span>Your gift is a blessing. To keep it safe,{' '}
-          {platform === 'android' ? (
-            <>we&apos;ll open this page in Chrome. Tap <b>CONTINUE</b> when asked.</>
-          ) : (
-            <>please open this page in Safari.</>
-          )}{' '}
-          God bless you!<span aria-hidden="true"> 🙏</span>
+          <span aria-hidden="true">🕊️ </span>{t.intro}{' '}
+          {platform === 'android' ? t.android(<b>{t.androidButton}</b>) : t.ios}{' '}
+          {t.blessing}<span aria-hidden="true"> 🙏</span>
         </p>
         <a
           href={href}
           className="d-btn-gold rounded-xl py-3 text-base font-bold"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          Open in {browser}
+          {t.open(browser)}
         </a>
         <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
-          If nothing happens, tap <b>•••</b> at the top right, then <b>Open in external browser</b>.
+          {t.fallback(<b>•••</b>, <b>{t.menuItem}</b>)}
         </p>
       </div>
     </div>

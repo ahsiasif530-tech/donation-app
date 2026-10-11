@@ -4,11 +4,11 @@ const MAX_DONORS = 7
 
 // Donors arrive with dateLabel already formatted on the server, so the client
 // render matches the server HTML regardless of the viewer's locale/timezone.
-export default function RecentDonors({ donors }) {
+export default function RecentDonors({ donors, emptyText }) {
   if (donors.length === 0) {
     return (
       <p className="text-center text-sm py-6" style={{ color: 'var(--ink-muted)' }}>
-        No donors yet — be the first to support this page.
+        {emptyText}
       </p>
     )
   }

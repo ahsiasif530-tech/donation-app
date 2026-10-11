@@ -97,17 +97,42 @@
   color: var(--ink);
 }
 
+/* Royal red wine: deep burgundy accents on a soft blush ground, with a
+   touch of gold in the glow. */
+.theme-wine {
+  --bg: #F9EEF0;
+  --surface: #FFFFFF;
+  --surface-2: #F6E4E8;
+  --ink: #0A0A0A;
+  --ink-muted: #2B2B2B;
+  --border: #EBCCD4;
+  --heading: #3A0A18;
+  --gold: #7B1E3A;
+  --gold-bright: #9E2A4B;
+  --gold-soft: rgba(123, 30, 58, 0.14);
+  --gold-gradient: linear-gradient(135deg, #B23A5E, #5E1229);
+  --success-bg: #E4F0E7;
+  --success-text: #2F6B45;
+  background:
+    radial-gradient(ellipse 850px 500px at 50% -12%, rgba(123,30,58,0.16), transparent 60%),
+    radial-gradient(ellipse 700px 480px at 100% 100%, rgba(212,160,23,0.08), transparent 55%),
+    var(--bg);
+  color: var(--ink);
+}
+
 .theme-classic,
 .theme-royal,
 .theme-sage,
-.theme-amber {
+.theme-amber,
+.theme-wine {
   position: relative;
 }
 
 .theme-classic::before,
 .theme-royal::before,
 .theme-sage::before,
-.theme-amber::before {
+.theme-amber::before,
+.theme-wine::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -122,7 +147,8 @@
 .theme-classic > *,
 .theme-royal > *,
 .theme-sage > *,
-.theme-amber > * {
+.theme-amber > *,
+.theme-wine > * {
   position: relative;
   z-index: 1;
 }
@@ -132,7 +158,8 @@
 .theme-classic :is(h1, h2),
 .theme-royal :is(h1, h2),
 .theme-sage :is(h1, h2),
-.theme-amber :is(h1, h2) {
+.theme-amber :is(h1, h2),
+.theme-wine :is(h1, h2) {
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9),
     0 -1px 0 rgba(0, 0, 0, 0.35),
