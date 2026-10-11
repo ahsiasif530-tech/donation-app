@@ -59,7 +59,13 @@ export default function OpenInBrowser() {
     <div className="sticky top-0 z-30 px-4 py-3 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
       <div className="mx-auto max-w-[600px] flex flex-col gap-2.5 text-center">
         <p className="text-sm font-semibold">
-          For a smooth and secure payment, please open this page in {browser}.
+          <span aria-hidden="true">🕊️ </span>Your gift is a blessing. To keep it safe,{' '}
+          {platform === 'android' ? (
+            <>we&apos;ll open this page in Chrome. Tap <b>CONTINUE</b> when asked.</>
+          ) : (
+            <>please open this page in Safari.</>
+          )}{' '}
+          God bless you!<span aria-hidden="true"> 🙏</span>
         </p>
         <a
           href={href}
