@@ -532,7 +532,7 @@ export default function DonationForm({
               type="button"
               onClick={() => setAmount(a)}
               aria-pressed={amount === a}
-              className={`d-amount rounded-xl py-4 text-xl font-bold tabular-nums max-[420px]:py-3.5 max-[420px]:text-lg ${amount === a ? 'd-amount-selected' : ''}`}
+              className={`d-amount aspect-square rounded-full flex items-center justify-center text-xl font-bold tabular-nums max-[420px]:text-lg ${amount === a ? 'd-amount-selected' : ''}`}
               style={{ fontFamily: 'var(--font-display)' }}
             >
               ${a}
