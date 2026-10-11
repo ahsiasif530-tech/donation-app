@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { recordPageView } from '@/app/donate/[slug]/actions'
+import { inAppBrowserPlatform, externalBrowserTried } from '@/lib/inAppBrowser'
 
 const VISITOR_KEY = 'bh_visitor_id'
 
@@ -26,6 +27,9 @@ export default function PageViewTracker({ slug }) {
   useEffect(() => {
     if (sent.current) return
     sent.current = true
+    // An Android in-app visit is about to be sent on to Chrome (OpenInBrowser,
+    // whose effect runs after this one) and is counted there instead.
+    if (inAppBrowserPlatform(navigator.userAgent) === 'android' && !externalBrowserTried()) return
     recordPageView({
       slug,
       visitorId: getVisitorId(),

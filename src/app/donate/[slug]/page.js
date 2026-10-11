@@ -7,6 +7,7 @@ import DonationForm from '@/components/DonationForm'
 import { getActivePaypalAccount } from '@/lib/paypalAccounts'
 import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
+import OpenInBrowser from '@/components/OpenInBrowser'
 
 // Donation pages are cached and served instantly, rebuilt in the background at
 // most once a minute. A completed donation or a settings change refreshes them
@@ -78,6 +79,7 @@ export default async function DonatePage({ params }) {
   return (
     <main className={`theme-${page.theme || 'classic'} min-h-screen`}>
     <PageViewTracker slug={slug} />
+    <OpenInBrowser />
     <div className="mx-auto max-w-[600px] px-5 py-14 flex flex-col gap-7">
       <div className="flex flex-col items-center text-center gap-4">
         <div className="halo">
