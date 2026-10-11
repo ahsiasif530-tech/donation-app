@@ -140,6 +140,40 @@ create table if not exists withdrawals (
 
 create index if not exists withdrawals_page_id_idx on withdrawals(page_id);
 
+-- Records a withdrawal only if the page still has that much left (completed
+-- donations minus earlier withdrawals). The page row is locked first, so two
+-- withdrawals sent at once can't both pass the check. Called by the server
+-- with the service key only.
+create or replace function add_withdrawal(p_page_id uuid, p_amount numeric, p_note text, p_created_by uuid)
+returns jsonb
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_available numeric;
+begin
+  perform 1 from pages where id = p_page_id for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'page_not_found');
+  end if;
+
+  select coalesce((select sum(amount) from donations where page_id = p_page_id and status = 'completed'), 0)
+       - coalesce((select sum(amount) from withdrawals where page_id = p_page_id), 0)
+    into v_available;
+
+  if p_amount > v_available then
+    return jsonb_build_object('ok', false, 'error', 'insufficient', 'available', v_available);
+  end if;
+
+  insert into withdrawals (page_id, amount, note, created_by)
+  values (p_page_id, p_amount, p_note, p_created_by);
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+revoke execute on function add_withdrawal(uuid, numeric, text, uuid) from public, anon, authenticated;
+grant execute on function add_withdrawal(uuid, numeric, text, uuid) to service_role;
+
 -- ============================================================
 -- settings: one global row holding site-wide payment settings
 -- ============================================================
@@ -174,8 +208,11 @@ alter table settings enable row level security;
 alter table withdrawals enable row level security;
 alter table page_views enable row level security;
 
-create policy "settings_admin_all" on settings
-  for all using (is_admin()) with check (is_admin());
+-- No policy on settings: it holds PayPal secrets and the settings password
+-- hash, so no signed-in user (not even an admin) can read it with their own
+-- session. The server reads and writes it with the service key only, after
+-- checking the admin and the settings password.
+drop policy if exists "settings_admin_all" on settings;
 
 create policy "profiles_self_select" on profiles
   for select using (auth.uid() = id or is_admin());

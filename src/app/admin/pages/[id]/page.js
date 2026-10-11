@@ -2,7 +2,9 @@ import { redirect, notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
-import { statusNote } from '@/lib/invoices'
+import { statusNote, dayStart, dayEnd } from '@/lib/invoices'
+import { fetchAll } from '@/lib/supabase/fetchAll'
+import { readPaymentSettings } from '@/lib/paymentSettings'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import { getPaypalAccounts } from '@/lib/paypalAccounts'
@@ -23,21 +25,26 @@ export default async function PageInvoicesPage({ params, searchParams }) {
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: page }, { data: donations }, { data: settings }, { data: withdrawals }] = await Promise.all([
+  const [{ data: profile }, { data: page }, { data: donations }, paymentSettings, { data: withdrawals }] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('pages').select('id, slug, title, label').eq('id', id).single(),
-    supabase
-      .from('donations')
-      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, donor_country, created_at')
-      .eq('page_id', id)
-      .order('created_at', { ascending: false }),
-    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
-    supabase.from('withdrawals').select('id, amount, note, created_at').eq('page_id', id).order('created_at', { ascending: false }),
+    fetchAll(() =>
+      supabase
+        .from('donations')
+        .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, donor_country, created_at')
+        .eq('page_id', id)
+        .order('created_at', { ascending: false })
+        .order('id')
+    ),
+    readPaymentSettings(),
+    fetchAll(() =>
+      supabase.from('withdrawals').select('id, amount, note, created_at').eq('page_id', id).order('created_at', { ascending: false }).order('id')
+    ),
   ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
   if (!page) notFound()
-  const paypalAccountTabs = getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => ({
+  const paypalAccountTabs = getPaypalAccounts(paymentSettings.paypal).map((a) => ({
     id: a.id,
     label: a.label || 'Untitled account',
   }))
@@ -57,8 +64,8 @@ export default async function PageInvoicesPage({ params, searchParams }) {
   }
   const byCountry = [...countryTotals.values()].sort((a, b) => b.total - a.total)
 
-  const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
-  const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null
+  const fromDate = dayStart(fromFilter)
+  const toDate = dayEnd(toFilter)
   const searchNeedle = searchQuery ? searchQuery.trim().toLowerCase() : ''
 
   const filteredDonations = (donations || []).filter((d) => {

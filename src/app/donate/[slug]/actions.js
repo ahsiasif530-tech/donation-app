@@ -63,10 +63,19 @@ export async function recordPageView({ slug, visitorId, referrer, utmSource }) {
 
   // Visits are frequent enough to send due payment reminders from here,
   // after the response, instead of needing a scheduler.
+  const origin = await siteOrigin()
+  if (origin) after(() => sendDueReminders(supabase, origin))
+}
+
+// The site's address for links in reminder emails. SITE_URL when set, since a
+// host that passes on the request's Host header unchecked would let a visitor
+// put their own site in donors' emails; otherwise the request's own host.
+async function siteOrigin() {
+  if (process.env.SITE_URL) return process.env.SITE_URL.replace(/\/+$/, '')
   const requestHeaders = await headers()
   const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')
   const protocol = requestHeaders.get('x-forwarded-proto') || (host?.startsWith('localhost') ? 'http' : 'https')
-  if (host) after(() => sendDueReminders(supabase, `${protocol}://${host}`))
+  return host ? `${protocol}://${host}` : null
 }
 
 const RESUME_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000

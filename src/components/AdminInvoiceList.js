@@ -11,7 +11,7 @@ export default function AdminInvoiceList({ invoices }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   if (invoices.length === 0) {
-    return <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice নেই।</p>
+    return <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice nei.</p>
   }
 
   const hasMore = visibleCount < invoices.length

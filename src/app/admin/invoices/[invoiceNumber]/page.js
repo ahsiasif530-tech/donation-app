@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import { statusNote } from '@/lib/invoices'
+import { readPaymentSettings } from '@/lib/paymentSettings'
 import { findPaypalAccount } from '@/lib/paypalAccounts'
 import { browserLabel } from '@/lib/userAgent'
 import PrintButton from '@/components/PrintButton'
@@ -14,10 +15,10 @@ export default async function InvoiceDetailPage({ params }) {
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: donation }, { data: settings }] = await Promise.all([
+  const [{ data: profile }, { data: donation }, paymentSettings] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('donations').select('*').eq('invoice_number', decodeURIComponent(invoiceNumber)).single(),
-    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
+    readPaymentSettings(),
   ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
@@ -31,7 +32,7 @@ export default async function InvoiceDetailPage({ params }) {
 
   // Which of the saved PayPal accounts this donation was paid into.
   const paypalAccount = donation.paypal_account_id
-    ? findPaypalAccount(settings?.payment_settings?.paypal, donation.paypal_account_id)
+    ? findPaypalAccount(paymentSettings.paypal, donation.paypal_account_id)
     : null
 
   const issuedAt = new Date(donation.created_at)

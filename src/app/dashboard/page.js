@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
+import { fetchAll } from '@/lib/supabase/fetchAll'
 import SignOutButton from '@/components/SignOutButton'
 
 export default async function DashboardPage() {
@@ -30,11 +31,14 @@ export default async function DashboardPage() {
 
   const [{ data: page }, { data: donations }] = await Promise.all([
     supabase.from('pages').select('id, slug, title, enabled_gateways').eq('id', profile.page_id).single(),
-    supabase
-      .from('donations')
-      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, created_at')
-      .eq('page_id', profile.page_id)
-      .order('created_at', { ascending: false }),
+    fetchAll(() =>
+      supabase
+        .from('donations')
+        .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, status, created_at')
+        .eq('page_id', profile.page_id)
+        .order('created_at', { ascending: false })
+        .order('id')
+    ),
   ])
 
   const completed = (donations || []).filter((d) => d.status === 'completed')
@@ -78,7 +82,7 @@ export default async function DashboardPage() {
                 <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-accent-strong)' }}>${g.earning.toFixed(2)}</span>
               </div>
               {g.invoices.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice নেই।</p>
+                <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono invoice nei.</p>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
                   {g.invoices.map((d) => (

@@ -1,24 +1,33 @@
 import { getPaypalAccounts } from '@/lib/paypalAccounts'
+import { fetchAll } from '@/lib/supabase/fetchAll'
+import { readPaymentSettings } from '@/lib/paymentSettings'
+
+// Day boundaries for the admin's date filters, in Bangladesh time (no DST, so a
+// fixed offset is exact), matching the Traffic page whatever the server's zone.
+export const dayStart = (day) => (day ? new Date(`${day}T00:00:00+06:00`) : null)
+export const dayEnd = (day) => (day ? new Date(`${day}T23:59:59.999+06:00`) : null)
 
 // account: a saved PayPal account id, or 'none' for invoices with no recorded
-// account (or one that has since been removed).
+// account (or one that has since been removed). Only call after checking the
+// viewer is an admin: the settings are read with the service key.
 export async function fetchFilteredInvoices(supabase, { status, page, from, to, gateway, q, account } = {}) {
-  const [{ data: pages }, { data: donations }, { data: settings }] = await Promise.all([
+  const [{ data: pages }, { data: donations }, paymentSettings] = await Promise.all([
     supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
-    supabase
-      .from('donations')
-      .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
-      .order('created_at', { ascending: false }),
-    account === 'none'
-      ? supabase.from('settings').select('payment_settings').eq('id', 'global').single()
-      : { data: null },
+    fetchAll(() =>
+      supabase
+        .from('donations')
+        .select('invoice_number, donor_name, donor_email, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
+        .order('created_at', { ascending: false })
+        .order('id')
+    ),
+    account === 'none' ? readPaymentSettings() : null,
   ])
 
-  const knownAccountIds = new Set(getPaypalAccounts(settings?.payment_settings?.paypal).map((a) => a.id))
+  const knownAccountIds = new Set(getPaypalAccounts(paymentSettings?.paypal).map((a) => a.id))
 
   const pageById = Object.fromEntries((pages || []).map((p) => [p.id, p]))
-  const fromDate = from ? new Date(`${from}T00:00:00`) : null
-  const toDate = to ? new Date(`${to}T23:59:59`) : null
+  const fromDate = dayStart(from)
+  const toDate = dayEnd(to)
   const needle = q ? q.trim().toLowerCase() : ''
 
   const invoices = (donations || []).filter((d) => {

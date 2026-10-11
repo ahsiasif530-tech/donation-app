@@ -2,20 +2,10 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
 import TrafficDayRows from '@/components/TrafficDayRows'
+import { fetchAll } from '@/lib/supabase/fetchAll'
 
 const DAYS = 14
 const TIME_ZONE = 'Asia/Dhaka'
-const PAGE_SIZE = 1000
-
-// Supabase returns at most 1000 rows per request, so read in pages.
-async function fetchAll(query) {
-  const rows = []
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data } = await query().range(from, from + PAGE_SIZE - 1)
-    rows.push(...(data || []))
-    if (!data || data.length < PAGE_SIZE) return rows
-  }
-}
 
 const dayOf = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: TIME_ZONE })
 
@@ -135,14 +125,14 @@ export default async function AdminTrafficPage() {
 
   const since = sinceIso()
 
-  const [{ data: profile }, { data: pages }, views, donations] = await Promise.all([
+  const [{ data: profile }, { data: pages }, { data: views }, { data: donations }] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
     fetchAll(() =>
-      supabase.from('page_views').select('page_id, visitor_id, source, created_at').gte('created_at', since).order('created_at')
+      supabase.from('page_views').select('page_id, visitor_id, source, created_at').gte('created_at', since).order('created_at').order('id')
     ),
     fetchAll(() =>
-      supabase.from('donations').select('page_id, amount, status, created_at').gte('created_at', since).order('created_at')
+      supabase.from('donations').select('page_id, amount, status, created_at').gte('created_at', since).order('created_at').order('id')
     ),
   ])
 
@@ -162,7 +152,7 @@ export default async function AdminTrafficPage() {
     return person.days.get(day)
   }
 
-  for (const v of views) {
+  for (const v of views || []) {
     const person = people.get(v.page_id)
     if (!person) continue
     addView(person.total, v.visitor_id)
@@ -170,7 +160,7 @@ export default async function AdminTrafficPage() {
     person.sources.set(v.source, (person.sources.get(v.source) || 0) + 1)
   }
 
-  for (const d of donations) {
+  for (const d of donations || []) {
     const person = people.get(d.page_id)
     if (!person) continue
     addDonation(person.total, d)

@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { createClient, getSignedInUser } from '@/lib/supabase/server'
-import { statusNote } from '@/lib/invoices'
+import { statusNote, dayStart, dayEnd } from '@/lib/invoices'
+import { fetchAll } from '@/lib/supabase/fetchAll'
+import { readPaymentSettings } from '@/lib/paymentSettings'
 import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
 import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
@@ -24,15 +26,20 @@ export default async function AdminPage({ searchParams }) {
 
   // All reads run at once instead of one after another; the role check still
   // happens before anything is rendered.
-  const [{ data: profile }, { data: pages }, { data: donations }, { data: settings }, { data: withdrawals }] = await Promise.all([
+  const [{ data: profile }, { data: pages }, { data: donations }, paymentSettings, { data: withdrawals }] = await Promise.all([
     supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
     supabase.from('pages').select('id, slug, title, label').order('created_at', { ascending: true }),
-    supabase
-      .from('donations')
-      .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
-      .order('created_at', { ascending: false }),
-    supabase.from('settings').select('payment_settings').eq('id', 'global').single(),
-    supabase.from('withdrawals').select('id, page_id, amount, note, created_at').order('created_at', { ascending: false }),
+    fetchAll(() =>
+      supabase
+        .from('donations')
+        .select('invoice_number, donor_name, is_anonymous, amount, currency, gateway, gateway_reference, status, failure_reason, failure_code, checkout_step, paypal_account_id, page_id, donor_country, created_at')
+        .order('created_at', { ascending: false })
+        .order('id')
+    ),
+    readPaymentSettings(),
+    fetchAll(() =>
+      supabase.from('withdrawals').select('id, page_id, amount, note, created_at').order('created_at', { ascending: false }).order('id')
+    ),
   ])
 
   if (profile?.role !== 'admin') redirect('/dashboard')
@@ -68,8 +75,8 @@ export default async function AdminPage({ searchParams }) {
 
   const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
 
-  const fromDate = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null
-  const toDate = toFilter ? new Date(`${toFilter}T23:59:59`) : null
+  const fromDate = dayStart(fromFilter)
+  const toDate = dayEnd(toFilter)
   const searchNeedle = searchQuery ? searchQuery.trim().toLowerCase() : ''
 
   const filteredDonations = (donations || []).filter((d) => {
@@ -98,7 +105,7 @@ export default async function AdminPage({ searchParams }) {
   // Completed money per saved PayPal account (PayPal, card, Apple Pay and Google
   // Pay all go through one). Donations from before accounts were recorded have
   // no paypal_account_id and are totalled separately.
-  const paypalSettings = settings?.payment_settings?.paypal
+  const paypalSettings = paymentSettings.paypal
   const activePaypalId = getActivePaypalAccountId(paypalSettings)
   const paypalCompleted = filteredDonations.filter((d) => d.status === 'completed' && d.gateway !== 'bank')
   const byPaypalAccount = getPaypalAccounts(paypalSettings).map((a) => ({
