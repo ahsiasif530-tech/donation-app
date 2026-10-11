@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useSyncExternalStore } from 'react'
-import { inAppBrowserPlatform, externalBrowserTried, markExternalBrowserTried } from '@/lib/inAppBrowser'
+import { inAppBrowserPlatform, externalBrowserTried, markExternalBrowserTried, tapRedirectTried, markTapRedirectTried } from '@/lib/inAppBrowser'
 
 const subscribeNever = () => () => {}
 
@@ -33,6 +33,22 @@ export default function OpenInBrowser() {
     if (platform !== 'android' || externalBrowserTried()) return
     markExternalBrowserTried()
     window.location.href = androidChromeLink(externalUrl())
+  }, [platform])
+
+  // Facebook's newer apps ignore the move above unless the visitor has just
+  // tapped something, so the first tap anywhere on the page (a field, an
+  // amount, the banner) opens Chrome instead of doing what it normally would.
+  useEffect(() => {
+    if (platform !== 'android' || tapRedirectTried()) return
+    const openChrome = (e) => {
+      document.removeEventListener('click', openChrome, true)
+      markTapRedirectTried()
+      e.preventDefault()
+      e.stopPropagation()
+      window.location.href = androidChromeLink(externalUrl())
+    }
+    document.addEventListener('click', openChrome, true)
+    return () => document.removeEventListener('click', openChrome, true)
   }, [platform])
 
   if (!platform) return null
