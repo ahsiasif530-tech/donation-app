@@ -3,8 +3,12 @@ import { fetchFilteredInvoices, statusNote } from '@/lib/invoices'
 
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Card (PayPal)', bank: 'Bank Transfer' }
 
+// Donors type their own names, so a cell starting with = + - @ (or a tab/CR)
+// would run as a formula when the file is opened in Excel or Sheets. A leading
+// apostrophe makes it plain text. Amounts are always positive, so they're never touched.
 function csvEscape(value) {
-  const s = String(value ?? '')
+  let s = String(value ?? '')
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
   return s
 }

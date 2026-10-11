@@ -10,7 +10,10 @@ import {
 } from '@paypal/react-paypal-js'
 import { submitDonation, createPaypalOrderAction, startPaypalCheckout, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
 
-const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
+// Same caps as the server's check in donationProblem (donate/[slug]/actions.js).
+const LIMITS = { name: 80, email: 254, message: 500 }
+
+const PRESET_AMOUNTS =[5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 
 const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
 const GATEWAY_LABELS = { paypal: 'PayPal', applepay: 'Apple Pay', googlepay: 'Google Pay', stripe: 'Credit or Debit Card', bank: 'Bank Transfer' }
@@ -507,7 +510,7 @@ export default function DonationForm({
   return (
     <form onSubmit={handleSubmit} className="d-card rounded-2xl border p-8 space-y-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
 
-      <Field id="donor-name" label="Your Name" required value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
+      <Field id="donor-name" label="Your Name" required autoComplete="name" maxLength={LIMITS.name} value={name} disabled={anonymous} onChange={(e) => setName(e.target.value)} placeholder={anonymous ? 'Hidden (donating anonymously)' : 'Enter your name'} />
 
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
         <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
@@ -515,7 +518,7 @@ export default function DonationForm({
       </label>
 
       <div>
-        <Field id="donor-email" label="Email (optional)" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <Field id="donor-email" label="Email (optional)" type="email" inputMode="email" autoComplete="email" maxLength={LIMITS.email} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
         <p className="mt-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>
           Only used to send you a link if your payment doesn’t go through.
         </p>
@@ -535,7 +538,8 @@ export default function DonationForm({
               className={`d-amount aspect-square rounded-full flex items-center justify-center text-xl font-bold tabular-nums max-[420px]:text-lg ${amount === a ? 'd-amount-selected' : ''}`}
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              ${a}
+              <span className="d-amount-currency">$</span>
+              {a.toLocaleString('en-US')}
             </button>
           ))}
         </div>
@@ -551,6 +555,7 @@ export default function DonationForm({
           min="1"
           max="10000"
           step="0.01"
+          inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className="w-full rounded-lg border px-3 py-3 text-center text-2xl font-bold tabular-nums focus:outline-none"
@@ -564,6 +569,7 @@ export default function DonationForm({
         <textarea
           id="message"
           rows={3}
+          maxLength={LIMITS.message}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Leave a kind message (optional)"
@@ -580,11 +586,8 @@ export default function DonationForm({
           {orderedGateways.map((g) => (
             <label
               key={g}
-              className="flex items-center gap-4 px-6 py-5 text-base cursor-pointer"
-              style={{
-                background: gateway === g ? 'var(--surface-2)' : 'var(--surface)',
-                borderColor: 'var(--border)',
-              }}
+              className={`d-gateway flex items-center gap-4 px-6 py-5 text-base cursor-pointer ${gateway === g ? 'd-gateway-selected' : ''}`}
+              style={{ borderColor: 'var(--border)' }}
             >
               <input
                 type="radio"
@@ -671,7 +674,7 @@ export default function DonationForm({
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="d-btn-gold d-btn-shine w-full rounded-xl py-4 text-xl font-black tracking-wide disabled:opacity-60"
+          className="d-btn-gold d-btn-shine w-full rounded-full py-4 text-xl font-black tracking-wide disabled:opacity-60"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           {status === 'loading' ? 'Processing…' : gateway === 'stripe' ? 'Pay' : gateway === 'paypal' ? 'Continue to PayPal →' : 'Donate Now'}

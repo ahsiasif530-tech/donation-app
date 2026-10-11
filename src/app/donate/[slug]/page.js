@@ -88,7 +88,7 @@ export default async function DonatePage({ params }) {
             style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
           >
             {page.hero_image_url && (
-              <Image src={page.hero_image_url} alt="" fill sizes="112px" quality={95} className="object-cover" />
+              <Image src={page.hero_image_url} alt="" fill sizes="112px" quality={95} loading="eager" fetchPriority="high" className="object-cover" />
             )}
           </div>
         </div>

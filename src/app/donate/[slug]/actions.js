@@ -78,13 +78,16 @@ async function siteOrigin() {
   return host ? `${protocol}://${host}` : null
 }
 
-const RESUME_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
+// Invoice numbers look like INV-1A2B3C4D (see invoice_number in supabase/schema.sql).
+const isInvoiceNumber = (value) => typeof value === 'string' && /^INV-[A-Z0-9]{8}$/.test(value)
+
+const RESUME_MAX_AGE_MS =3 * 24 * 60 * 60 * 1000
 
 // Lets a donor who left without paying pick up the same invoice again, from
 // the link in their reminder email or from this browser's memory of it. Only
 // unfinished online payments from the last few days can be resumed.
 export async function getResumableDonation({ slug, invoiceNumber }) {
-  if (typeof invoiceNumber !== 'string' || !/^INV-[A-Z0-9]{8}$/.test(invoiceNumber)) return null
+  if (!isInvoiceNumber(invoiceNumber)) return null
 
   const supabase = createAdminClient()
   const { data } = await supabase
@@ -108,7 +111,19 @@ export async function getResumableDonation({ slug, invoiceNumber }) {
   }
 }
 
-function donationProblem({ donorName, donorEmail, isAnonymous, amount }) {
+// Longest text each donor field may hold. The name and message show publicly
+// on the donor wall, so these also stop one donor from flooding the page.
+const FIELD_LIMITS = { donorName: 80, donorEmail: 254, message: 500, donorAddress: 300, donorPhone: 40, donorCountry: 60 }
+
+function donationProblem(fields) {
+  const { donorName, donorEmail, isAnonymous, amount } = fields
+  for (const [field, limit] of Object.entries(FIELD_LIMITS)) {
+    const value = fields[field]
+    if (value != null && (typeof value !== 'string' || value.length > limit)) {
+      return 'One of the details is too long. Please shorten it and try again.'
+    }
+  }
+  if (typeof isAnonymous !== 'boolean') return 'Something went wrong. Please try again.'
   const numericAmount = Number(amount)
   if (!numericAmount || numericAmount < 1 || numericAmount > 10000) {
     return 'Amount must be between $1 and $10,000.'
@@ -202,6 +217,7 @@ export async function submitDonation(fields) {
 // (rather than whichever is active now) keeps a page that was opened before the
 // admin switched accounts working.
 export async function createPaypalOrderAction({ invoiceNumber, clientId }) {
+  if (!isInvoiceNumber(invoiceNumber)) return { error: 'Could not start PayPal checkout. Please try again.' }
   const supabase = createAdminClient()
   const [paypal, { data: donation }] = await Promise.all([
     getPaypalSettings(supabase),
@@ -276,6 +292,9 @@ async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber
 // canRestart: true when the caller is a PayPal button that can reopen its
 // checkout (actions.restart); card fields can't, so they get an error instead.
 export async function capturePaypalOrderAction({ orderId, invoiceNumber, canRestart = false }) {
+  if (!isInvoiceNumber(invoiceNumber) || typeof orderId !== 'string') {
+    return { error: 'Payment could not be confirmed. Please contact support.' }
+  }
   const supabase = createAdminClient()
   const paypal = await getPaypalSettings(supabase)
 
@@ -374,7 +393,7 @@ export async function markDonationFailed({ invoiceNumber, reason }) {
 // the same invoice can fail again for a different reason), so a completed
 // invoice or a bank transfer awaiting confirmation can never be flipped to failed.
 async function setDonationFailed(invoiceNumber, failureReason, failureCode) {
-  if (!invoiceNumber) return
+  if (!isInvoiceNumber(invoiceNumber)) return
   const supabase = createAdminClient()
   await supabase
     .from('donations')
