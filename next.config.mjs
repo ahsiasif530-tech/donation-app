@@ -18,6 +18,8 @@ const securityHeaders = [
   // checkout popup can still talk back to the page that opened it.
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  // No Flash/PDF plug-in may load cross-site policy files from this site.
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   // Payment stays allowed: Apple Pay / Google Pay run inside PayPal's frames.
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), usb=(), interest-cohort=()' },
 ]
@@ -34,10 +36,17 @@ const nextConfig = {
   poweredByHeader: false,
   images: {
     qualities: [75, 95],
+    // AVIF first (smallest), WebP for browsers without it.
+    formats: ['image/avif', 'image/webp'],
+    // Resized pictures are kept a week instead of being remade on every
+    // visit. A replaced picture gets a new file name, so this never shows a
+    // stale one.
+    minimumCacheTTL: 604800,
   },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      { source: '/images/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' }] },
       ...['/admin/:path*', '/dashboard/:path*', '/login'].map((source) => ({ source, headers: privateHeaders })),
     ]
   },

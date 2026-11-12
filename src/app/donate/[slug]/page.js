@@ -126,7 +126,7 @@ export default async function DonatePage({ params }) {
                 alt=""
                 fill
                 sizes="(max-width: 640px) 100vw, 600px"
-                quality={90}
+                quality={75}
                 loading="eager"
                 fetchPriority="high"
                 className="object-cover"
