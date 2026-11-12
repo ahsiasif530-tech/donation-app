@@ -203,7 +203,7 @@ export default function TeamProgress({ people, charts }) {
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold truncate">
                         {p.name}
-                        <span className="ml-1.5 text-[11px] font-normal" style={{ color: 'var(--a-text-muted)' }}>{stats.count} don.</span>
+                        <span className="ml-1.5 text-[11px] font-normal" style={{ color: 'var(--a-text-muted)' }}>{stats.count} {stats.count === 1 ? "gift" : "gifts"}</span>
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {current.compare && <Growth now={stats.total} before={stats.prev} />}

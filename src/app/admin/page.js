@@ -284,7 +284,7 @@ export default async function AdminPage({ searchParams }) {
     <thead className="text-xs uppercase" style={theadStyle}>
       <tr>
         <th className="text-left px-6 py-3 font-semibold">Page</th>
-        <th className="text-right px-6 py-3 font-semibold">Donations</th>
+        <th className="text-right px-6 py-3 font-semibold">Gifts</th>
         <th className="text-right px-6 py-3 font-semibold">Earning</th>
         <th className="text-right px-6 py-3 font-semibold"></th>
       </tr>
@@ -377,7 +377,7 @@ export default async function AdminPage({ searchParams }) {
           <div>
             <h1 className="text-3xl font-semibold">Welcome back, {firstName(profile.full_name)}</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--a-text-muted)' }}>
-              {mainPages.length + separatePages.length} pages · {completed.length} completed donations
+              {mainPages.length + separatePages.length} pages · {completed.length} gifts received
             </p>
           </div>
           <a
@@ -398,9 +398,9 @@ export default async function AdminPage({ searchParams }) {
             </p>
           </div>
           {/* Every completed donation ever; withdrawals never reduce it. */}
-          <StatCard icon="chart" label="Lifetime" value={totalEarning} note={`${completed.length} donations`} />
-          <StatCard icon="clock" label="Last 24 hours" value={recent.day.total} note={`${recent.day.count} ${recent.day.count === 1 ? 'donation' : 'donations'}`} />
-          <StatCard icon="calendar" label="Last 7 days" value={recent.week.total} note={`${recent.week.count} ${recent.week.count === 1 ? 'donation' : 'donations'}`} />
+          <StatCard icon="chart" label="Lifetime" value={totalEarning} note={`${completed.length} gifts`} />
+          <StatCard icon="clock" label="Last 24 hours" value={recent.day.total} note={`${recent.day.count} ${recent.day.count === 1 ? 'gift' : 'gifts'}`} />
+          <StatCard icon="calendar" label="Last 7 days" value={recent.week.total} note={`${recent.week.count} ${recent.week.count === 1 ? 'gift' : 'gifts'}`} />
         </div>
 
         <div id="team-progress" className="scroll-mt-24">
@@ -439,7 +439,7 @@ export default async function AdminPage({ searchParams }) {
                       key={a.id}
                       className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm"
                       style={{ background: 'var(--a-surface-2)', border: `1px solid ${a.active ? 'rgba(52,211,153,0.45)' : 'var(--a-border)'}` }}
-                      title={a.active ? 'Currently receiving donations' : undefined}
+                      title={a.active ? 'Currently receiving gifts' : undefined}
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.active ? 'var(--a-success)' : 'var(--a-border)' }} />
@@ -453,7 +453,7 @@ export default async function AdminPage({ searchParams }) {
                     <div
                       className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm"
                       style={{ background: 'var(--a-surface-2)', border: '1px dashed var(--a-border)' }}
-                      title="Paid before the app started recording which PayPal account received each donation"
+                      title="Paid before the app started recording which PayPal account received each gift"
                     >
                       <span style={{ color: 'var(--a-text-muted)' }}>Account not recorded</span>
                       <span className="font-bold tabular-nums">${unrecordedEarning.toFixed(2)}</span>

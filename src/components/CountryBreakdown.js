@@ -48,7 +48,7 @@ export default function CountryBreakdown({ byCountry, totalEarning }) {
         )}
       </div>
       {!top ? (
-        <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono completed donation nei.</p>
+        <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Ekhono kono gift ashe nai.</p>
       ) : (
         <div className="p-2.5 space-y-1.5">
           <div
