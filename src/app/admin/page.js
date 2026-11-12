@@ -16,6 +16,11 @@ import CountryBreakdown from '@/components/CountryBreakdown'
 import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
+import PageGroups from '@/components/PageGroups'
+
+const PAGES_PER_GROUP = 4
+// Pages shown in their own box under the Pages table.
+const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
@@ -167,6 +172,59 @@ export default async function AdminPage({ searchParams }) {
 
   const theadStyle = { background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }
 
+  // The Pages table shows PAGES_PER_GROUP at a time (see PageGroups); the
+  // México page sits in its own box below it.
+  const separatePages = byPage.filter((p) => SEPARATE_PAGE_SLUGS.includes(p.slug))
+  const mainPages = byPage.filter((p) => !SEPARATE_PAGE_SLUGS.includes(p.slug))
+  const pageGroups = []
+  for (let i = 0; i < mainPages.length; i += PAGES_PER_GROUP) pageGroups.push(mainPages.slice(i, i + PAGES_PER_GROUP))
+
+  const pagesHead = (
+    <thead className="text-xs uppercase" style={theadStyle}>
+      <tr>
+        <th className="text-left px-6 py-3 font-semibold">Page</th>
+        <th className="text-right px-6 py-3 font-semibold">Donations</th>
+        <th className="text-right px-6 py-3 font-semibold">Earning</th>
+        <th className="text-right px-6 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+  )
+
+  const pageRow = (p) => (
+    <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
+      <td className="px-6 py-4">
+        <p className="text-base font-semibold">{p.label || p.title}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>{HOST_BY_PAGE[p.slug] || `/donate/${p.slug}`}</p>
+      </td>
+      <td className="px-6 py-4 text-right tabular-nums text-base">{p.count}</td>
+      <td className="px-6 py-4 text-right tabular-nums font-semibold text-base">
+        ${p.earning.toFixed(2)}
+        {p.withdrawn > 0 && (
+          <p className="text-[11px] font-normal" style={{ color: 'var(--a-danger)' }}>−${p.withdrawn.toFixed(2)} withdrawn</p>
+        )}
+      </td>
+      <td className="px-6 py-4 text-right whitespace-nowrap">
+        <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
+        <Link
+          href={`/admin/pages/${p.id}`}
+          className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
+          style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
+        >
+          Invoices
+        </Link>
+        <a
+          href={pageUrl(p.slug)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"
+          style={{ background: 'var(--a-accent)', color: 'var(--a-accent-ink)' }}
+        >
+          Open
+        </a>
+      </td>
+    </tr>
+  )
+
   function exportQuery(gateway) {
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
@@ -272,60 +330,29 @@ export default async function AdminPage({ searchParams }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          <div className="a-card overflow-hidden lg:col-span-2">
+          <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="a-card overflow-hidden">
             <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
               <h2 className="font-bold">Pages</h2>
             </div>
-            {(!pages || pages.length === 0) ? (
+            {mainPages.length === 0 ? (
               <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Kono page ekhono banano hoyni.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase" style={theadStyle}>
-                  <tr>
-                    <th className="text-left px-6 py-3 font-semibold">Page</th>
-                    <th className="text-right px-6 py-3 font-semibold">Donations</th>
-                    <th className="text-right px-6 py-3 font-semibold">Earning</th>
-                    <th className="text-right px-6 py-3 font-semibold"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byPage.map((p) => (
-                    <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
-                      <td className="px-6 py-4">
-                        <p className="text-base font-semibold">{p.label || p.title}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>{HOST_BY_PAGE[p.slug] || `/donate/${p.slug}`}</p>
-                      </td>
-                      <td className="px-6 py-4 text-right tabular-nums text-base">{p.count}</td>
-                      <td className="px-6 py-4 text-right tabular-nums font-semibold text-base">
-                        ${p.earning.toFixed(2)}
-                        {p.withdrawn > 0 && (
-                          <p className="text-[11px] font-normal" style={{ color: 'var(--a-danger)' }}>−${p.withdrawn.toFixed(2)} withdrawn</p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <WithdrawButton pageId={p.id} pageName={p.label || p.title} available={p.earning} />
-                        <Link
-                          href={`/admin/pages/${p.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border text-xs font-bold px-3.5 py-2 mr-2 hover:opacity-80"
-                          style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
-                        >
-                          Invoices
-                        </Link>
-                        <a
-                          href={pageUrl(p.slug)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"
-                          style={{ background: 'var(--a-accent)', color: 'var(--a-accent-ink)' }}
-                        >
-                          Open
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <PageGroups head={pagesHead} groups={pageGroups.map((group) => group.map(pageRow))} />
             )}
+          </div>
+
+          {separatePages.length > 0 && (
+            <div className="a-card overflow-hidden">
+              <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
+                <h2 className="font-bold">México</h2>
+              </div>
+              <table className="w-full text-sm">
+                {pagesHead}
+                <tbody>{separatePages.map(pageRow)}</tbody>
+              </table>
+            </div>
+          )}
           </div>
 
           <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
