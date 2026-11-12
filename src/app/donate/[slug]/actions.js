@@ -9,6 +9,7 @@ import { createPaypalOrder, capturePaypalOrder, getPaypalOrder } from '@/lib/pay
 import { getPaypalAccounts, getActivePaypalAccount, findPaypalAccount, getBrandName } from '@/lib/paypalAccounts'
 import { toCredentials, donorInfoFromCapture } from '@/lib/paypalDonations'
 import { getMessages } from '@/lib/i18n'
+import { PAGES_WITH_OWN_DOMAIN } from '@/lib/pageDomains'
 
 // Messages for the donor, in their donation page's language.
 const errorsFor = (locale) => getMessages(locale).errors
@@ -227,10 +228,10 @@ export async function createPaypalOrderAction({ invoiceNumber, clientId, locale 
   const supabase = createAdminClient()
   const [paypal, { data: donation }] = await Promise.all([
     getPaypalSettings(supabase),
-    supabase.from('donations').select('amount').eq('invoice_number', invoiceNumber).in('status', ['pending', 'failed']).single(),
+    supabase.from('donations').select('amount, pages(slug, title)').eq('invoice_number', invoiceNumber).in('status', ['pending', 'failed']).single(),
   ])
   if (!donation) return { error: errorsFor(locale).paypalStart }
-  return createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount: donation.amount, locale })
+  return createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount: donation.amount, locale, page: donation.pages })
 }
 
 // One round trip for the PayPal buttons and card fields: creates the invoice
@@ -244,7 +245,7 @@ export async function startPaypalCheckout({ invoiceNumber, clientId, details }) 
   const supabase = createAdminClient()
 
   const [{ data: page }, paypal, requestHeaders] = await Promise.all([
-    supabase.from('pages').select('id').eq('slug', details.slug).single(),
+    supabase.from('pages').select('id, slug, title').eq('slug', details.slug).single(),
     getPaypalSettings(supabase),
     headers(),
   ])
@@ -253,12 +254,19 @@ export async function startPaypalCheckout({ invoiceNumber, clientId, details }) 
   const { data, error } = await insertDonation(supabase, page.id, requestHeaders, details)
   if (error) return { error: errorsFor(details.locale).generic }
 
-  const result = await createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber: data.invoice_number, amount: data.amount, locale: details.locale })
+  const result = await createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber: data.invoice_number, amount: data.amount, locale: details.locale, page })
   // The invoice exists either way, so a retry continues it instead of making another.
   return { ...result, invoiceNumber: data.invoice_number }
 }
 
-async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount, locale }) {
+// The name at the top of PayPal's checkout: a page with its own address shows
+// its own title there, every other page the site's PayPal brand name.
+function brandNameFor(paypal, page) {
+  if (page?.title && PAGES_WITH_OWN_DOMAIN.has(page.slug)) return page.title.slice(0, 127)
+  return getBrandName(paypal)
+}
+
+async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber, amount, locale, page }) {
   const errors = errorsFor(locale)
   const account =
     getPaypalAccounts(paypal).find((a) => clientId && a.client_id === clientId) || getActivePaypalAccount(paypal)
@@ -272,7 +280,7 @@ async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber
       mode: credentials.mode,
       amount,
       invoiceNumber,
-      brandName: getBrandName(paypal),
+      brandName: brandNameFor(paypal, page),
     })
 
     // checkout_step lets the admin tell "never opened PayPal" apart from "opened
