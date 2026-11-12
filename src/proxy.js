@@ -1,39 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
-import { PAGE_BY_HOST, HOST_BY_PAGE, MAIN_SITE } from '@/lib/pageDomains'
 
-const PROTECTED_PREFIXES = ['/admin', '/dashboard']
-
+// Pages with their own address are routed in next.config.mjs (at the edge,
+// with no server round trip); this proxy only guards admin and dashboard.
 export async function proxy(request) {
-  const path = request.nextUrl.pathname
-  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p))
-
-  // A page's own address shows only that page: its root shows the page, its
-  // own /donate path still works, another page's link (a reminder email can
-  // carry one) goes to the main site, and anything else (login, admin) goes
-  // back to the root. The query (?resume=...) is kept on every move.
-  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
-  const search = request.nextUrl.search
-  const ownSlug = PAGE_BY_HOST[host]
-  if (ownSlug) {
-    if (path === '/') {
-      const url = request.nextUrl.clone()
-      url.pathname = `/donate/${ownSlug}`
-      return NextResponse.rewrite(url)
-    }
-    if (path === `/donate/${ownSlug}`) return NextResponse.next()
-    if (path.startsWith('/donate/')) return NextResponse.redirect(`${MAIN_SITE}${path}${search}`)
-    return NextResponse.redirect(new URL('/', request.url))
-  }
-
-  // On any other host, a page that has its own address moves there.
-  const slug = path.startsWith('/donate/') ? path.slice('/donate/'.length) : null
-  if (slug && HOST_BY_PAGE[slug]) return NextResponse.redirect(`https://${HOST_BY_PAGE[slug]}/${search}`)
-
-  // Only admin and dashboard need the session; other matched paths are here
-  // just for the host check above.
-  if (!isProtected) return NextResponse.next()
-
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -62,7 +32,7 @@ export async function proxy(request) {
 
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', path)
+    loginUrl.searchParams.set('next', request.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -70,5 +40,5 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/admin/:path*', '/dashboard/:path*', '/donate/:path*'],
+  matcher: ['/admin/:path*', '/dashboard/:path*'],
 }
