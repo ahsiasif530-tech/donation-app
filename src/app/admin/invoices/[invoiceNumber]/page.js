@@ -83,7 +83,7 @@ export default async function InvoiceDetailPage({ params }) {
                   <span aria-hidden="true">{statusIcon}</span>
                   {donation.status}
                 </span>
-                <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: '#98A1B3' }}>Gift received</p>
+                <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: '#98A1B3' }}>Donation received</p>
                 <p className="mt-1 text-4xl font-extrabold tabular-nums" style={{ color: '#F2D776' }}>
                   <span className="text-xl align-top mr-1" style={{ color: '#C9A227' }}>{donation.currency}</span>
                   {amount}
@@ -103,7 +103,7 @@ export default async function InvoiceDetailPage({ params }) {
                 icon="user"
                 label={
                   <>
-                    Gift from{' '}
+                    Donor{' '}
                     {donation.is_anonymous && <span className="normal-case tracking-normal font-medium text-slate-400">· hidden from public</span>}
                   </>
                 }
@@ -161,7 +161,7 @@ export default async function InvoiceDetailPage({ params }) {
 
             {donation.message && (
               <blockquote className="rounded-2xl px-5 py-4 text-slate-700" style={{ background: '#FBF7EA', borderLeft: '4px solid #C9A227' }}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: '#A8790A' }}>Message</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: '#A8790A' }}>Donor message</p>
                 <p className="italic">&ldquo;{donation.message}&rdquo;</p>
               </blockquote>
             )}
@@ -178,7 +178,7 @@ export default async function InvoiceDetailPage({ params }) {
                 <tbody>
                   <tr className="border-t border-slate-100">
                     <td className="px-5 py-3.5">
-                      <p className="font-semibold">Gift</p>
+                      <p className="font-semibold">Donation</p>
                       <p className="text-xs text-slate-500">{pageName || page?.label || page?.title || 'Donation page'}</p>
                     </td>
                     <td className="px-5 py-3.5 text-right tabular-nums font-semibold">
