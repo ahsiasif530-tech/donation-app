@@ -15,6 +15,7 @@ import InvoiceSections from '@/components/InvoiceSections'
 import CountryBreakdown from '@/components/CountryBreakdown'
 import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
+import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
 
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
@@ -292,7 +293,7 @@ export default async function AdminPage({ searchParams }) {
                     <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
                       <td className="px-6 py-4">
                         <p className="text-base font-semibold">{p.label || p.title}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>/donate/{p.slug}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>{HOST_BY_PAGE[p.slug] || `/donate/${p.slug}`}</p>
                       </td>
                       <td className="px-6 py-4 text-right tabular-nums text-base">{p.count}</td>
                       <td className="px-6 py-4 text-right tabular-nums font-semibold text-base">
@@ -311,7 +312,7 @@ export default async function AdminPage({ searchParams }) {
                           Invoices
                         </Link>
                         <a
-                          href={`/donate/${p.slug}`}
+                          href={pageUrl(p.slug)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"

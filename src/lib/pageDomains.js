@@ -8,4 +8,15 @@ export const PAGE_BY_HOST = {
   'midnightlight.vercel.app': 'midnight-light',
 }
 
+// The main site, where every other page lives.
+export const MAIN_SITE = 'https://www.blesshandss.com'
+
+export const HOST_BY_PAGE = Object.fromEntries(Object.entries(PAGE_BY_HOST).map(([host, slug]) => [slug, host]))
+
 export const PAGES_WITH_OWN_DOMAIN = new Set(Object.values(PAGE_BY_HOST))
+
+// The address donors use for a page: its own address when it has one.
+export function pageUrl(slug) {
+  const host = HOST_BY_PAGE[slug]
+  return host ? `https://${host}/` : `/donate/${slug}`
+}
