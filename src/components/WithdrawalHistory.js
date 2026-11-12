@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import DateRangePicker from './DateRangePicker'
 
-const PAGE_SIZE = 5
+
 
 function csvEscape(value) {
   const s = String(value ?? '')
@@ -23,7 +23,8 @@ function localDay(date) {
 // ([{ id, name, person, page }]) then adds one tab per person, and a page
 // picker when that person has more than one page.
 export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageName, fileName, pages = [] }) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  // One day of withdrawals at a time, newest day first.
+  const [dayIndex, setDayIndex] = useState(0)
   const [selectedPerson, setSelectedPerson] = useState('all')
   const [selectedPageId, setSelectedPageId] = useState('all')
   const [range, setRange] = useState({ from: '', to: '' })
@@ -44,7 +45,14 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
   const filtered = selectedPerson !== 'all' || range.from
   const exportName = selectedPage ? selectedPage.name : selectedPerson !== 'all' ? selectedPerson : null
   const total = withdrawals.reduce((sum, w) => sum + Number(w.amount), 0)
-  const hasMore = visibleCount < withdrawals.length
+  const days = []
+  for (const w of withdrawals) {
+    const key = localDay(new Date(w.created_at))
+    if (days.at(-1)?.key !== key) days.push({ key, at: new Date(w.created_at), rows: [] })
+    days.at(-1).rows.push(w)
+  }
+  const day = days[Math.min(dayIndex, days.length - 1)]
+  const dayTotal = day ? day.rows.reduce((sum, w) => sum + Number(w.amount), 0) : 0
 
   function downloadExcel() {
     const headers = ['Date', 'Time', 'Page', 'Amount (USD)', 'Note']
@@ -89,7 +97,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
           to={range.to}
           onChange={(next) => {
             setRange(next)
-            setVisibleCount(PAGE_SIZE)
+            setDayIndex(0)
           }}
         />
         {people.length > 0 &&
@@ -102,7 +110,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
                 onClick={() => {
                   setSelectedPerson(person)
                   setSelectedPageId('all')
-                  setVisibleCount(PAGE_SIZE)
+                  setDayIndex(0)
                 }}
                 className="rounded-full border px-3 py-1 text-xs font-bold hover:opacity-80"
                 style={
@@ -120,7 +128,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
             value={selectedPageId}
             onChange={(e) => {
               setSelectedPageId(e.target.value)
-              setVisibleCount(PAGE_SIZE)
+              setDayIndex(0)
             }}
             aria-label={`${selectedPerson}'s pages`}
             className="rounded-lg border px-2.5 py-1 text-xs font-bold"
@@ -140,17 +148,27 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
         </p>
       ) : (
         <div>
+          <div className="flex items-center justify-between gap-3 px-5 py-2.5 border-b" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
+            <div className="min-w-0">
+              <p className="text-sm font-bold" suppressHydrationWarning>
+                {day.at.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
+                {day.rows.length} {day.rows.length === 1 ? 'withdrawal' : 'withdrawals'}
+              </p>
+            </div>
+            <p className="text-sm font-bold tabular-nums shrink-0" style={{ color: 'var(--a-danger)' }}>−${dayTotal.toFixed(2)}</p>
+          </div>
+
           <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-            {withdrawals.slice(0, visibleCount).map((w) => {
+            {day.rows.map((w) => {
               const at = new Date(w.created_at)
               return (
                 <div key={w.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                   <div className="min-w-0">
-                    <p className="font-semibold" suppressHydrationWarning>
-                      {at.toLocaleDateString()} · {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </p>
-                    <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }}>
-                      {[w.page_name, w.note].filter(Boolean).join(' · ') || '—'}
+                    <p className="font-semibold truncate">{w.page_name || pageName || '—'}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }} suppressHydrationWarning>
+                      {[at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), w.note].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <p className="font-bold tabular-nums shrink-0" style={{ color: 'var(--a-danger)' }}>−${Number(w.amount).toFixed(2)}</p>
@@ -159,15 +177,28 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
             })}
           </div>
 
-          {hasMore && (
-            <div className="flex justify-center border-t px-5 py-3" style={{ borderColor: 'var(--a-border)' }}>
+          {days.length > 1 && (
+            <div className="flex items-center justify-between gap-2 border-t px-5 py-3" style={{ borderColor: 'var(--a-border)' }}>
               <button
                 type="button"
-                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-                className="rounded-lg border px-4 py-1.5 text-xs font-bold hover:opacity-80"
+                disabled={dayIndex === 0}
+                onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
+                className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:opacity-80 disabled:opacity-30"
                 style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)', color: 'var(--a-text)' }}
               >
-                Load more ({withdrawals.length - visibleCount} more)
+                ‹ Newer
+              </button>
+              <span className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
+                Day {Math.min(dayIndex, days.length - 1) + 1} of {days.length}
+              </span>
+              <button
+                type="button"
+                disabled={dayIndex >= days.length - 1}
+                onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))}
+                className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:opacity-80 disabled:opacity-30"
+                style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)', color: 'var(--a-text)' }}
+              >
+                Older ›
               </button>
             </div>
           )}
