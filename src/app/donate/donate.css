@@ -983,13 +983,326 @@
 .theme-violet .d-btn-gold { border-radius: 6px; letter-spacing: 0.05em; }
 .theme-violet .d-btn-shine { text-shadow: none; }
 
+/* ==== Sunrise (Sunrise Wings): peach and warm orange. Round portrait
+   inside a ring of sun rays, tab-shaped amount tiles with an orange
+   underline, cards with a warm gradient header line. */
+.theme-sunrise {
+  --bg: #FFF4EA;
+  --surface: #FFFFFF;
+  --surface-2: #FFEBDA;
+  --ink: #2B1608;
+  --ink-muted: #6B4428;
+  --border: #F8D3B4;
+  --heading: #9A3F0E;
+  --gold: #E06A1B;
+  --gold-bright: #FF9A3C;
+  --gold-soft: rgba(255, 154, 60, 0.18);
+  --gold-gradient: linear-gradient(135deg, #FFB547, #E8571C);
+  --success-bg: #FCEBD9;
+  --success-text: #8A4513;
+  background:
+    radial-gradient(circle at 50% -5%, rgba(255,181,71,0.45), transparent 45%),
+    linear-gradient(180deg, #FFE6CF 0%, var(--bg) 40%);
+  color: var(--ink);
+}
+.theme-sunrise .d-card {
+  border-radius: 18px;
+  box-shadow: inset 0 5px 0 #FFB547, 0 16px 36px -22px rgba(154, 63, 14, 0.45);
+}
+.theme-sunrise .halo { width: 130px; height: 130px; }
+.theme-sunrise .halo::before {
+  inset: -26px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255,154,60,0.55) 0 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, transparent 54%, #000 55%);
+  mask: radial-gradient(circle, transparent 54%, #000 55%);
+  animation: sunrise-spin 40s linear infinite;
+}
+@keyframes sunrise-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .theme-sunrise .halo::before { animation: none; } }
+.theme-sunrise .halo > div {
+  border-radius: 50%;
+  border: 4px solid #FFB547;
+}
+.theme-sunrise .grid:has(> .d-amount) { gap: 10px; }
+.theme-sunrise .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 14px 14px 0 0;
+  border: 1.5px solid var(--border);
+  border-bottom: 3px solid var(--gold-bright);
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-sunrise .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-sunrise .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-sunrise .d-amount-selected,
+.theme-sunrise .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  border-bottom-color: #9A3F0E;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-sunrise .d-amount-selected::before { display: none; }
+.theme-sunrise .d-gateway-selected,
+.theme-sunrise .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 -3px 0 var(--gold-bright);
+}
+.theme-sunrise .d-btn-gold { border-radius: 14px 14px 4px 4px; }
+.theme-sunrise .d-btn-shine { text-shadow: none; }
+
+/* ==== Scroll (Holy Scroll): old parchment with royal-blue ink. Stamp-
+   framed portrait, dashed ink borders, serif-feel boxed tiles, an ink
+   button with a dashed inner line. */
+.theme-scroll {
+  --bg: #F4ECD8;
+  --surface: #FBF6E9;
+  --surface-2: #F1E7CF;
+  --ink: #1B2340;
+  --ink-muted: #4A5274;
+  --border: #D8C9A3;
+  --heading: #1F3A8A;
+  --gold: #1F3A8A;
+  --gold-bright: #3D63D1;
+  --gold-soft: rgba(61, 99, 209, 0.12);
+  --gold-gradient: linear-gradient(135deg, #3051B5, #172B6B);
+  --success-bg: #E9E3CC;
+  --success-text: #2F4A2A;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,250,235,0.9), transparent 60%),
+    radial-gradient(circle at 10% 90%, rgba(170,140,80,0.12), transparent 40%),
+    radial-gradient(circle at 90% 60%, rgba(170,140,80,0.10), transparent 40%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-scroll h1 { letter-spacing: 0.01em; }
+.theme-scroll .d-card {
+  border-radius: 6px;
+  border: 2px dashed var(--border);
+  box-shadow: 0 0 0 6px var(--surface), 0 0 0 7px var(--border), 0 18px 30px -20px rgba(60, 45, 10, 0.4);
+}
+.theme-scroll .halo { width: 136px; height: 160px; }
+.theme-scroll .halo::before {
+  inset: -10px;
+  border-radius: 0;
+  background:
+    radial-gradient(circle, transparent 5px, #fff 5.5px) -8px -8px / 16px 16px;
+  animation: none;
+  filter: drop-shadow(0 6px 12px rgba(60, 45, 10, 0.3));
+}
+.theme-scroll .halo > div {
+  border-radius: 0;
+  border: 2px solid var(--border);
+}
+.theme-scroll .grid:has(> .d-amount) { gap: 8px; }
+.theme-scroll .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 3px;
+  border: 1.5px dashed var(--gold-bright);
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+.theme-scroll .d-amount-currency { transform: none; font-size: 0.8em; }
+.theme-scroll .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-scroll .d-amount-selected,
+.theme-scroll .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-style: solid;
+  border-color: #172B6B;
+  color: #FBF6E9;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-scroll .d-amount-selected::before { display: none; }
+.theme-scroll .d-gateway { background: var(--surface); }
+.theme-scroll .d-gateway-selected,
+.theme-scroll .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 1.5px var(--gold-bright);
+}
+.theme-scroll .d-btn-gold {
+  border-radius: 3px;
+  color: #FBF6E9;
+  outline: 1.5px dashed rgba(251, 246, 233, 0.6);
+  outline-offset: -6px;
+}
+.theme-scroll .d-btn-shine { text-shadow: none; }
+.theme-scroll .d-btn-shine::after { display: none; }
+
+/* ==== Summit (Summit Grace): clear sky blue over white. Mountain-peak
+   portrait, frosted cards with a sky header, outlined rounded tiles
+   that fill with a sky gradient. */
+.theme-summit {
+  --bg: #EEF5FC;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-2: #E6F0FA;
+  --ink: #0E1B2B;
+  --ink-muted: #44586F;
+  --border: #CADCEE;
+  --heading: #12406E;
+  --gold: #2A7BC4;
+  --gold-bright: #59A8E8;
+  --gold-soft: rgba(89, 168, 232, 0.16);
+  --gold-gradient: linear-gradient(180deg, #7CC1F5, #2A7BC4);
+  --success-bg: #E1EEF8;
+  --success-text: #1E5A8A;
+  background:
+    linear-gradient(180deg, #CFE6FA 0%, rgba(207,230,250,0) 380px),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-summit .d-card {
+  border-radius: 14px;
+  border-color: #fff;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 0 #fff inset, 0 20px 40px -26px rgba(18, 64, 110, 0.5);
+}
+.theme-summit .halo { width: 170px; height: 140px; }
+.theme-summit .halo::before {
+  inset: -8px -14px;
+  border-radius: 0;
+  background: linear-gradient(180deg, #fff, var(--gold-soft));
+  clip-path: polygon(0 100%, 22% 42%, 36% 60%, 58% 8%, 78% 48%, 100% 100%);
+  animation: none;
+}
+.theme-summit .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(0 100%, 0 40%, 30% 14%, 50% 0, 70% 14%, 100% 40%, 100% 100%);
+}
+.theme-summit .grid:has(> .d-amount) { gap: 10px; }
+.theme-summit .d-amount {
+  aspect-ratio: auto;
+  height: 52px;
+  border-radius: 10px;
+  border: 1.5px solid var(--gold-bright);
+  background: #fff;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-summit .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-summit .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-summit .d-amount-selected,
+.theme-summit .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 8px 18px -10px var(--gold);
+  animation: none;
+}
+.theme-summit .d-amount-selected::before { display: none; }
+.theme-summit .d-gateway-selected,
+.theme-summit .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 4px 0 0 var(--gold-bright);
+}
+.theme-summit .d-btn-gold { border-radius: 10px; }
+.theme-summit .d-btn-shine { text-shadow: none; }
+
+/* ==== Slate (Silent Cross): calm modern grey and near-black, no glow.
+   Octagon portrait, amounts joined into one segmented block, flat cards
+   with a hairline border, a black button. */
+.theme-slate {
+  --bg: #F2F3F5;
+  --surface: #FFFFFF;
+  --surface-2: #F5F6F8;
+  --ink: #111318;
+  --ink-muted: #555B66;
+  --border: #DCDFE4;
+  --heading: #111318;
+  --gold: #1E2A44;
+  --gold-bright: #3B4E78;
+  --gold-soft: rgba(30, 42, 68, 0.08);
+  --gold-gradient: linear-gradient(180deg, #2A2F3A, #0E1015);
+  --success-bg: #ECEEF1;
+  --success-text: #2F3E57;
+  background: var(--bg);
+  color: var(--ink);
+}
+.theme-slate h1 { font-family: var(--font-body) !important; font-weight: 800; letter-spacing: -0.02em; }
+.theme-slate h2 { font-family: var(--font-body) !important; font-weight: 700; }
+.theme-slate .d-card {
+  border-radius: 8px;
+  border-color: var(--border);
+  box-shadow: none;
+}
+.theme-slate .halo { width: 140px; height: 140px; }
+.theme-slate .halo::before {
+  inset: -6px;
+  border-radius: 0;
+  background: var(--gold);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  animation: none;
+}
+.theme-slate .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+}
+.theme-slate .grid:has(> .d-amount) {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.theme-slate .d-amount {
+  aspect-ratio: auto;
+  height: 52px;
+  border-radius: 0;
+  border: none;
+  box-shadow: inset -1px -1px 0 var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  font-family: var(--font-body);
+}
+.theme-slate .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-slate .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: inset -1px -1px 0 var(--border); }
+.theme-slate .d-amount-selected,
+.theme-slate .d-amount-selected:hover {
+  background: var(--gold);
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-slate .d-amount-selected::before { display: none; }
+.theme-slate .d-gateway-selected,
+.theme-slate .d-gateway-selected:hover {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.theme-slate .d-btn-gold { border-radius: 8px; box-shadow: none; }
+.theme-slate .d-btn-shine { text-shadow: none; }
+.theme-slate .d-btn-shine::after { display: none; }
+
 .theme-harvest,
 .theme-mercy,
 .theme-nightsky,
 .theme-fountain,
 .theme-rose,
 .theme-flame,
-.theme-violet {
+.theme-violet,
+.theme-sunrise,
+.theme-scroll,
+.theme-summit,
+.theme-slate {
   position: relative;
 }
 

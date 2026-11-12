@@ -10,6 +10,10 @@ export const PAGE_BY_HOST = {
   'rosehaven.vercel.app': 'rose-haven',
   'sacredflame.vercel.app': 'sacred-flame',
   'violetprayer.vercel.app': 'violet-prayer',
+  'sunrisewings.vercel.app': 'sunrise-wings',
+  'holyscroll.vercel.app': 'holy-scroll',
+  'summitgrace.vercel.app': 'summit-grace',
+  'silentcross.vercel.app': 'silent-cross',
 }
 
 // The main site, where every other page lives.
