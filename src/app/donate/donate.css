@@ -1292,6 +1292,311 @@
 .theme-slate .d-btn-shine { text-shadow: none; }
 .theme-slate .d-btn-shine::after { display: none; }
 
+/* ==== Grove (Golden Grove): dark olive forest with gold-leaf light.
+   Starburst portrait, gold-ruled amount tiles (lines above and below),
+   dark cards with a fine gold frame. */
+.theme-grove {
+  --bg: #161B10;
+  --surface: #222A18;
+  --surface-2: #2B341F;
+  --ink: #F3F0DF;
+  --ink-muted: #C4C0A0;
+  --border: #46512F;
+  --heading: #F2D776;
+  --gold: #C9A63A;
+  --gold-bright: #E8C95A;
+  --gold-soft: rgba(232, 201, 90, 0.16);
+  --gold-gradient: linear-gradient(135deg, #F2D776, #B58A1E);
+  --success-bg: #2C3A1E;
+  --success-text: #CFE3A0;
+  background:
+    radial-gradient(ellipse 700px 460px at 50% -8%, rgba(242,215,118,0.28), transparent 60%),
+    radial-gradient(circle at 12% 80%, rgba(201,166,58,0.10), transparent 35%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-grove .d-card {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(232, 201, 90, 0.35), 0 24px 50px -24px rgba(0, 0, 0, 0.8);
+}
+.theme-grove .halo { width: 160px; height: 160px; }
+.theme-grove .halo::before {
+  inset: -10px;
+  border-radius: 0;
+  background: var(--gold-gradient);
+  clip-path: polygon(50% 0, 61% 12%, 75% 6%, 78% 21%, 94% 25%, 88% 39%, 100% 50%, 88% 61%, 94% 75%, 78% 79%, 75% 94%, 61% 88%, 50% 100%, 39% 88%, 25% 94%, 22% 79%, 6% 75%, 12% 61%, 0 50%, 12% 39%, 6% 25%, 22% 21%, 25% 6%, 39% 12%);
+  animation: none;
+}
+.theme-grove .halo > div {
+  border: none;
+  border-radius: 50%;
+  inset: 8%;
+  position: absolute;
+  width: auto;
+  height: auto;
+}
+.theme-grove .grid:has(> .d-amount) { gap: 8px; }
+.theme-grove .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--gold);
+  border-bottom: 1px solid var(--gold);
+  background: transparent;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+.theme-grove .d-amount-currency { transform: none; font-size: 0.8em; }
+.theme-grove .d-amount:hover { transform: none; background: var(--gold-soft); box-shadow: none; }
+.theme-grove .d-amount-selected,
+.theme-grove .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #1E1A08;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-grove .d-amount-selected::before { display: none; }
+.theme-grove .d-gateway { background: transparent; }
+.theme-grove .d-gateway:hover { background: rgba(232, 201, 90, 0.06); }
+.theme-grove .d-gateway-selected,
+.theme-grove .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 1px 0 var(--gold-bright), inset 0 -1px 0 var(--gold-bright);
+}
+.theme-grove .d-btn-gold { border-radius: 2px; color: #1E1A08; }
+.theme-grove .d-btn-shine { text-shadow: none; }
+
+/* ==== Chapel (Chapel Peace): warm stone and candle light. A tilted
+   instant-photo portrait, paper-note amount tiles, soft cards with a
+   brown edge, a wood-brown button. */
+.theme-chapel {
+  --bg: #F3EDE3;
+  --surface: #FFFCF6;
+  --surface-2: #F4ECDF;
+  --ink: #2B2117;
+  --ink-muted: #6A5946;
+  --border: #E2D4BF;
+  --heading: #5A3B1C;
+  --gold: #8A5A2B;
+  --gold-bright: #C38B4A;
+  --gold-soft: rgba(195, 139, 74, 0.16);
+  --gold-gradient: linear-gradient(180deg, #9C6A37, #6B4220);
+  --success-bg: #EFE6D6;
+  --success-text: #5E4A23;
+  background:
+    radial-gradient(ellipse 600px 420px at 50% 0%, rgba(255,214,150,0.35), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-chapel .d-card {
+  border-radius: 12px;
+  border-bottom: 4px solid var(--gold-bright);
+  box-shadow: 0 14px 30px -20px rgba(90, 59, 28, 0.45);
+}
+.theme-chapel .halo { width: 150px; height: 150px; transform: rotate(-4deg); }
+.theme-chapel .halo::before {
+  inset: -10px -10px -38px -10px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 14px 28px -12px rgba(43, 33, 23, 0.45);
+  animation: none;
+}
+.theme-chapel .halo > div {
+  border: none;
+  border-radius: 0;
+}
+.theme-chapel .halo + h1 { margin-top: 30px; }
+.theme-chapel .grid:has(> .d-amount) { gap: 10px; }
+.theme-chapel .d-amount {
+  aspect-ratio: auto;
+  height: 56px;
+  border-radius: 4px;
+  border: none;
+  background: #FFF8E8;
+  color: var(--heading);
+  box-shadow: 0 2px 0 var(--border), 0 6px 12px -8px rgba(90, 59, 28, 0.4);
+  font-size: 1.1rem;
+}
+.theme-chapel .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-chapel .d-amount:hover { transform: rotate(-1.5deg); box-shadow: 0 2px 0 var(--border), 0 10px 16px -8px rgba(90, 59, 28, 0.4); }
+.theme-chapel .d-amount-selected,
+.theme-chapel .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #FFF8E8;
+  text-shadow: none;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 10px 18px -8px rgba(90, 59, 28, 0.6);
+  animation: none;
+}
+.theme-chapel .d-amount-selected::before { display: none; }
+.theme-chapel .d-gateway-selected,
+.theme-chapel .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 -3px 0 var(--gold-bright);
+}
+.theme-chapel .d-btn-gold { border-radius: 6px; }
+.theme-chapel .d-btn-shine { text-shadow: none; }
+.theme-chapel .d-btn-shine::after { display: none; }
+
+/* ==== Crown (Crown of Light): bright white, royal gold and deep navy.
+   Crown-shaped portrait, square cards with gold corner marks, large
+   navy-filled amount choices, a navy button with gold text. */
+.theme-crown {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --surface-2: #F6F4EC;
+  --ink: #0E1530;
+  --ink-muted: #4A5170;
+  --border: #E7E1CC;
+  --heading: #0E1F55;
+  --gold: #0E1F55;
+  --gold-bright: #C9A227;
+  --gold-soft: rgba(201, 162, 39, 0.15);
+  --gold-gradient: linear-gradient(180deg, #1B2F78, #0B1640);
+  --success-bg: #F2EFE2;
+  --success-text: #4D4214;
+  background:
+    radial-gradient(ellipse 760px 480px at 50% -10%, rgba(201,162,39,0.22), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-crown .d-card {
+  border-radius: 0;
+  border-color: var(--border);
+  background-image:
+    linear-gradient(var(--gold-bright), var(--gold-bright)), linear-gradient(var(--gold-bright), var(--gold-bright)),
+    linear-gradient(var(--gold-bright), var(--gold-bright)), linear-gradient(var(--gold-bright), var(--gold-bright)) !important;
+  background-size: 22px 3px, 3px 22px, 22px 3px, 3px 22px !important;
+  background-position: 0 0, 0 0, 100% 100%, 100% 100% !important;
+  background-repeat: no-repeat !important;
+  box-shadow: 0 16px 34px -24px rgba(14, 31, 85, 0.45);
+}
+.theme-crown .halo { width: 150px; height: 150px; }
+.theme-crown .halo::before {
+  inset: -8px;
+  border-radius: 0;
+  background: var(--gold-bright);
+  clip-path: polygon(0 18%, 25% 38%, 50% 6%, 75% 38%, 100% 18%, 100% 100%, 0 100%);
+  animation: none;
+}
+.theme-crown .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(3% 23%, 25% 42%, 50% 12%, 75% 42%, 97% 23%, 97% 97%, 3% 97%);
+}
+.theme-crown .grid:has(> .d-amount) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.theme-crown .d-amount {
+  aspect-ratio: auto;
+  height: 60px;
+  border-radius: 0;
+  border: 1.5px solid var(--heading);
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.2rem;
+}
+.theme-crown .d-amount-currency { transform: none; font-size: 0.8em; color: var(--gold-bright); }
+.theme-crown .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-crown .d-amount-selected,
+.theme-crown .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #F5E6B0;
+  text-shadow: none;
+  transform: none;
+  box-shadow: inset 0 0 0 2px var(--gold-bright);
+  animation: none;
+}
+.theme-crown .d-amount-selected::before { display: none; }
+.theme-crown .d-gateway-selected,
+.theme-crown .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 4px 0 0 var(--gold-bright);
+}
+.theme-crown .d-btn-gold {
+  border-radius: 0;
+  color: #F5E6B0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 1rem;
+  box-shadow: inset 0 0 0 2px var(--gold-bright);
+}
+.theme-crown .d-btn-shine { text-shadow: none; }
+
+/* ==== Glory (Magenta Glory): vivid magenta to purple on a pale pink
+   ground. Heart-shaped portrait, cards with a gradient top edge, tiles
+   with a gradient outline that fill on choice, a gradient pill button. */
+.theme-glory {
+  --bg: #FBF1F8;
+  --surface: #FFFFFF;
+  --surface-2: #F9E8F4;
+  --ink: #241024;
+  --ink-muted: #63405F;
+  --border: #EFCDE6;
+  --heading: #8E1B78;
+  --gold: #B3209A;
+  --gold-bright: #E23CB8;
+  --gold-soft: rgba(226, 60, 184, 0.14);
+  --gold-gradient: linear-gradient(120deg, #F0369E, #8A3FE0);
+  --success-bg: #F6E3F1;
+  --success-text: #7A1E68;
+  background:
+    radial-gradient(ellipse 900px 520px at 50% -14%, rgba(240,54,158,0.28), transparent 60%),
+    radial-gradient(ellipse 600px 400px at 100% 100%, rgba(138,63,224,0.14), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-glory .d-card {
+  border-radius: 22px;
+  box-shadow: inset 0 4px 0 #E23CB8, 0 18px 40px -24px rgba(138, 63, 224, 0.5);
+}
+.theme-glory .halo { width: 160px; height: 148px; }
+.theme-glory .halo::before {
+  inset: -8px;
+  border-radius: 0;
+  background: var(--gold-gradient);
+  clip-path: polygon(50% 100%, 8% 58%, 0 36%, 4% 16%, 18% 3%, 34% 1%, 50% 14%, 66% 1%, 82% 3%, 96% 16%, 100% 36%, 92% 58%);
+  animation: none;
+}
+.theme-glory .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 96%, 10% 57%, 3% 36%, 7% 18%, 19% 7%, 34% 5%, 50% 18%, 66% 5%, 81% 7%, 93% 18%, 97% 36%, 90% 57%);
+}
+.theme-glory .grid:has(> .d-amount) { gap: 10px; }
+.theme-glory .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(#fff, #fff) padding-box, var(--gold-gradient) border-box;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-glory .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-glory .d-amount:hover { transform: none; box-shadow: 0 6px 14px -8px var(--gold-bright); }
+.theme-glory .d-amount-selected,
+.theme-glory .d-amount-selected:hover {
+  background: var(--gold-gradient) padding-box, var(--gold-gradient) border-box;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 10px 20px -10px #8A3FE0;
+  animation: none;
+}
+.theme-glory .d-amount-selected::before { display: none; }
+.theme-glory .d-gateway-selected,
+.theme-glory .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 2px var(--gold-bright);
+}
+.theme-glory .d-btn-gold { border-radius: 999px; }
+.theme-glory .d-btn-shine { text-shadow: none; }
+
 .theme-harvest,
 .theme-mercy,
 .theme-nightsky,
@@ -1302,7 +1607,11 @@
 .theme-sunrise,
 .theme-scroll,
 .theme-summit,
-.theme-slate {
+.theme-slate,
+.theme-grove,
+.theme-chapel,
+.theme-crown,
+.theme-glory {
   position: relative;
 }
 

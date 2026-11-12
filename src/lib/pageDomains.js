@@ -14,6 +14,10 @@ export const PAGE_BY_HOST = {
   'holyscroll-give.vercel.app': 'holy-scroll',
   'summitgrace.vercel.app': 'summit-grace',
   'silentcross.vercel.app': 'silent-cross',
+  'goldengrove.vercel.app': 'golden-grove',
+  'chapelpeace.vercel.app': 'chapel-peace',
+  'crownoflight.vercel.app': 'crown-of-light',
+  'magentaglory.vercel.app': 'magenta-glory',
 }
 
 // The main site, where every other page lives.
