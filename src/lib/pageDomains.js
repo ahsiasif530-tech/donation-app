@@ -11,7 +11,7 @@ export const PAGE_BY_HOST = {
   'sacredflame.vercel.app': 'sacred-flame',
   'violetprayer.vercel.app': 'violet-prayer',
   'sunrisewings.vercel.app': 'sunrise-wings',
-  'holyscroll.vercel.app': 'holy-scroll',
+  'holyscroll-give.vercel.app': 'holy-scroll',
   'summitgrace.vercel.app': 'summit-grace',
   'silentcross.vercel.app': 'silent-cross',
 }
