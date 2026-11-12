@@ -1952,7 +1952,189 @@
   gap: 6px;
   align-items: var(--banner-items, flex-start);
 }
+/* Square pictures keep the face in the band: aim a little above centre. */
+.d-banner-image img { object-position: center var(--banner-focus, 26%); }
 .d-banner-text h1 { color: #fff; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45); }
+
+/* Shared by the banner themes: flat amount tiles in the theme's own shape,
+   no coin gloss, no light sweep on the main button. */
+[class*="theme-banner-"] { position: relative; }
+[class*="theme-banner-"] .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+[class*="theme-banner-"] .d-amount-currency { transform: none; font-size: 0.85em; }
+[class*="theme-banner-"] .d-amount:hover { transform: none; }
+[class*="theme-banner-"] .d-amount-selected,
+[class*="theme-banner-"] .d-amount-selected:hover { transform: none; animation: none; text-shadow: none; }
+[class*="theme-banner-"] .d-amount-selected::before { display: none; }
+[class*="theme-banner-"] .d-btn-shine { text-shadow: none; }
+
+/* -- Pearl (Pearl Prayer): ivory and pale gold; banner with a wavy foot. */
+.theme-banner-pearl {
+  --bg: #FBF9F4; --surface: #FFFFFF; --surface-2: #F6F2E8; --ink: #1F1B12; --ink-muted: #5F5744;
+  --border: #ECE4CF; --heading: #6B5520; --gold: #B9963F; --gold-bright: #D9B862; --gold-soft: rgba(217,184,98,0.18);
+  --gold-gradient: linear-gradient(135deg, #E3C574, #B48A2C); --success-bg: #F1ECDC; --success-text: #6B5520;
+  --banner-radius: 0; --banner-clip: polygon(0 0, 100% 0, 100% 90%, 85% 95%, 70% 92%, 50% 98%, 30% 93%, 15% 97%, 0 92%);
+  --banner-height: 320px;
+  background: radial-gradient(ellipse 800px 400px at 50% 0%, rgba(217,184,98,0.18), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-pearl .d-banner-text { padding-bottom: 40px; }
+.theme-banner-pearl .d-card { border-radius: 22px; box-shadow: 0 20px 40px -26px rgba(107,85,32,0.4); }
+.theme-banner-pearl .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-pearl .d-amount { border-radius: 999px; border: 1.5px solid var(--border); background: #fff; color: var(--heading); }
+.theme-banner-pearl .d-amount:hover { border-color: var(--gold-bright); }
+.theme-banner-pearl .d-amount-selected, .theme-banner-pearl .d-amount-selected:hover { background: var(--gold-gradient); border-color: transparent; color: #fff; box-shadow: 0 8px 18px -10px var(--gold); }
+.theme-banner-pearl .d-gateway-selected, .theme-banner-pearl .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold-bright); }
+.theme-banner-pearl .d-btn-gold { border-radius: 999px; }
+
+/* -- Sky (Heaven's Breath): misty blue-grey; banner with an arched top. */
+.theme-banner-sky {
+  --bg: #EEF2F6; --surface: #FFFFFF; --surface-2: #E8EEF4; --ink: #121A24; --ink-muted: #4A5868;
+  --border: #D3DDE8; --heading: #20374F; --gold: #4F7DA8; --gold-bright: #7FA8CF; --gold-soft: rgba(127,168,207,0.18);
+  --gold-gradient: linear-gradient(180deg, #8DB5DA, #4F7DA8); --success-bg: #E2ECF3; --success-text: #2F5878;
+  --banner-radius: 50% 50% 22px 22px / 26% 26% 22px 22px; --banner-height: 340px;
+  --banner-align: center; --banner-items: center;
+  background: linear-gradient(180deg, #DCE6F0 0%, var(--bg) 420px);
+  color: var(--ink);
+}
+@media (max-width: 639px) { .theme-banner-sky .d-banner { margin: 0; } }
+.theme-banner-sky .d-card { border-radius: 18px; box-shadow: 0 16px 36px -24px rgba(32,55,79,0.45); }
+.theme-banner-sky .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-sky .d-amount { border-radius: 14px; border: 1.5px solid var(--border); background: rgba(255,255,255,0.8); color: var(--heading); }
+.theme-banner-sky .d-amount:hover { border-color: var(--gold-bright); }
+.theme-banner-sky .d-amount-selected, .theme-banner-sky .d-amount-selected:hover { background: var(--gold-gradient); border-color: transparent; color: #fff; }
+.theme-banner-sky .d-gateway-selected, .theme-banner-sky .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 4px 0 0 var(--gold-bright); }
+.theme-banner-sky .d-btn-gold { border-radius: 14px; }
+
+/* -- Vintage (Ancient Grace): sepia parchment; banner as an old print in a
+   cream mount, tiles like stamped cards. */
+.theme-banner-vintage {
+  --bg: #F1E7D3; --surface: #FBF5E8; --surface-2: #F0E4CB; --ink: #2B1F12; --ink-muted: #6B5536;
+  --border: #D9C49C; --heading: #5A3A15; --gold: #8C5A22; --gold-bright: #B57D3A; --gold-soft: rgba(181,125,58,0.16);
+  --gold-gradient: linear-gradient(180deg, #A9702F, #74461A); --success-bg: #EADFC6; --success-text: #5A4A1D;
+  --banner-radius: 4px; --banner-height: 300px; --banner-fade: linear-gradient(180deg, rgba(60,35,10,0.05) 30%, rgba(40,22,6,0.8) 100%);
+  background: radial-gradient(circle at 20% 10%, rgba(255,250,235,0.7), transparent 40%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-vintage .d-banner { border: 10px solid #FBF5E8; outline: 1px solid var(--border); box-shadow: 0 18px 34px -20px rgba(60,35,10,0.6); margin: 0; filter: sepia(0.15); }
+.theme-banner-vintage .d-card { border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 0 0 5px var(--surface), 0 0 0 6px var(--border); }
+.theme-banner-vintage .grid:has(> .d-amount) { gap: 8px; }
+.theme-banner-vintage .d-amount { border-radius: 2px; border: 1.5px solid var(--gold-bright); background: var(--surface); color: var(--heading); font-family: var(--font-display); }
+.theme-banner-vintage .d-amount:hover { background: var(--surface-2); }
+.theme-banner-vintage .d-amount-selected, .theme-banner-vintage .d-amount-selected:hover { background: var(--gold-gradient); color: #FBF5E8; border-color: #5A3A15; }
+.theme-banner-vintage .d-gateway-selected, .theme-banner-vintage .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold-bright); }
+.theme-banner-vintage .d-btn-gold { border-radius: 2px; text-transform: uppercase; letter-spacing: 0.14em; font-size: 1rem; }
+.theme-banner-vintage .d-btn-shine::after { display: none; }
+
+/* -- Cosmos (Starlit Angel): deep teal night with amber; banner cut on a
+   slant, glowing tiles. */
+.theme-banner-cosmos {
+  --bg: #0D1A24; --surface: #142532; --surface-2: #1B3040; --ink: #EEF4F7; --ink-muted: #A9BFCB;
+  --border: #2A4659; --heading: #FFD9A0; --gold: #E8A04A; --gold-bright: #FFC27A; --gold-soft: rgba(255,194,122,0.16);
+  --gold-gradient: linear-gradient(135deg, #FFC27A, #D9792A); --success-bg: #1E3A33; --success-text: #9BE7C8;
+  --banner-radius: 0; --banner-clip: polygon(0 0, 100% 0, 100% 86%, 0 100%); --banner-height: 330px; --banner-focus: 22%;
+  background:
+    radial-gradient(1.5px 1.5px at 30px 40px, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 120px 90px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 200px 160px, rgba(255,220,170,0.6), transparent),
+    radial-gradient(ellipse 800px 400px at 50% 0%, rgba(232,160,74,0.18), transparent 60%),
+    var(--bg);
+  background-size: 240px 200px, 240px 200px, 240px 200px, auto, auto;
+  color: var(--ink);
+}
+.theme-banner-cosmos .d-banner-text { padding-bottom: 54px; }
+.theme-banner-cosmos .d-card { border-radius: 16px; box-shadow: 0 0 0 1px rgba(255,194,122,0.1), 0 24px 50px -24px rgba(0,0,0,0.8); }
+.theme-banner-cosmos .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-cosmos .d-amount { border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--gold-bright); }
+.theme-banner-cosmos .d-amount:hover { border-color: var(--gold); box-shadow: 0 0 14px -4px rgba(255,194,122,0.5); }
+.theme-banner-cosmos .d-amount-selected, .theme-banner-cosmos .d-amount-selected:hover { background: var(--gold-gradient); color: #2A1708; border-color: transparent; box-shadow: 0 0 22px -4px rgba(255,194,122,0.7); }
+.theme-banner-cosmos .d-gateway { background: transparent; }
+.theme-banner-cosmos .d-gateway-selected, .theme-banner-cosmos .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold); }
+.theme-banner-cosmos .d-btn-gold { border-radius: 12px; color: #2A1708; }
+
+/* -- Aurum (Golden Wings): bright gold on cream; banner in a double gold
+   frame, tiles with a gold top bar. */
+.theme-banner-aurum {
+  --bg: #FDF8EC; --surface: #FFFFFF; --surface-2: #FBF1D8; --ink: #2A2110; --ink-muted: #6A5A32;
+  --border: #EEDDAE; --heading: #7A5800; --gold: #C79A1E; --gold-bright: #EBC24A; --gold-soft: rgba(235,194,74,0.2);
+  --gold-gradient: linear-gradient(180deg, #F3D06A, #C79A1E); --success-bg: #F6EDD2; --success-text: #6E5410;
+  --banner-radius: 18px; --banner-height: 320px;
+  background: radial-gradient(ellipse 900px 520px at 50% -10%, rgba(243,208,106,0.35), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-aurum .d-banner { margin: 0; border: 3px double var(--gold-bright); padding: 5px; background: #fff; }
+.theme-banner-aurum .d-banner-image { border-radius: 12px; overflow: hidden; }
+.theme-banner-aurum .d-banner-text { inset: auto 5px 5px 5px; }
+.theme-banner-aurum .d-card { border-radius: 14px; box-shadow: inset 0 4px 0 var(--gold-bright), 0 16px 34px -24px rgba(122,88,0,0.45); }
+.theme-banner-aurum .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-aurum .d-amount { border-radius: 8px; border: 1px solid var(--border); border-top: 4px solid var(--gold-bright); background: #fff; color: var(--heading); }
+.theme-banner-aurum .d-amount:hover { background: var(--surface-2); }
+.theme-banner-aurum .d-amount-selected, .theme-banner-aurum .d-amount-selected:hover { background: var(--gold-gradient); color: #3A2808; border-color: var(--gold); }
+.theme-banner-aurum .d-gateway-selected, .theme-banner-aurum .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 3px 0 var(--gold-bright); }
+.theme-banner-aurum .d-btn-gold { border-radius: 8px; color: #3A2808; }
+
+/* -- Sunbeam (Honey Light): warm honey and amber; banner with a deep round
+   foot, round soft tiles. */
+.theme-banner-sunbeam {
+  --bg: #FFF6E6; --surface: #FFFFFF; --surface-2: #FFEFD2; --ink: #2B1A06; --ink-muted: #6E4F22;
+  --border: #F5D9A8; --heading: #8A4F00; --gold: #D9860F; --gold-bright: #F5A93A; --gold-soft: rgba(245,169,58,0.18);
+  --gold-gradient: linear-gradient(135deg, #F8BD58, #D9760F); --success-bg: #FBEBD0; --success-text: #7A4A0A;
+  --banner-radius: 0 0 50% 50% / 0 0 18% 18%; --banner-height: 340px; --banner-align: center; --banner-items: center;
+  background: linear-gradient(180deg, #FFE8C2 0%, var(--bg) 360px);
+  color: var(--ink);
+}
+.theme-banner-sunbeam .d-banner-text { padding-bottom: 46px; }
+.theme-banner-sunbeam .d-card { border-radius: 26px; box-shadow: 0 20px 40px -26px rgba(138,79,0,0.45); }
+.theme-banner-sunbeam .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-sunbeam .d-amount { border-radius: 20px; border: none; background: var(--surface-2); color: var(--heading); box-shadow: inset 0 -3px 0 rgba(217,134,15,0.18); }
+.theme-banner-sunbeam .d-amount:hover { background: #FFE6B8; }
+.theme-banner-sunbeam .d-amount-selected, .theme-banner-sunbeam .d-amount-selected:hover { background: var(--gold-gradient); color: #fff; box-shadow: 0 10px 20px -10px var(--gold); }
+.theme-banner-sunbeam .d-gateway-selected, .theme-banner-sunbeam .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 -3px 0 var(--gold-bright); }
+.theme-banner-sunbeam .d-btn-gold { border-radius: 999px; }
+
+/* -- Dawn (Walk of Faith): olive and warm tan; banner as a trapezoid,
+   tiles with an olive underline. */
+.theme-banner-dawn {
+  --bg: #F5F1E6; --surface: #FFFDF7; --surface-2: #EFE9D8; --ink: #1F1E12; --ink-muted: #5C5A3E;
+  --border: #DDD6BC; --heading: #4E4A1A; --gold: #7C7A2A; --gold-bright: #A6A240; --gold-soft: rgba(166,162,64,0.16);
+  --gold-gradient: linear-gradient(135deg, #B5A84C, #6E6A1E); --success-bg: #ECE8D2; --success-text: #4E5A1A;
+  --banner-radius: 0; --banner-clip: polygon(4% 0, 96% 0, 100% 100%, 0 100%); --banner-height: 300px;
+  background: linear-gradient(180deg, #F3E3C3 0%, var(--bg) 320px);
+  color: var(--ink);
+}
+@media (min-width: 640px) { .theme-banner-dawn .d-banner { border-radius: 0; } }
+.theme-banner-dawn .d-card { border-radius: 10px; box-shadow: inset 0 -4px 0 var(--gold-bright), 0 14px 30px -22px rgba(78,74,26,0.45); }
+.theme-banner-dawn .grid:has(> .d-amount) { gap: 6px 12px; }
+.theme-banner-dawn .d-amount { border-radius: 0; border: none; border-bottom: 3px solid var(--border); background: transparent; color: var(--heading); font-size: 1.15rem; }
+.theme-banner-dawn .d-amount:hover { border-bottom-color: var(--gold-bright); }
+.theme-banner-dawn .d-amount-selected, .theme-banner-dawn .d-amount-selected:hover { background: var(--gold-soft); border-bottom-color: var(--gold); color: var(--gold); }
+.theme-banner-dawn .d-gateway-selected, .theme-banner-dawn .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 4px 0 0 var(--gold); }
+.theme-banner-dawn .d-btn-gold { border-radius: 4px; }
+
+/* -- Amethyst (Amethyst Prayer): dark violet; banner with cut corners and a
+   violet glow, glowing tiles. */
+.theme-banner-amethyst {
+  --bg: #150F24; --surface: #1F1734; --surface-2: #2A1F45; --ink: #F3EEFF; --ink-muted: #BBAEDB;
+  --border: #3E2F63; --heading: #E4D4FF; --gold: #9B6BFF; --gold-bright: #C2A3FF; --gold-soft: rgba(194,163,255,0.18);
+  --gold-gradient: linear-gradient(135deg, #C2A3FF, #7B45F0); --success-bg: #26304A; --success-text: #A7E9D4;
+  --banner-radius: 0; --banner-clip: polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px);
+  --banner-height: 320px;
+  background: radial-gradient(ellipse 800px 480px at 50% -8%, rgba(155,107,255,0.3), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-amethyst .d-banner { margin: 0; filter: drop-shadow(0 0 24px rgba(155,107,255,0.35)); }
+.theme-banner-amethyst .d-card { border-radius: 14px; box-shadow: 0 0 0 1px rgba(194,163,255,0.12), 0 24px 50px -24px rgba(0,0,0,0.8); }
+.theme-banner-amethyst .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-amethyst .d-amount { border-radius: 0; clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px); border: none; background: var(--surface-2); color: var(--heading); }
+.theme-banner-amethyst .d-amount:hover { background: #352858; }
+.theme-banner-amethyst .d-amount-selected, .theme-banner-amethyst .d-amount-selected:hover { background: var(--gold-gradient); color: #1A0F33; }
+.theme-banner-amethyst .d-gateway { background: transparent; }
+.theme-banner-amethyst .d-gateway-selected, .theme-banner-amethyst .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold-bright); }
+.theme-banner-amethyst .d-btn-gold { border-radius: 4px; color: #1A0F33; box-shadow: 0 0 28px -6px rgba(155,107,255,0.8); }
 .d-banner-text p { color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
 
 .halo {
