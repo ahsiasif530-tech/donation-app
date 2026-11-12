@@ -19,6 +19,10 @@ import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
 import PageGroups from '@/components/PageGroups'
 import TeamProgress from '@/components/TeamProgress'
 import { initials, personColor } from '@/lib/avatar'
+import AdminSidebar from '@/components/AdminSidebar'
+import CommandSearch from '@/components/CommandSearch'
+import LiveDonations from '@/components/LiveDonations'
+import CopyButton from '@/components/CopyButton'
 
 const PAGES_PER_GROUP = 4
 
@@ -60,12 +64,27 @@ function Icon({ name, size = 15 }) {
   )
 }
 
-function StatCard({ icon, label, value, note }) {
+// "▲ 20% vs day before", or nothing when there's no earlier amount to compare.
+function changeLabel(now, before) {
+  if (!before) return now > 0 ? { up: true, text: 'New today' } : null
+  const pct = Math.round(((now - before) / before) * 100)
+  return { up: pct >= 0, text: `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs day before` }
+}
+
+function StatCard({ icon, label, value, note, change, sub }) {
   return (
     <div className="a-card a-stat">
       <p className="a-stat-label"><span className="a-icon"><Icon name={icon} /></span>{label}</p>
       <p className="a-display text-3xl font-semibold tabular-nums">${value.toFixed(2)}</p>
-      <p className="text-xs" style={{ color: 'var(--a-text-muted)' }}>{note}</p>
+      <p className="text-xs flex flex-wrap items-center gap-x-2 gap-y-1" style={{ color: 'var(--a-text-muted)' }}>
+        {note}
+        {change && (
+          <span className="font-bold rounded px-1.5 py-px" style={{ background: change.up ? 'rgba(52,211,153,0.14)' : 'rgba(248,113,113,0.14)', color: change.up ? 'var(--a-success)' : 'var(--a-danger)' }}>
+            {change.text}
+          </span>
+        )}
+      </p>
+      {sub && <p className="text-[11px] truncate" style={{ color: 'var(--a-accent-strong)' }}>{sub}</p>}
     </div>
   )
 }
@@ -107,7 +126,13 @@ export default async function AdminPage({ searchParams }) {
   const now = Date.now()
   const since = (ms) => completed.filter((d) => now - new Date(d.created_at).getTime() <= ms)
   const sumOf = (rows) => ({ total: rows.reduce((sum, d) => sum + Number(d.amount), 0), count: rows.length })
-  const recent = { day: sumOf(since(DAY_MS)), week: sumOf(since(7 * DAY_MS)) }
+  const lastDay = since(DAY_MS)
+  const recent = {
+    day: sumOf(lastDay),
+    dayBefore: sumOf(completed.filter((d) => now - new Date(d.created_at).getTime() > DAY_MS && now - new Date(d.created_at).getTime() <= 2 * DAY_MS)),
+    week: sumOf(since(7 * DAY_MS)),
+    topToday: [...lastDay].sort((a, b) => Number(b.amount) - Number(a.amount))[0] || null,
+  }
 
   // Team progress: each person's pages together, for the last 7 and 30 days
   // (with the same length of time before, for growth) and all time.
@@ -259,14 +284,16 @@ export default async function AdminPage({ searchParams }) {
       key: 'withdrawals',
       label: 'Withdrawals',
       content: (
-        <WithdrawalHistory
-          withdrawals={(withdrawals || []).map((w) => ({
-            ...w,
-            page_name: pageById[w.page_id] ? pageFullName(pageById[w.page_id]) : '—',
-          }))}
-          fileName="all-pages"
-          pages={(pages || []).map((p) => ({ id: p.id, name: pageFullName(p), person: p.label || p.title, page: pageShortName(p) }))}
-        />
+        <div id="withdrawals" className="scroll-mt-24">
+          <WithdrawalHistory
+            withdrawals={(withdrawals || []).map((w) => ({
+              ...w,
+              page_name: pageById[w.page_id] ? pageFullName(pageById[w.page_id]) : '—',
+            }))}
+            fileName="all-pages"
+            pages={(pages || []).map((p) => ({ id: p.id, name: pageFullName(p), person: p.label || p.title, page: pageShortName(p) }))}
+          />
+        </div>
       ),
     },
   ]
@@ -330,6 +357,12 @@ export default async function AdminPage({ searchParams }) {
         >
           Open ↗
         </a>
+        <CopyButton
+          text={HOST_BY_PAGE[p.slug] ? `https://${HOST_BY_PAGE[p.slug]}/` : `https://www.blesshandss.com/donate/${p.slug}`}
+          label="Copy link"
+          className="ml-2 rounded-lg border text-xs font-bold px-3 py-2 hover:opacity-80"
+          style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}
+        />
       </td>
     </tr>
   )
@@ -348,7 +381,7 @@ export default async function AdminPage({ searchParams }) {
   return (
     <main className="admin-theme min-h-screen">
       <header className="a-topbar">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="a-brand-sm a-gold-text">BlessedHands</span>
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest rounded-md px-1.5 py-0.5" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>Admin</span>
@@ -358,8 +391,10 @@ export default async function AdminPage({ searchParams }) {
             <Link href="/admin/traffic">Traffic</Link>
             <Link href="/admin/settings">Payment Settings</Link>
           </nav>
-          <div className="flex items-center gap-3">
-            <span className="a-avatar" style={{ background: 'linear-gradient(135deg, var(--a-accent-strong), var(--a-accent))', width: 32, height: 32, borderRadius: 10 }} title={profile.full_name}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <CommandSearch />
+            <LiveDonations />
+            <span className="a-avatar hidden sm:inline-flex" style={{ background: 'linear-gradient(135deg, var(--a-accent-strong), var(--a-accent))', width: 32, height: 32, borderRadius: 10 }} title={profile.full_name}>
               {initials(profile.full_name)}
             </span>
             <SignOutButton />
@@ -372,8 +407,25 @@ export default async function AdminPage({ searchParams }) {
         </nav>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-8">
+        <aside className="hidden lg:block">
+          <AdminSidebar
+            sections={[
+              { id: 'overview', label: 'Overview' },
+              { id: 'team-progress', label: 'Team progress' },
+              { id: 'pages', label: 'Pages' },
+              { id: 'countries', label: 'Countries' },
+              { id: 'invoices', label: 'Invoices' },
+              { id: 'withdrawals', label: 'Withdrawals' },
+            ]}
+            links={[
+              { href: '/admin/traffic', label: 'Traffic', icon: '📈' },
+              { href: '/admin/settings', label: 'Payment settings', icon: '⚙️' },
+            ]}
+          />
+        </aside>
+      <div className="space-y-6 min-w-0">
+        <div id="overview" className="scroll-mt-24 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold">Welcome back, {firstName(profile.full_name)}</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--a-text-muted)' }}>
@@ -399,7 +451,14 @@ export default async function AdminPage({ searchParams }) {
           </div>
           {/* Every completed donation ever; withdrawals never reduce it. */}
           <StatCard icon="chart" label="Lifetime" value={totalEarning} note={`${completed.length} gifts`} />
-          <StatCard icon="clock" label="Last 24 hours" value={recent.day.total} note={`${recent.day.count} ${recent.day.count === 1 ? 'gift' : 'gifts'}`} />
+          <StatCard
+            icon="clock"
+            label="Last 24 hours"
+            value={recent.day.total}
+            note={`${recent.day.count} ${recent.day.count === 1 ? 'gift' : 'gifts'}`}
+            change={changeLabel(recent.day.total, recent.dayBefore.total)}
+            sub={recent.topToday ? `Top: $${Number(recent.topToday.amount).toFixed(2)} · ${recent.topToday.is_anonymous ? 'Anonymous' : recent.topToday.donor_name || 'Someone'}` : null}
+          />
           <StatCard icon="calendar" label="Last 7 days" value={recent.week.total} note={`${recent.week.count} ${recent.week.count === 1 ? 'gift' : 'gifts'}`} />
         </div>
 
@@ -469,7 +528,7 @@ export default async function AdminPage({ searchParams }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2 flex flex-col gap-4">
-          <div className="a-card overflow-hidden">
+          <div id="pages" className="a-card overflow-hidden scroll-mt-24">
             <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
               <h2 className="a-section-title"><span className="a-icon"><Icon name="pages" /></span>Pages</h2>
               <span className="text-xs font-semibold" style={{ color: 'var(--a-text-muted)' }}>{mainPages.length} pages</span>
@@ -494,10 +553,10 @@ export default async function AdminPage({ searchParams }) {
           )}
           </div>
 
-          <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
+          <div id="countries" className="scroll-mt-24"><CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} /></div>
         </div>
 
-        <div id="invoices" className="scroll-mt-4">
+        <div id="invoices" className="scroll-mt-24">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h2 className="a-section-title text-lg"><span className="a-icon"><Icon name="receipt" /></span>All invoices, by gateway</h2>
             <RecoverPaypalButton />
@@ -505,6 +564,7 @@ export default async function AdminPage({ searchParams }) {
           <InvoiceFilterBar pages={(pages || []).map((p) => ({ id: p.id, label: pageFullName(p) }))} />
           <InvoiceSections initialHidden={hiddenSections} sections={invoiceSections} />
         </div>
+      </div>
       </div>
     </main>
   )
