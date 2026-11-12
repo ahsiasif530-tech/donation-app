@@ -47,6 +47,9 @@ const SMALL_COUNTRIES = {
 }
 
 const RED = '#ef4444'
+const MEDAL = ['🥇', '🥈', '🥉']
+const MIN_ZOOM = 1
+const MAX_ZOOM = 8
 const LAND = '#2A303B'
 const money = (n) => `$${n.toFixed(2)}`
 const rad = Math.PI / 180
@@ -126,7 +129,8 @@ function placeData(byCountry, shapes) {
       return center ? { ...c, rank, center, strength: Math.sqrt(c.total / max) } : null
     })
     .filter(Boolean)
-  return { fills, dots, max }
+  const grand = byCountry.reduce((sum, c) => sum + c.total, 0)
+  return { fills, dots, max, grand }
 }
 
 const fillFor = (data, max) => (data ? `rgba(239, 68, 68, ${0.25 + 0.6 * Math.sqrt(data.total / max)})` : LAND)
@@ -193,6 +197,17 @@ function FlatMap({ shapes, placed }) {
             </g>
           )
         })}
+        {placed.dots.slice(0, 3).map((d) => {
+          const x = fx(d.center[0])
+          const y = fy(d.center[1])
+          const share = placed.grand > 0 ? (d.total / placed.grand) * 100 : 0
+          const left = x > FW * 0.7
+          return (
+            <text key={`label-${d.country}`} x={left ? x - dotRadius(d) - 5 : x + dotRadius(d) + 5} y={y + 4} textAnchor={left ? 'end' : 'start'} fontSize="12" fontWeight="700" fill="#F2F4F7" stroke="#0F1115" strokeWidth="3" paintOrder="stroke">
+              {MEDAL[d.rank]} {d.country} {share < 1 ? '<1' : Math.round(share)}%
+            </text>
+          )
+        })}
       </svg>
       <Tooltip hover={hover} width={FW} height={FH} />
     </div>
@@ -205,9 +220,10 @@ function FlatMap({ shapes, placed }) {
 function Globe({ shapes, placed }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
-  const state = useRef({ lon: 0, lat: 20, drag: null, lastMove: 0, hitPaths: [], dotsOnScreen: [], centered: false })
+  const state = useRef({ lon: 0, lat: 20, zoom: 1, drag: null, pinch: null, pointers: new Map(), lastMove: 0, hitPaths: [], dotsOnScreen: [], centered: false })
   const [size, setSize] = useState(320)
   const [hover, setHover] = useState(null)
+  const [zoomShown, setZoomShown] = useState(1)
 
   // Start (once) with the top country facing the viewer.
   useEffect(() => {
@@ -235,7 +251,8 @@ function Globe({ shapes, placed }) {
     canvas.width = size * dpr
     canvas.height = size * dpr
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const R = size / 2 - 10
+    const R0 = size / 2 - 10
+    let R = R0
     const cx = size / 2
     const cy = size / 2
     let frame
@@ -254,14 +271,49 @@ function Globe({ shapes, placed }) {
         x /= len
         y /= len
       }
-      return [cx + x * R, cy - y * R, cosc >= 0]
+      return [cx + x * R, cy - y * R, cosc >= 0, cosc]
+    }
+
+    // A label in a dark pill, moved to the first spot that doesn't overlap
+    // a label already drawn.
+    const placedBoxes = []
+    const drawLabel = (x, y, r, lines, strong) => {
+      ctx.font = `${strong ? 700 : 600} 11px ui-sans-serif, system-ui, sans-serif`
+      const w = Math.max(...lines.map((t) => ctx.measureText(t).width)) + 12
+      const h = lines.length * 13 + 6
+      const spots = [
+        [x + r + 6, y - h / 2],
+        [x - r - 6 - w, y - h / 2],
+        [x - w / 2, y + r + 6],
+        [x - w / 2, y - r - 6 - h],
+      ]
+      const fits = ([bx, by]) =>
+        bx >= 2 && by >= 2 && bx + w <= size - 2 && by + h <= size - 2 &&
+        !placedBoxes.some((b) => bx < b.x + b.w && bx + w > b.x && by < b.y + b.h && by + h > b.y)
+      const spot = spots.find(fits) || (strong ? spots[0] : null)
+      if (!spot) return
+      const [bx, by] = spot
+      placedBoxes.push({ x: bx, y: by, w, h })
+      ctx.fillStyle = 'rgba(15,17,21,0.88)'
+      ctx.strokeStyle = strong ? 'rgba(239,68,68,0.7)' : 'rgba(255,255,255,0.12)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.roundRect(bx, by, w, h, 6)
+      ctx.fill()
+      ctx.stroke()
+      lines.forEach((t, i) => {
+        ctx.fillStyle = i === 0 ? '#F2F4F7' : '#FCA5A5'
+        ctx.font = `${i === 0 ? 700 : 600} 11px ui-sans-serif, system-ui, sans-serif`
+        ctx.fillText(t, bx + 6, by + 14 + i * 13)
+      })
     }
 
     const draw = (now) => {
       const s = state.current
       const dt = Math.min(64, now - last)
       last = now
-      if (!s.drag && !reduceMotion && now - s.lastMove > 2500) s.lon += dt * 0.006
+      R = R0 * s.zoom
+      if (!s.drag && !reduceMotion && now - s.lastMove > 2500) s.lon += (dt * 0.006) / s.zoom
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, size, size)
@@ -335,7 +387,7 @@ function Globe({ shapes, placed }) {
       }
 
       // Dots, smallest last on top; the top country pulses.
-      const scale = R / 150
+      const scale = (R0 / 150) * Math.sqrt(s.zoom)
       const dotsOnScreen = []
       for (const d of [...placed.dots].reverse()) {
         const [x, y, vis] = project(d.center[0], d.center[1])
@@ -367,6 +419,37 @@ function Globe({ shapes, placed }) {
         dotsOnScreen.push({ ...d, x, y, r })
       }
 
+      // Labels: the top three always; other giving countries once zoomed in
+      // (2×); every country's name, faintly, when zoomed further (3×).
+      placedBoxes.length = 0
+      const pct = (d) => {
+        const share = placed.grand > 0 ? (d.total / placed.grand) * 100 : 0
+        return share > 0 && share < 1 ? '<1%' : `${Math.round(share)}%`
+      }
+      const usd = (n) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+      const byRank = [...dotsOnScreen].sort((a, b) => a.rank - b.rank)
+      for (const d of byRank) {
+        if (d.rank < 3) drawLabel(d.x, d.y, d.r, [`${MEDAL[d.rank]} ${d.country}`, `${pct(d)} · ${usd(d.total)}`], true)
+      }
+      if (s.zoom >= 2) {
+        for (const d of byRank) {
+          if (d.rank >= 3) drawLabel(d.x, d.y, d.r, [d.country, `${pct(d)} · ${usd(d.total)}`], false)
+        }
+      }
+      if (s.zoom >= 3) {
+        const giving = new Set(placed.dots.map((d) => ATLAS_NAME[d.country] || d.country))
+        ctx.font = '500 10px ui-sans-serif, system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        for (const shape of shapes) {
+          if (!shape.name || giving.has(shape.name) || shape.name === 'Antarctica') continue
+          const [x, y, , cosc] = project(shape.center[0], shape.center[1])
+          if (cosc < 0.25 || x < 0 || x > size || y < 0 || y > size) continue
+          ctx.fillStyle = 'rgba(242,244,247,0.55)'
+          ctx.fillText(shape.name, x, y + 3)
+        }
+        ctx.textAlign = 'start'
+      }
+
       // Rim light.
       ctx.strokeStyle = 'rgba(255,255,255,0.08)'
       ctx.lineWidth = 1
@@ -387,16 +470,49 @@ function Globe({ shapes, placed }) {
     return [e.clientX - rect.left, e.clientY - rect.top]
   }
 
+  const setZoom = (z) => {
+    state.current.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z))
+    state.current.lastMove = performance.now()
+    setZoomShown(state.current.zoom)
+  }
+
+  // Mouse wheel zooms; the listener is added by hand so it can stop the
+  // page from scrolling at the same time.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      setZoom(state.current.zoom * Math.exp(-e.deltaY * 0.0015))
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [])
+
   const onPointerDown = (e) => {
+    const s = state.current
     canvasRef.current.setPointerCapture(e.pointerId)
-    state.current.drag = { x: e.clientX, y: e.clientY, lon: state.current.lon, lat: state.current.lat }
+    s.pointers.set(e.pointerId, [e.clientX, e.clientY])
+    if (s.pointers.size === 2) {
+      const [a, b] = [...s.pointers.values()]
+      s.pinch = { dist: Math.hypot(a[0] - b[0], a[1] - b[1]), zoom: s.zoom }
+      s.drag = null
+    } else {
+      s.drag = { x: e.clientX, y: e.clientY, lon: s.lon, lat: s.lat }
+    }
     setHover(null)
   }
   const onPointerMove = (e) => {
     const s = state.current
     s.lastMove = performance.now()
+    if (s.pointers.has(e.pointerId)) s.pointers.set(e.pointerId, [e.clientX, e.clientY])
+    if (s.pinch && s.pointers.size === 2) {
+      const [a, b] = [...s.pointers.values()]
+      setZoom((s.pinch.zoom * Math.hypot(a[0] - b[0], a[1] - b[1])) / (s.pinch.dist || 1))
+      return
+    }
     if (s.drag) {
-      const k = 180 / (size * 0.9)
+      const k = 180 / (size * 0.9 * s.zoom)
       s.lon = s.drag.lon - (e.clientX - s.drag.x) * k
       s.lat = Math.max(-70, Math.min(70, s.drag.lat + (e.clientY - s.drag.y) * k))
       return
@@ -412,10 +528,16 @@ function Globe({ shapes, placed }) {
     const hit = s.hitPaths.find((h) => ctx.isPointInPath(h.path, x * dpr, y * dpr))
     setHover(hit ? { ...hit.data, x, y } : null)
   }
-  const onPointerUp = () => {
-    state.current.drag = null
-    state.current.lastMove = performance.now()
+  const onPointerUp = (e) => {
+    const s = state.current
+    s.pointers.delete(e.pointerId)
+    if (s.pointers.size < 2) s.pinch = null
+    const rest = [...s.pointers.values()][0]
+    s.drag = rest ? { x: rest[0], y: rest[1], lon: s.lon, lat: s.lat } : null
+    s.lastMove = performance.now()
   }
+
+  const zoomButton = { background: 'rgba(15,17,21,0.85)', border: '1px solid var(--a-border)', color: 'var(--a-text)' }
 
   return (
     <div ref={wrapRef} className="relative" onMouseLeave={() => setHover(null)}>
@@ -427,8 +549,20 @@ function Globe({ shapes, placed }) {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         role="img"
-        aria-label="Globe of donations by country; drag to turn it"
+        aria-label="Globe of donations by country; drag to turn it, scroll or pinch to zoom"
       />
+      <div className="absolute right-1 bottom-1 flex flex-col gap-1">
+        <button type="button" aria-label="Zoom in" className="w-7 h-7 rounded-lg text-sm font-bold" style={zoomButton} onClick={() => setZoom(state.current.zoom * 1.5)}>+</button>
+        <button type="button" aria-label="Zoom out" className="w-7 h-7 rounded-lg text-sm font-bold" style={zoomButton} onClick={() => setZoom(state.current.zoom / 1.5)}>−</button>
+        {zoomShown > 1 && (
+          <button type="button" aria-label="Reset zoom" className="w-7 h-7 rounded-lg text-xs font-bold" style={zoomButton} onClick={() => setZoom(1)}>⟲</button>
+        )}
+      </div>
+      {zoomShown < 2 && (
+        <p className="absolute left-1 bottom-1 text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(15,17,21,0.7)', color: 'var(--a-text-muted)' }}>
+          Zoom in to see every country
+        </p>
+      )}
       <Tooltip hover={hover} width={size} height={size} />
     </div>
   )
@@ -460,7 +594,7 @@ export default function WorldMap({ byCountry }) {
   return (
     <div className="mt-1 rounded-xl overflow-hidden p-2" style={{ background: 'var(--a-surface-2)' }}>
       <div className="flex items-center justify-between mb-1 px-1">
-        <span className="text-[10px]" style={{ color: 'var(--a-text-muted)' }}>{view === 'globe' ? 'Drag to turn' : ''}</span>
+        <span className="text-[10px]" style={{ color: 'var(--a-text-muted)' }}>{view === 'globe' ? 'Drag to turn · scroll or pinch to zoom' : ''}</span>
         <div className="a-nav inline-flex" style={{ padding: 2 }}>
           {['globe', 'flat'].map((v) => (
             <a
