@@ -10,6 +10,7 @@ import {
 } from '@paypal/react-paypal-js'
 import { submitDonation, createPaypalOrderAction, startPaypalCheckout, capturePaypalOrderAction, markDonationFailed, getResumableDonation } from '@/app/donate/[slug]/actions'
 import { getMessages } from '@/lib/i18n'
+import { paypalScriptOptions } from '@/lib/paypalScript'
 
 // Same caps as the server's check in donationProblem (donate/[slug]/actions.js).
 const LIMITS = { name: 80, email: 254, message: 500 }
@@ -19,11 +20,15 @@ const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 150, 200, 250, 300, 500, 1000, 9999]
 const GATEWAY_ORDER = ['paypal', 'applepay', 'googlepay', 'stripe', 'bank']
 const EXPRESS_GATEWAYS = ['applepay', 'googlepay']
 
-// PayPal's buttons and card form in the page's language (null: PayPal's default).
-function withLocale(options, locale) {
-  const paypalLocale = getMessages(locale).paypalLocale
-  return paypalLocale ? { ...options, locale: paypalLocale } : options
+// The PayPal SDK's error, short enough to keep on the invoice (failure_code),
+// so the admin can see why a checkout failed. Errors this form threw itself
+// (already shown to the donor) are marked shown.
+function shownError(message) {
+  const err = new Error(message)
+  err.shown = true
+  return err
 }
+const errorDetail = (err) => String(err?.message || err || 'unknown').slice(0, 120)
 
 // The unfinished invoice on this page, kept in the browser so a donor who comes
 // back later continues it instead of leaving another pending one behind.
@@ -211,25 +216,14 @@ export default function DonationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const cardScriptOptions = useMemo(
-    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'card-fields' }, locale),
-    [cardClientId, locale]
-  )
+  const cardScriptOptions = useMemo(() => paypalScriptOptions('cardFields', cardClientId, locale), [cardClientId, locale])
 
-  // Apple Pay / Google Pay ride on the same PayPal merchant app as PayPal itself,
-  // rendered as PayPal's own official button widgets (required by both Apple's and
-  // Google's branding rules — a custom button can't trigger their payment sheets).
-  const expressScriptOptions = useMemo(
-    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'buttons,applepay,googlepay' }, locale),
-    [cardClientId, locale]
-  )
+  // Apple Pay / Google Pay are rendered as PayPal's own official button widgets
+  // (required by both Apple's and Google's branding rules — a custom button
+  // can't trigger their payment sheets).
+  const expressScriptOptions = useMemo(() => paypalScriptOptions('express', cardClientId, locale), [cardClientId, locale])
 
-  // PayPal's own black card button stays (it asks for a billing address, but the
-  // account isn't approved for the address-free Card option); Pay Later is hidden.
-  const paypalScriptOptions = useMemo(
-    () => withLocale({ clientId: cardClientId, currency: 'USD', components: 'buttons', disableFunding: 'paylater' }, locale),
-    [cardClientId, locale]
-  )
+  const buttonsScriptOptions = useMemo(() => paypalScriptOptions('buttons', cardClientId, locale), [cardClientId, locale])
 
   // The PayPal buttons sit right under the form, so the invoice is only created
   // once the donor actually clicks one (in createOrder). Without API credentials
@@ -271,7 +265,7 @@ export default function DonationForm({
       const validationError = validateDetails()
       if (validationError) {
         setFeedback(validationError)
-        throw new Error(validationError)
+        throw shownError(validationError)
       }
     }
 
@@ -288,7 +282,7 @@ export default function DonationForm({
     }
     if (res.error) {
       setFeedback(res.error)
-      throw new Error(res.error)
+      throw shownError(res.error)
     }
     return res.orderId
   }
@@ -317,10 +311,11 @@ export default function DonationForm({
   }
 
   const onError = (err) => {
-    console.error('PayPal card fields error:', err)
-    markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
+    console.error('PayPal checkout error:', err)
+    markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error', detail: errorDetail(err) })
     setStatus('idle')
-    setFeedback(t.checkoutFailed)
+    // The donor already sees the reason for an error this form raised itself.
+    if (!err?.shown) setFeedback(t.checkoutFailed)
   }
 
   const onCancel = () => {
@@ -372,7 +367,7 @@ export default function DonationForm({
         await cardFieldsSubmitRef.current()
       } catch (err) {
         console.error('Card payment submit failed:', err)
-        markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error' })
+        markDonationFailed({ invoiceNumber: invoiceNumberRef.current, reason: 'checkout_error', detail: errorDetail(err) })
         setStatus('idle')
         setFeedback(t.checkCard)
       }
@@ -399,7 +394,7 @@ export default function DonationForm({
     }
 
     if (result.redirectUrl) {
-      window.location.href = result.redirectUrl
+      window.location.assign(result.redirectUrl)
       return
     }
 
@@ -439,7 +434,7 @@ export default function DonationForm({
       const res = await createPaypalOrderAction({ invoiceNumber: paypalCheckout.invoiceNumber, clientId: paypalCheckout.clientId, locale })
       if (res.error) {
         setFeedback(res.error)
-        throw new Error(res.error)
+        throw shownError(res.error)
       }
       return res.orderId
     }
@@ -500,7 +495,7 @@ export default function DonationForm({
         {notice && <Notice text={notice} />}
         {feedback && <p className="text-sm text-red-600 text-center">{feedback}</p>}
 
-        <PayPalScriptProvider options={withLocale({ clientId: paypalCheckout.clientId, currency: 'USD', disableFunding: 'paylater' }, locale)}>
+        <PayPalScriptProvider options={paypalScriptOptions('buttons', paypalCheckout.clientId, locale)}>
           <PayPalButtons
             style={{ layout: 'vertical', height: 55 }}
             createOrder={createPaypalButtonOrder}
@@ -510,9 +505,9 @@ export default function DonationForm({
               setFeedback('')
               setNotice(t.cancelled)
             }}
-            onError={() => {
-              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'checkout_error' })
-              setFeedback(t.checkoutFailed)
+            onError={(err) => {
+              markDonationFailed({ invoiceNumber: paypalCheckout.invoiceNumber, reason: 'checkout_error', detail: errorDetail(err) })
+              if (!err?.shown) setFeedback(t.checkoutFailed)
             }}
           />
         </PayPalScriptProvider>
@@ -670,7 +665,7 @@ export default function DonationForm({
               <path d="M12 4v15M5 12l7 7 7-7" />
             </svg>
           </div>
-          <PayPalScriptProvider options={paypalScriptOptions}>
+          <PayPalScriptProvider options={buttonsScriptOptions}>
             <PayPalButtons
               style={{ layout: 'vertical', height: 55 }}
               onClick={onPaypalClick}

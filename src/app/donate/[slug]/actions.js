@@ -299,7 +299,8 @@ async function createOrderForInvoice({ supabase, paypal, clientId, invoiceNumber
     })
 
     return { orderId: order.id }
-  } catch {
+  } catch (err) {
+    console.error('PayPal order could not be created for', invoiceNumber, err?.code || err?.message || err)
     return { error: errors.paypalStart }
   }
 }
@@ -400,9 +401,12 @@ const BROWSER_FAILURE_REASONS = ['cancelled', 'checkout_error']
 // Called from the browser when the donor cancels or the checkout errors out.
 // The browser can only report cancelled/checkout_error; capture_declined is
 // set server-side from PayPal's own response.
-export async function markDonationFailed({ invoiceNumber, reason }) {
+// detail is PayPal's error message from the browser, kept as the failure_code
+// so the admin can see why a checkout failed.
+export async function markDonationFailed({ invoiceNumber, reason, detail }) {
   const failureReason = BROWSER_FAILURE_REASONS.includes(reason) ? reason : 'checkout_error'
-  await setDonationFailed(invoiceNumber, failureReason, null)
+  const failureCode = failureReason === 'checkout_error' && typeof detail === 'string' ? detail.slice(0, 120) : null
+  await setDonationFailed(invoiceNumber, failureReason, failureCode)
 }
 
 // Only touches online payments that are pending or already failed (a retry on

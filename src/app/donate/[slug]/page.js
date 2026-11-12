@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { preconnect } from 'react-dom'
+import { preconnect, preload } from 'react-dom'
 import { createPublicClient } from '@/lib/supabase/public'
 import { createAdminClient } from '@/lib/supabase/admin'
 import DonationForm from '@/components/DonationForm'
@@ -9,6 +9,7 @@ import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
 import OpenInBrowser from '@/components/OpenInBrowser'
 import { getMessages } from '@/lib/i18n'
+import { paypalScriptOptions, paypalSdkUrl } from '@/lib/paypalScript'
 
 // Donation pages are cached and served instantly, rebuilt in the background at
 // most once a minute. A completed donation or a settings change refreshes them
@@ -22,6 +23,23 @@ export async function generateStaticParams() {
   return []
 }
 
+// PGRST116: .single() found no row, which is the one error that means the page
+// doesn't exist.
+const NO_ROW = 'PGRST116'
+
+// A database hiccup (timeout, busy server) must never look like a missing page:
+// a 404 rendered here is cached, so everyone would see it until the next
+// rebuild. Such a read is tried once more, then thrown, which keeps the last
+// good copy of the page being served.
+async function readOrThrow(query) {
+  let result = await query()
+  if (result.error && result.error.code !== NO_ROW) result = await query()
+  if (result.error && result.error.code !== NO_ROW) {
+    throw new Error(`Donation page read failed: ${result.error.code || ''} ${result.error.message}`)
+  }
+  return result
+}
+
 export default async function DonatePage({ params }) {
   const { slug } = await params
   const supabase = createPublicClient()
@@ -31,14 +49,16 @@ export default async function DonatePage({ params }) {
   preconnect('https://www.paypalobjects.com')
 
   const [{ data: page }, { data: settings }] = await Promise.all([
-    supabase
-      .from('pages')
-      // All columns, so a page still opens (in English) on a database that
-      // doesn't have the locale column yet.
-      .select('*')
-      .eq('slug', slug)
-      .single(),
-    createAdminClient().from('settings').select('payment_settings').eq('id', 'global').single(),
+    readOrThrow(() =>
+      supabase
+        .from('pages')
+        // All columns, so a page still opens (in English) on a database that
+        // doesn't have the locale column yet.
+        .select('*')
+        .eq('slug', slug)
+        .single()
+    ),
+    readOrThrow(() => createAdminClient().from('settings').select('payment_settings').eq('id', 'global').single()),
   ])
 
   if (!page) notFound()
@@ -54,11 +74,20 @@ export default async function DonatePage({ params }) {
   // a settings change refreshes), so the PayPal script needn't wait on a request for it.
   const paypalClientId = getActivePaypalAccount(settings?.payment_settings?.paypal)?.client_id || null
 
-  const { data: allDonors } = await supabase
-    .from('public_donor_wall')
-    .select('id, display_name, amount, currency, message, created_at')
-    .eq('page_id', page.id)
-    .limit(500)
+  // PayPal is the first payment option, so its buttons load as soon as the
+  // form appears. Preloading the same script from the page's HTML starts that
+  // download alongside the page's own JavaScript instead of after it.
+  if (paypalClientId && paypalEnabled && page.enabled_gateways.includes('paypal')) {
+    preload(paypalSdkUrl(paypalScriptOptions('buttons', paypalClientId, page.locale)), { as: 'script' })
+  }
+
+  const { data: allDonors } = await readOrThrow(() =>
+    supabase
+      .from('public_donor_wall')
+      .select('id, display_name, amount, currency, message, created_at')
+      .eq('page_id', page.id)
+      .limit(500)
+  )
 
   // Every donor is read for the Top Donors totals, but only the few Recent
   // Donors shows are sent to the browser, so the page doesn't grow with them.
