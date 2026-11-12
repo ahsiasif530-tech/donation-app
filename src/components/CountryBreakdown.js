@@ -1,4 +1,11 @@
+'use client'
+
+import { useState } from 'react'
 import { COUNTRIES } from '@/lib/countries'
+
+// The top countries always show; "Load more" adds the next few below them.
+const SHOWN_AT_FIRST = 3
+const LOAD_MORE_STEP = 5
 
 // donor_country holds a country name, or PayPal's two-letter code when the
 // name wasn't in our list.
@@ -24,7 +31,10 @@ function Flag({ code, size }) {
 // faint gold fill shows their share. byCountry: [{ country, total, count }].
 export default function CountryBreakdown({ byCountry, totalEarning }) {
   const shareOf = (c) => (totalEarning > 0 ? (c.total / totalEarning) * 100 : 0)
-  const [top, ...rest] = byCountry
+  const [shown, setShown] = useState(SHOWN_AT_FIRST)
+  const [top, ...others] = byCountry
+  const rest = others.slice(0, shown - 1)
+  const allShown = shown >= byCountry.length
 
   return (
     <div className="a-card overflow-hidden">
@@ -89,6 +99,17 @@ export default function CountryBreakdown({ byCountry, totalEarning }) {
               </div>
             )
           })}
+
+          {byCountry.length > SHOWN_AT_FIRST && (
+            <button
+              type="button"
+              onClick={() => setShown(allShown ? SHOWN_AT_FIRST : shown + LOAD_MORE_STEP)}
+              className="w-full rounded-lg border text-xs font-bold py-2 mt-1 hover:opacity-80"
+              style={{ borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
+            >
+              {allShown ? 'Show less' : `Load more (${byCountry.length - shown} more)`}
+            </button>
+          )}
         </div>
       )}
     </div>
