@@ -19,6 +19,16 @@ import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
 import PageGroups from '@/components/PageGroups'
 
 const PAGES_PER_GROUP = 4
+
+// Several pages share a person's name (label), so a page is told apart by
+// its own title when it has its own address, otherwise by its link.
+function pageShortName(p) {
+  return HOST_BY_PAGE[p.slug] ? p.title : `/donate/${p.slug}`
+}
+function pageFullName(p) {
+  const person = p.label || p.title
+  return HOST_BY_PAGE[p.slug] ? `${person} · ${p.title}` : person
+}
 // Pages shown in their own box under the Pages table.
 const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 
@@ -161,10 +171,10 @@ export default async function AdminPage({ searchParams }) {
         <WithdrawalHistory
           withdrawals={(withdrawals || []).map((w) => ({
             ...w,
-            page_name: pageById[w.page_id]?.label || pageById[w.page_id]?.title || '—',
+            page_name: pageById[w.page_id] ? pageFullName(pageById[w.page_id]) : '—',
           }))}
           fileName="all-pages"
-          pages={(pages || []).map((p) => ({ id: p.id, name: p.label || p.title }))}
+          pages={(pages || []).map((p) => ({ id: p.id, name: pageFullName(p), person: p.label || p.title, page: pageShortName(p) }))}
         />
       ),
     },

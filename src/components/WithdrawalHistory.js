@@ -20,21 +20,29 @@ function localDay(date) {
 // Dates are formatted in the viewer's browser so the time shown (and written
 // to the Excel file) is their local time, not the server's. Rows can carry
 // their own page_name when the list mixes several pages; passing `pages`
-// ([{ id, name }]) then adds a tab per page to show one page at a time.
+// ([{ id, name, person, page }]) then adds one tab per person, and a page
+// picker when that person has more than one page.
 export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageName, fileName, pages = [] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [selectedPerson, setSelectedPerson] = useState('all')
   const [selectedPageId, setSelectedPageId] = useState('all')
   const [range, setRange] = useState({ from: '', to: '' })
-  const selectedPage = pages.find((p) => p.id === selectedPageId)
+  const personOf = (p) => p.person || p.name
+  const people = [...new Set(pages.map(personOf))]
+  const personPages = pages.filter((p) => personOf(p) === selectedPerson)
+  const personPageIds = new Set(personPages.map((p) => p.id))
+  const selectedPage = personPages.find((p) => p.id === selectedPageId)
   // Days are compared in the viewer's local time, matching the times shown.
   const withdrawals = allWithdrawals.filter((w) => {
+    if (selectedPerson !== 'all' && !personPageIds.has(w.page_id)) return false
     if (selectedPage && w.page_id !== selectedPage.id) return false
     const day = localDay(new Date(w.created_at))
     if (range.from && day < range.from) return false
     if (range.to && day > range.to) return false
     return true
   })
-  const filtered = selectedPage || range.from
+  const filtered = selectedPerson !== 'all' || range.from
+  const exportName = selectedPage ? selectedPage.name : selectedPerson !== 'all' ? selectedPerson : null
   const total = withdrawals.reduce((sum, w) => sum + Number(w.amount), 0)
   const hasMore = visibleCount < withdrawals.length
 
@@ -51,7 +59,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${selectedPage ? selectedPage.name.replace(/[^\w-]+/g, '-') : fileName}-withdrawals-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `${exportName ? exportName.replace(/[^\w-]+/g, '-') : fileName}-withdrawals-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -84,28 +92,46 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
             setVisibleCount(PAGE_SIZE)
           }}
         />
-        {pages.length > 0 &&
-          [{ id: 'all', name: 'All' }, ...pages].map((p) => {
-            const active = p.id === selectedPageId
+        {people.length > 0 &&
+          ['all', ...people].map((person) => {
+            const active = person === selectedPerson
             return (
               <button
-                key={p.id}
+                key={person}
                 type="button"
                 onClick={() => {
-                  setSelectedPageId(p.id)
+                  setSelectedPerson(person)
+                  setSelectedPageId('all')
                   setVisibleCount(PAGE_SIZE)
                 }}
-                className="rounded-lg border px-3 py-1 text-xs font-bold hover:opacity-80"
+                className="rounded-full border px-3 py-1 text-xs font-bold hover:opacity-80"
                 style={
                   active
                     ? { background: 'var(--a-accent)', borderColor: 'var(--a-accent)', color: 'var(--a-accent-ink)' }
-                    : { background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }
+                    : { background: 'transparent', borderColor: 'var(--a-border)', color: 'var(--a-text)' }
                 }
               >
-                {p.name}
+                {person === 'all' ? 'All' : person}
               </button>
             )
           })}
+        {personPages.length > 1 && (
+          <select
+            value={selectedPageId}
+            onChange={(e) => {
+              setSelectedPageId(e.target.value)
+              setVisibleCount(PAGE_SIZE)
+            }}
+            aria-label={`${selectedPerson}'s pages`}
+            className="rounded-lg border px-2.5 py-1 text-xs font-bold"
+            style={{ background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
+          >
+            <option value="all">All {personPages.length} pages</option>
+            {personPages.map((p) => (
+              <option key={p.id} value={p.id}>{p.page || p.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {withdrawals.length === 0 ? (
