@@ -18,7 +18,7 @@ import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
 import PageGroups from '@/components/PageGroups'
 import TeamProgress from '@/components/TeamProgress'
-import { initials, avatarColor } from '@/lib/avatar'
+import { initials, personColor } from '@/lib/avatar'
 
 const PAGES_PER_GROUP = 4
 
@@ -124,10 +124,35 @@ export default async function AdminPage({ searchParams }) {
     if (!personPageIds.has(person)) personPageIds.set(person, new Set())
     personPageIds.get(person).add(p.id)
   }
+  const personOrder = [...personPageIds.keys()]
   const teamPeople = [...personPageIds.entries()].map(([name, ids]) => {
     const rows = completed.filter((d) => ids.has(d.page_id))
-    return { name, pages: ids.size, week: windowStats(rows, 7), month: windowStats(rows, 30), all: sumOf(rows) }
+    return { name, color: personColor(name, personOrder), pages: ids.size, week: windowStats(rows, 7), month: windowStats(rows, 30), all: sumOf(rows) }
   })
+
+  // Chart data: money per person per day for the last 7 and 30 days, and per
+  // week since the first donation for all time (days are UTC days).
+  const pageOwner = Object.fromEntries((pages || []).map((p) => [p.id, p.label || p.title]))
+  const dayLabel = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const todayStart = Math.floor(now / DAY_MS) * DAY_MS
+  const buildChart = (bucketMs, count, start) => {
+    const labels = Array.from({ length: count }, (_, i) => dayLabel(start + i * bucketMs))
+    const values = Object.fromEntries(personOrder.map((name) => [name, new Array(count).fill(0)]))
+    for (const d of completed) {
+      const i = Math.floor((new Date(d.created_at).getTime() - start) / bucketMs)
+      const owner = pageOwner[d.page_id]
+      if (i >= 0 && i < count && values[owner]) values[owner][i] += Number(d.amount)
+    }
+    return { labels, values }
+  }
+  const firstDonation = completed.length ? Math.min(...completed.map((d) => new Date(d.created_at).getTime())) : todayStart
+  const WEEK_MS = 7 * DAY_MS
+  const allStart = Math.floor(firstDonation / DAY_MS) * DAY_MS
+  const teamCharts = {
+    week: buildChart(DAY_MS, 7, todayStart - 6 * DAY_MS),
+    month: buildChart(DAY_MS, 30, todayStart - 29 * DAY_MS),
+    all: buildChart(WEEK_MS, Math.max(2, Math.ceil((todayStart + DAY_MS - allStart) / WEEK_MS)), allStart),
+  }
 
   const countryTotals = new Map()
   for (const d of completed) {
@@ -270,7 +295,7 @@ export default async function AdminPage({ searchParams }) {
     <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="a-avatar" style={{ background: avatarColor(p.label || p.title) }}>{initials(p.label || p.title)}</span>
+          <span className="a-avatar" style={{ background: personColor(p.label || p.title, personOrder) }}>{initials(p.label || p.title)}</span>
           <div className="min-w-0">
             <p className="text-[15px] font-semibold truncate">
               {p.label || p.title}
@@ -379,7 +404,7 @@ export default async function AdminPage({ searchParams }) {
         </div>
 
         <div id="team-progress" className="scroll-mt-24">
-          <TeamProgress people={teamPeople} />
+          <TeamProgress people={teamPeople} charts={teamCharts} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
