@@ -32,6 +32,51 @@ function pageFullName(p) {
 // Pages shown in their own box under the Pages table.
 const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function initials(name) {
+  return (name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
+function firstName(name) {
+  return (name || '').trim().split(/\s+/)[0] || 'Admin'
+}
+// A steady colour per person, so the same name always gets the same avatar.
+function avatarColor(name) {
+  let hash = 0
+  for (const ch of name || '') hash = (hash * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${hash} 70% 68%)`
+}
+
+const ICON_PATHS = {
+  wallet: 'M3 7h15a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Zm0 0V6a2 2 0 0 1 2-2h11M16 13.5h2',
+  chart: 'M4 19V5M4 19h16M8 15l3-4 3 2 5-6',
+  clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  calendar: 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z',
+  card: 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 3h18M7 15h4',
+  paypal: 'M8 20l1.5-9h5a4 4 0 0 0 0-8H8L5 20h3Zm1.5-9L11 4',
+  pages: 'M8 3h8l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 0v4h4M9 13h6M9 17h6',
+  flag: 'M5 21V4m0 0h11l-2 4 2 4H5',
+  receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6M9 12h6',
+}
+
+function Icon({ name, size = 15 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICON_PATHS[name]} />
+    </svg>
+  )
+}
+
+function StatCard({ icon, label, value, note }) {
+  return (
+    <div className="a-card a-stat">
+      <p className="a-stat-label"><span className="a-icon"><Icon name={icon} /></span>{label}</p>
+      <p className="a-display text-3xl font-semibold tabular-nums">${value.toFixed(2)}</p>
+      <p className="text-xs" style={{ color: 'var(--a-text-muted)' }}>{note}</p>
+    </div>
+  )
+}
+
 export default async function AdminPage({ searchParams }) {
   const { status: statusFilter, page: pageFilter, from: fromFilter, to: toFilter, q: searchQuery } = await searchParams
   const supabase = await createClient()
@@ -64,6 +109,12 @@ export default async function AdminPage({ searchParams }) {
   const completed = (donations || []).filter((d) => d.status === 'completed')
   const totalEarning = completed.reduce((sum, d) => sum + Number(d.amount), 0)
   const totalWithdrawn = (withdrawals || []).reduce((sum, w) => sum + Number(w.amount), 0)
+
+  // Completed donations in the last day and week, counted back from now.
+  const now = Date.now()
+  const since = (ms) => completed.filter((d) => now - new Date(d.created_at).getTime() <= ms)
+  const sumOf = (rows) => ({ total: rows.reduce((sum, d) => sum + Number(d.amount), 0), count: rows.length })
+  const recent = { day: sumOf(since(DAY_MS)), week: sumOf(since(7 * DAY_MS)) }
 
   const countryTotals = new Map()
   for (const d of completed) {
@@ -117,6 +168,8 @@ export default async function AdminPage({ searchParams }) {
       invoices: rows,
     }
   })
+
+  const totalEarningFiltered = byGateway.reduce((sum, g) => sum + g.earning, 0)
 
   // Completed money per saved PayPal account (PayPal, card, Apple Pay and Google
   // Pay all go through one). Donations from before accounts were recorded have
@@ -203,8 +256,16 @@ export default async function AdminPage({ searchParams }) {
   const pageRow = (p) => (
     <tr key={p.id} className="border-t" style={{ borderColor: 'var(--a-border)' }}>
       <td className="px-6 py-4">
-        <p className="text-base font-semibold">{p.label || p.title}</p>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--a-text-muted)' }}>{HOST_BY_PAGE[p.slug] || `/donate/${p.slug}`}</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="a-avatar" style={{ background: avatarColor(p.label || p.title) }}>{initials(p.label || p.title)}</span>
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold truncate">
+              {p.label || p.title}
+              {HOST_BY_PAGE[p.slug] && <span className="font-normal" style={{ color: 'var(--a-text-muted)' }}> · {p.title}</span>}
+            </p>
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--a-text-muted)' }}>{HOST_BY_PAGE[p.slug] || `/donate/${p.slug}`}</p>
+          </div>
+        </div>
       </td>
       <td className="px-6 py-4 text-right tabular-nums text-base">{p.count}</td>
       <td className="px-6 py-4 text-right tabular-nums font-semibold text-base">
@@ -229,7 +290,7 @@ export default async function AdminPage({ searchParams }) {
           className="inline-flex items-center gap-1 rounded-lg text-xs font-bold px-3.5 py-2 transition-transform hover:-translate-y-0.5"
           style={{ background: 'var(--a-accent)', color: 'var(--a-accent-ink)' }}
         >
-          Open
+          Open ↗
         </a>
       </td>
     </tr>
@@ -247,94 +308,119 @@ export default async function AdminPage({ searchParams }) {
   }
 
   return (
-    <main className="admin-theme min-h-screen px-4 py-10">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <p className="a-brand a-gold-text">BlessedHands</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Admin — {profile.full_name}</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--a-text-muted)' }}>All pages, all invoices</p>
+    <main className="admin-theme min-h-screen">
+      <header className="a-topbar">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="a-brand-sm a-gold-text">BlessedHands</span>
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest rounded-md px-1.5 py-0.5" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>Admin</span>
           </div>
-          <div className="flex items-center gap-5">
-            <Link
-              href="/admin/traffic"
-              className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
-              style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
-            >
-              Traffic
-            </Link>
-            <Link
-              href="/admin/settings"
-              className="text-sm font-bold rounded-lg px-4 py-2 transition-colors"
-              style={{ background: 'var(--a-surface-2)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
-            >
-              Payment Settings
-            </Link>
+          <nav className="a-nav hidden md:inline-flex" aria-label="Admin">
+            <Link href="/admin" aria-current="page">Dashboard</Link>
+            <Link href="/admin/traffic">Traffic</Link>
+            <Link href="/admin/settings">Payment Settings</Link>
+          </nav>
+          <div className="flex items-center gap-3">
+            <span className="a-avatar" style={{ background: 'linear-gradient(135deg, var(--a-accent-strong), var(--a-accent))', width: 32, height: 32, borderRadius: 10 }} title={profile.full_name}>
+              {initials(profile.full_name)}
+            </span>
             <SignOutButton />
           </div>
         </div>
+        <nav className="a-nav flex md:hidden w-fit mx-auto mb-3" aria-label="Admin">
+          <Link href="/admin" aria-current="page">Dashboard</Link>
+          <Link href="/admin/traffic">Traffic</Link>
+          <Link href="/admin/settings">Settings</Link>
+        </nav>
+      </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="a-card a-card-hero p-6">
-            <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Total earning</p>
-            <p className="a-display a-gold-text text-5xl font-semibold mt-1 tabular-nums">
-              ${(totalEarning - totalWithdrawn).toFixed(2)}
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold">Welcome back, {firstName(profile.full_name)}</h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--a-text-muted)' }}>
+              {mainPages.length + separatePages.length} pages · {completed.length} completed donations
             </p>
-            {totalWithdrawn > 0 && (
-              <p className="text-xs mt-2" style={{ color: 'var(--a-danger)' }}>−${totalWithdrawn.toFixed(2)} withdrawn</p>
-            )}
-            {/* Every completed donation ever; withdrawals never reduce it. */}
-            <div className="border-t mt-5 pt-4" style={{ borderColor: 'var(--a-border)' }}>
-              <p className="text-sm font-semibold" style={{ color: 'var(--a-text-muted)' }}>Lifetime earning</p>
-              <p className="a-display text-3xl font-semibold mt-1 tabular-nums" style={{ color: 'var(--a-text)' }}>
-                ${totalEarning.toFixed(2)}
-              </p>
+          </div>
+          <a
+            href="#invoices"
+            className="text-sm font-bold rounded-xl px-4 py-2 hover:opacity-90"
+            style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
+          >
+            View invoices ↓
+          </a>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="a-card a-card-hero a-stat col-span-2 lg:col-span-1">
+            <p className="a-stat-label"><span className="a-icon"><Icon name="wallet" /></span>Available</p>
+            <p className="a-display a-gold-text text-4xl font-semibold tabular-nums">${(totalEarning - totalWithdrawn).toFixed(2)}</p>
+            <p className="text-xs" style={{ color: totalWithdrawn > 0 ? 'var(--a-danger)' : 'var(--a-text-muted)' }}>
+              {totalWithdrawn > 0 ? `−$${totalWithdrawn.toFixed(2)} withdrawn` : 'Nothing withdrawn yet'}
+            </p>
+          </div>
+          {/* Every completed donation ever; withdrawals never reduce it. */}
+          <StatCard icon="chart" label="Lifetime" value={totalEarning} note={`${completed.length} donations`} />
+          <StatCard icon="clock" label="Last 24 hours" value={recent.day.total} note={`${recent.day.count} ${recent.day.count === 1 ? 'donation' : 'donations'}`} />
+          <StatCard icon="calendar" label="Last 7 days" value={recent.week.total} note={`${recent.week.count} ${recent.week.count === 1 ? 'donation' : 'donations'}`} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="a-card p-6">
+            <h2 className="a-section-title mb-4"><span className="a-icon"><Icon name="card" /></span>By gateway</h2>
+            <div className="space-y-3">
+              {byGateway.map((g) => {
+                const share = totalEarningFiltered > 0 ? (g.earning / totalEarningFiltered) * 100 : 0
+                return (
+                  <a key={g.gateway} href={`#gateway-${g.gateway}`} className="block group">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="font-semibold group-hover:underline">{g.label}</span>
+                      <span className="tabular-nums">
+                        <span className="font-bold">${g.earning.toFixed(2)}</span>
+                        <span className="ml-2 text-xs" style={{ color: 'var(--a-text-muted)' }}>{Math.round(share)}%</span>
+                      </span>
+                    </div>
+                    <div className="a-bar"><span style={{ width: `${share}%` }} /></div>
+                  </a>
+                )
+              })}
             </div>
           </div>
-          <div className="a-card p-6 sm:col-span-2">
-            <p className="text-sm font-semibold mb-2" style={{ color: 'var(--a-text-muted)' }}>By gateway</p>
-            <div className="flex flex-wrap gap-2">
-              {byGateway.map((g) => (
-                <a
-                  key={g.gateway}
-                  href={`#gateway-${g.gateway}`}
-                  className="text-sm rounded-lg border px-3 py-1.5 hover:opacity-80 transition-opacity"
-                  style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}
-                >
-                  <span style={{ color: 'var(--a-text-muted)' }}>{g.label}: </span>
-                  <span className="font-bold tabular-nums">${g.earning.toFixed(2)}</span>
-                </a>
-              ))}
-            </div>
 
-            {(byPaypalAccount.length > 0 || unrecordedEarning > 0) && (
+          <div className="a-card p-6">
+            {(byPaypalAccount.length > 0 || unrecordedEarning > 0) ? (
               <>
-                <p className="text-sm font-semibold mt-4 mb-2" style={{ color: 'var(--a-text-muted)' }}>By PayPal account</p>
-                <div className="flex flex-wrap gap-2">
+                <h2 className="a-section-title mb-4"><span className="a-icon"><Icon name="paypal" /></span>By PayPal account</h2>
+                <div className="space-y-2">
                   {byPaypalAccount.map((a) => (
-                    <span
+                    <div
                       key={a.id}
-                      className="text-sm rounded-lg border px-3 py-1.5"
-                      style={{ borderColor: a.active ? 'var(--a-success)' : 'var(--a-border)', background: 'var(--a-surface-2)' }}
+                      className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm"
+                      style={{ background: 'var(--a-surface-2)', border: `1px solid ${a.active ? 'rgba(52,211,153,0.45)' : 'var(--a-border)'}` }}
                       title={a.active ? 'Currently receiving donations' : undefined}
                     >
-                      {a.active && <span style={{ color: 'var(--a-success)' }}>● </span>}
-                      <span style={{ color: 'var(--a-text-muted)' }}>{a.label}: </span>
-                      <span className="font-bold tabular-nums">${a.earning.toFixed(2)}</span>
-                    </span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.active ? 'var(--a-success)' : 'var(--a-border)' }} />
+                        <span className="font-semibold truncate">{a.label}</span>
+                        {a.active && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--a-success)' }}>Active</span>}
+                      </span>
+                      <span className="font-bold tabular-nums shrink-0">${a.earning.toFixed(2)}</span>
+                    </div>
                   ))}
                   {unrecordedEarning > 0 && (
-                    <span
-                      className="text-sm rounded-lg border px-3 py-1.5"
-                      style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}
+                    <div
+                      className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm"
+                      style={{ background: 'var(--a-surface-2)', border: '1px dashed var(--a-border)' }}
                       title="Paid before the app started recording which PayPal account received each donation"
                     >
-                      <span style={{ color: 'var(--a-text-muted)' }}>Account not recorded: </span>
+                      <span style={{ color: 'var(--a-text-muted)' }}>Account not recorded</span>
                       <span className="font-bold tabular-nums">${unrecordedEarning.toFixed(2)}</span>
-                    </span>
+                    </div>
                   )}
                 </div>
               </>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--a-text-muted)' }}>No PayPal account saved yet.</p>
             )}
           </div>
         </div>
@@ -342,8 +428,9 @@ export default async function AdminPage({ searchParams }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="a-card overflow-hidden">
-            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-              <h2 className="font-bold">Pages</h2>
+            <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
+              <h2 className="a-section-title"><span className="a-icon"><Icon name="pages" /></span>Pages</h2>
+              <span className="text-xs font-semibold" style={{ color: 'var(--a-text-muted)' }}>{mainPages.length} pages</span>
             </div>
             {mainPages.length === 0 ? (
               <p className="px-6 py-8 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>Kono page ekhono banano hoyni.</p>
@@ -355,7 +442,7 @@ export default async function AdminPage({ searchParams }) {
           {separatePages.length > 0 && (
             <div className="a-card overflow-hidden">
               <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
-                <h2 className="font-bold">México</h2>
+                <h2 className="a-section-title"><span className="a-icon"><Icon name="flag" /></span>México</h2>
               </div>
               <table className="w-full text-sm">
                 {pagesHead}
@@ -370,10 +457,10 @@ export default async function AdminPage({ searchParams }) {
 
         <div id="invoices" className="scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <h2 className="font-bold">All invoices, by gateway</h2>
+            <h2 className="a-section-title text-lg"><span className="a-icon"><Icon name="receipt" /></span>All invoices, by gateway</h2>
             <RecoverPaypalButton />
           </div>
-          <InvoiceFilterBar pages={pages || []} />
+          <InvoiceFilterBar pages={(pages || []).map((p) => ({ id: p.id, label: pageFullName(p) }))} />
           <InvoiceSections initialHidden={hiddenSections} sections={invoiceSections} />
         </div>
       </div>
