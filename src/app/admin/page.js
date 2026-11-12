@@ -17,6 +17,8 @@ import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
 import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
 import PageGroups from '@/components/PageGroups'
+import TeamProgress from '@/components/TeamProgress'
+import { initials, avatarColor } from '@/lib/avatar'
 
 const PAGES_PER_GROUP = 4
 
@@ -34,17 +36,8 @@ const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function initials(name) {
-  return (name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
-}
 function firstName(name) {
   return (name || '').trim().split(/\s+/)[0] || 'Admin'
-}
-// A steady colour per person, so the same name always gets the same avatar.
-function avatarColor(name) {
-  let hash = 0
-  for (const ch of name || '') hash = (hash * 31 + ch.charCodeAt(0)) % 360
-  return `hsl(${hash} 70% 68%)`
 }
 
 const ICON_PATHS = {
@@ -115,6 +108,26 @@ export default async function AdminPage({ searchParams }) {
   const since = (ms) => completed.filter((d) => now - new Date(d.created_at).getTime() <= ms)
   const sumOf = (rows) => ({ total: rows.reduce((sum, d) => sum + Number(d.amount), 0), count: rows.length })
   const recent = { day: sumOf(since(DAY_MS)), week: sumOf(since(7 * DAY_MS)) }
+
+  // Team progress: each person's pages together, for the last 7 and 30 days
+  // (with the same length of time before, for growth) and all time.
+  const ageOf = (d) => now - new Date(d.created_at).getTime()
+  const windowStats = (rows, days) => {
+    const span = days * DAY_MS
+    const inNow = rows.filter((d) => ageOf(d) <= span)
+    const inBefore = rows.filter((d) => ageOf(d) > span && ageOf(d) <= 2 * span)
+    return { ...sumOf(inNow), prev: sumOf(inBefore).total }
+  }
+  const personPageIds = new Map()
+  for (const p of pages || []) {
+    const person = p.label || p.title
+    if (!personPageIds.has(person)) personPageIds.set(person, new Set())
+    personPageIds.get(person).add(p.id)
+  }
+  const teamPeople = [...personPageIds.entries()].map(([name, ids]) => {
+    const rows = completed.filter((d) => ids.has(d.page_id))
+    return { name, pages: ids.size, week: windowStats(rows, 7), month: windowStats(rows, 30), all: sumOf(rows) }
+  })
 
   const countryTotals = new Map()
   for (const d of completed) {
@@ -363,6 +376,10 @@ export default async function AdminPage({ searchParams }) {
           <StatCard icon="chart" label="Lifetime" value={totalEarning} note={`${completed.length} donations`} />
           <StatCard icon="clock" label="Last 24 hours" value={recent.day.total} note={`${recent.day.count} ${recent.day.count === 1 ? 'donation' : 'donations'}`} />
           <StatCard icon="calendar" label="Last 7 days" value={recent.week.total} note={`${recent.week.count} ${recent.week.count === 1 ? 'donation' : 'donations'}`} />
+        </div>
+
+        <div id="team-progress" className="scroll-mt-24">
+          <TeamProgress people={teamPeople} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
