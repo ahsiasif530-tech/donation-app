@@ -1597,6 +1597,303 @@
 .theme-glory .d-btn-gold { border-radius: 999px; }
 .theme-glory .d-btn-shine { text-shadow: none; }
 
+/* ==== Halo (Light of Hope): soft white-gold light. Tall capsule portrait
+   inside a dashed gold ring, borderless glowing cards, tiles with a
+   dashed gold edge. */
+.theme-halo {
+  --bg: #FFFBF0;
+  --surface: #FFFFFF;
+  --surface-2: #FFF6DE;
+  --ink: #2A2414;
+  --ink-muted: #6B5F3E;
+  --border: #F1E3B8;
+  --heading: #7A5A08;
+  --gold: #C8961A;
+  --gold-bright: #E9B83A;
+  --gold-soft: rgba(233, 184, 58, 0.18);
+  --gold-gradient: linear-gradient(180deg, #F5CE5E, #D49B17);
+  --success-bg: #FBF1D3;
+  --success-text: #6E5410;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255,236,170,0.9), transparent 38%),
+    radial-gradient(ellipse 900px 600px at 50% 0%, rgba(255,226,140,0.35), transparent 65%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-halo .d-card {
+  border-radius: 24px;
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(233, 184, 58, 0.18), 0 0 60px -20px rgba(233, 184, 58, 0.55);
+}
+.theme-halo .halo { width: 124px; height: 176px; }
+.theme-halo .halo::before {
+  inset: -12px;
+  border-radius: 999px;
+  background: none;
+  border: 2px dashed var(--gold-bright);
+  animation: none;
+}
+.theme-halo .halo > div {
+  border-radius: 999px;
+  border: 3px solid #fff;
+  box-shadow: 0 0 30px -4px rgba(233, 184, 58, 0.8);
+}
+.theme-halo .grid:has(> .d-amount) { gap: 10px; }
+.theme-halo .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--gold-bright);
+  background: #fff;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-halo .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-halo .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-halo .d-amount-selected,
+.theme-halo .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-style: solid;
+  border-color: var(--gold);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(122, 90, 8, 0.4);
+  transform: none;
+  box-shadow: 0 0 20px -4px var(--gold-bright);
+  animation: none;
+}
+.theme-halo .d-amount-selected::before { display: none; }
+.theme-halo .d-gateway-selected,
+.theme-halo .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 1.5px var(--gold-bright);
+}
+.theme-halo .d-btn-gold { border-radius: 999px; box-shadow: 0 0 30px -6px var(--gold-bright); }
+
+/* ==== Meadow (Meadow Bloom): sunset amber over sage. A wide landscape
+   photo card tilted the other way, price-tag shaped amount tiles, cards
+   with a sage footer line. */
+.theme-meadow {
+  --bg: #FAF3E4;
+  --surface: #FFFDF8;
+  --surface-2: #F3EDDC;
+  --ink: #2A2216;
+  --ink-muted: #645640;
+  --border: #E5D9BC;
+  --heading: #6B4A12;
+  --gold: #C7741C;
+  --gold-bright: #E8963A;
+  --gold-soft: rgba(232, 150, 58, 0.16);
+  --gold-gradient: linear-gradient(135deg, #F0A94B, #C2641A);
+  --success-bg: #E8EED9;
+  --success-text: #4C6A2E;
+  background:
+    linear-gradient(180deg, #FCE3BE 0%, rgba(252,227,190,0) 320px),
+    radial-gradient(ellipse 700px 300px at 50% 100%, rgba(140,170,100,0.18), transparent 70%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-meadow .d-card {
+  border-radius: 14px;
+  box-shadow: inset 0 -5px 0 #9DB57A, 0 14px 30px -20px rgba(107, 74, 18, 0.45);
+}
+.theme-meadow .halo { width: 190px; height: 136px; transform: rotate(3deg); }
+.theme-meadow .halo::before {
+  inset: -9px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 26px -12px rgba(107, 74, 18, 0.45);
+  animation: none;
+}
+.theme-meadow .halo > div {
+  border: none;
+  border-radius: 16px;
+}
+.theme-meadow .grid:has(> .d-amount) { gap: 10px; }
+.theme-meadow .d-amount {
+  aspect-ratio: auto;
+  height: 50px;
+  border-radius: 0 8px 8px 0;
+  border: none;
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 14px 100%, 0 50%);
+  background: #F6E4C2;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+  padding-left: 10px;
+}
+.theme-meadow .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-meadow .d-amount:hover { transform: none; background: #F1D7A6; box-shadow: none; }
+.theme-meadow .d-amount-selected,
+.theme-meadow .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-meadow .d-amount-selected::before { display: none; }
+.theme-meadow .d-gateway-selected,
+.theme-meadow .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 5px 0 0 #9DB57A;
+}
+.theme-meadow .d-btn-gold { border-radius: 10px; }
+.theme-meadow .d-btn-shine { text-shadow: none; }
+
+/* ==== Forest (Living Forest): fresh mint and deep emerald. Portrait with
+   two round and two square corners, tiles with an emerald side bar,
+   cards with a mint wash at the top. */
+.theme-forest {
+  --bg: #EEF7F1;
+  --surface: #FFFFFF;
+  --surface-2: #E4F2E9;
+  --ink: #0C2018;
+  --ink-muted: #3B5C4D;
+  --border: #C4E2D0;
+  --heading: #0D5A3A;
+  --gold: #0F7A4C;
+  --gold-bright: #22A86A;
+  --gold-soft: rgba(34, 168, 106, 0.14);
+  --gold-gradient: linear-gradient(135deg, #2BB574, #0B5E3B);
+  --success-bg: #DDF0E4;
+  --success-text: #1B6B45;
+  background:
+    radial-gradient(ellipse 800px 500px at 50% -10%, rgba(43,181,116,0.22), transparent 60%),
+    radial-gradient(circle at 0% 50%, rgba(13,90,58,0.07), transparent 40%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-forest .d-card {
+  border-radius: 28px 6px 28px 6px;
+  box-shadow: 0 16px 34px -22px rgba(13, 90, 58, 0.5);
+}
+.theme-forest .halo { width: 146px; height: 160px; }
+.theme-forest .halo::before {
+  inset: 10px -10px -10px 10px;
+  border-radius: 48px 8px 48px 8px;
+  background: var(--gold-soft);
+  border: 2px solid var(--gold-bright);
+  animation: none;
+}
+.theme-forest .halo > div {
+  border: none;
+  border-radius: 48px 8px 48px 8px;
+}
+.theme-forest .grid:has(> .d-amount) { gap: 10px; }
+.theme-forest .d-amount {
+  aspect-ratio: auto;
+  height: 52px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--gold-bright);
+  background: #fff;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-forest .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-forest .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-forest .d-amount-selected,
+.theme-forest .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  border-left-color: #0B3F28;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-forest .d-amount-selected::before { display: none; }
+.theme-forest .d-gateway-selected,
+.theme-forest .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 5px 0 0 var(--gold-bright);
+}
+.theme-forest .d-btn-gold { border-radius: 22px 4px 22px 4px; }
+.theme-forest .d-btn-shine { text-shadow: none; }
+
+/* ==== Candle (Sacred Heart): dark warm brown lit by candle amber.
+   Rounded-square portrait with a soft flickering glow, dark tiles with
+   amber numbers, an amber button. */
+.theme-candle {
+  --bg: #17100B;
+  --surface: #241912;
+  --surface-2: #2F2118;
+  --ink: #F7EADB;
+  --ink-muted: #CDB397;
+  --border: #4A3424;
+  --heading: #FFD9A0;
+  --gold: #E89A3C;
+  --gold-bright: #FFB65C;
+  --gold-soft: rgba(255, 182, 92, 0.16);
+  --gold-gradient: linear-gradient(180deg, #FFC56E, #D9792A);
+  --success-bg: #33261A;
+  --success-text: #F5C98A;
+  background:
+    radial-gradient(ellipse 600px 420px at 50% 4%, rgba(255,150,60,0.28), transparent 60%),
+    radial-gradient(circle at 8% 90%, rgba(255,150,60,0.10), transparent 30%),
+    radial-gradient(circle at 92% 90%, rgba(255,150,60,0.10), transparent 30%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-candle .d-card {
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 182, 92, 0.25), 0 24px 50px -24px rgba(0, 0, 0, 0.8);
+}
+.theme-candle .halo { width: 150px; height: 150px; }
+.theme-candle .halo::before {
+  inset: -16px;
+  border-radius: 40px;
+  background: radial-gradient(circle, rgba(255,170,80,0.55) 0%, transparent 70%);
+  animation: candle-flicker 3s ease-in-out infinite;
+}
+@keyframes candle-flicker {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.04); }
+  60% { opacity: 0.85; transform: scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) { .theme-candle .halo::before { animation: none; } }
+.theme-candle .halo > div {
+  border-radius: 30px;
+  border: 2px solid rgba(255, 182, 92, 0.6);
+}
+.theme-candle .grid:has(> .d-amount) { gap: 10px; }
+.theme-candle .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--gold-bright);
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+.theme-candle .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-candle .d-amount:hover { transform: none; border-color: var(--gold); box-shadow: 0 0 14px -4px rgba(255, 182, 92, 0.5); }
+.theme-candle .d-amount-selected,
+.theme-candle .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #2A1708;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 0 22px -4px rgba(255, 182, 92, 0.7);
+  animation: none;
+}
+.theme-candle .d-amount-selected::before { display: none; }
+.theme-candle .d-gateway { background: transparent; }
+.theme-candle .d-gateway:hover { background: rgba(255, 182, 92, 0.06); }
+.theme-candle .d-gateway-selected,
+.theme-candle .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 1.5px var(--gold);
+}
+.theme-candle .d-btn-gold { border-radius: 12px; color: #2A1708; }
+.theme-candle .d-btn-shine { text-shadow: none; }
+
 .theme-harvest,
 .theme-mercy,
 .theme-nightsky,
@@ -1611,7 +1908,11 @@
 .theme-grove,
 .theme-chapel,
 .theme-crown,
-.theme-glory {
+.theme-glory,
+.theme-halo,
+.theme-meadow,
+.theme-forest,
+.theme-candle {
   position: relative;
 }
 

@@ -18,6 +18,10 @@ export const PAGE_BY_HOST = {
   'chapelpeace.vercel.app': 'chapel-peace',
   'crownoflight.vercel.app': 'crown-of-light',
   'magentaglory.vercel.app': 'magenta-glory',
+  'lightofhope-give.vercel.app': 'light-of-hope',
+  'meadowbloom-give.vercel.app': 'meadow-bloom',
+  'livingforest-give.vercel.app': 'living-forest',
+  'sacredheart-give.vercel.app': 'sacred-heart',
 }
 
 // The main site, where every other page lives.
