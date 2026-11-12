@@ -1,9 +1,32 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
+import { PAGE_BY_HOST } from '@/lib/pageDomains'
 
 const PROTECTED_PREFIXES = ['/admin', '/dashboard']
 
 export async function proxy(request) {
+  const path = request.nextUrl.pathname
+  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p))
+
+  // A page's own address shows only that page: its root shows the page, its
+  // own /donate path still works (reminder email links use it), and anything
+  // else (login, admin, other pages) goes back to the root.
+  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
+  const ownSlug = PAGE_BY_HOST[host]
+  if (ownSlug) {
+    if (path === '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = `/donate/${ownSlug}`
+      return NextResponse.rewrite(url)
+    }
+    if (path === `/donate/${ownSlug}`) return NextResponse.next()
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Only admin and dashboard need the session; other matched paths are here
+  // just for the host check above.
+  if (!isProtected) return NextResponse.next()
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -30,10 +53,7 @@ export async function proxy(request) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims?.sub ? { id: data.claims.sub } : null
 
-  const path = request.nextUrl.pathname
-  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p))
-
-  if (isProtected && !user) {
+  if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', path)
     return NextResponse.redirect(loginUrl)
@@ -43,5 +63,5 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*'],
+  matcher: ['/', '/login', '/admin/:path*', '/dashboard/:path*', '/donate/:path*'],
 }
