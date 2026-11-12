@@ -427,6 +427,257 @@
   display: none;
 }
 
+/* ==== Harvest (Hope Harvest): forest green on a soft cream-green ground.
+   Leaf-shaped portrait, pill amount chips, cards with a green side bar,
+   a pill main button and italic headings. */
+.theme-harvest {
+  --bg: #F1F5EC;
+  --surface: #FFFFFF;
+  --surface-2: #EEF4E8;
+  --ink: #102016;
+  --ink-muted: #3C5243;
+  --border: #CFE0C6;
+  --heading: #173B24;
+  --gold: #2F6B3F;
+  --gold-bright: #6FA552;
+  --gold-soft: rgba(111, 165, 82, 0.16);
+  --gold-gradient: linear-gradient(135deg, #4C9A55, #1F5130);
+  --success-bg: #E1F0DA;
+  --success-text: #2B6A3A;
+  background:
+    radial-gradient(ellipse 900px 520px at 50% -10%, rgba(111,165,82,0.22), transparent 60%),
+    repeating-linear-gradient(135deg, rgba(47,107,63,0.035) 0 2px, transparent 2px 22px),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-harvest h1 { font-style: italic; }
+.theme-harvest .d-card {
+  border-radius: 26px;
+  border-left: 6px solid var(--gold-bright);
+  box-shadow: 0 18px 40px -24px rgba(23, 59, 36, 0.4);
+}
+.theme-harvest .halo { width: 140px; height: 140px; }
+.theme-harvest .halo::before {
+  inset: -10px;
+  border-radius: 0 70% 0 70%;
+  background: var(--gold-soft);
+  animation: none;
+}
+.theme-harvest .halo > div {
+  border-radius: 0 60% 0 60%;
+  border: 3px solid var(--gold-bright);
+}
+.theme-harvest .grid:has(> .d-amount) { gap: 10px; }
+.theme-harvest .d-amount {
+  aspect-ratio: auto;
+  height: 48px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-harvest .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-harvest .d-amount:hover { transform: none; border-color: var(--gold-bright); box-shadow: none; }
+.theme-harvest .d-amount-selected,
+.theme-harvest .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 6px 16px -8px var(--gold);
+  animation: none;
+}
+.theme-harvest .d-amount-selected::before { display: none; }
+.theme-harvest .d-gateway-selected,
+.theme-harvest .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 6px 0 0 var(--gold-bright);
+}
+.theme-harvest .d-btn-gold { border-radius: 999px; }
+.theme-harvest .d-btn-shine { text-shadow: none; }
+.theme-harvest .d-btn-shine::after { display: none; }
+
+/* ==== Mercy (Golden Mercy): warm cream and deep gold. Arch-shaped
+   portrait, double gold borders on cards, outlined ticket tiles, a gold
+   button with dark text and spaced capital headings. */
+.theme-mercy {
+  --bg: #FBF5E6;
+  --surface: #FFFDF7;
+  --surface-2: #F7EED6;
+  --ink: #2A2111;
+  --ink-muted: #5E4E2E;
+  --border: #E6D3A3;
+  --heading: #4A3510;
+  --gold: #A87A12;
+  --gold-bright: #D4A72C;
+  --gold-soft: rgba(212, 167, 44, 0.18);
+  --gold-gradient: linear-gradient(180deg, #F2CD5C, #C99A1E);
+  --success-bg: #F1EBD4;
+  --success-text: #6A5414;
+  background:
+    radial-gradient(ellipse 760px 560px at 50% -14%, rgba(242,205,92,0.35), transparent 62%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-mercy h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 2rem;
+}
+.theme-mercy h2 { text-transform: uppercase; letter-spacing: 0.1em; font-size: 1rem; }
+.theme-mercy .d-card {
+  border-radius: 4px;
+  border: 4px double var(--gold-bright);
+  box-shadow: 0 10px 30px -18px rgba(74, 53, 16, 0.45);
+}
+.theme-mercy .halo { width: 132px; height: 170px; }
+.theme-mercy .halo::before {
+  inset: -9px;
+  border-radius: 999px 999px 10px 10px;
+  background: none;
+  border: 2px solid var(--gold-bright);
+  animation: none;
+}
+.theme-mercy .halo > div {
+  border-radius: 999px 999px 6px 6px;
+  border: 3px solid var(--surface);
+  box-shadow: 0 14px 28px -12px rgba(74, 53, 16, 0.55);
+}
+.theme-mercy .grid:has(> .d-amount) { gap: 8px; }
+.theme-mercy .d-amount {
+  aspect-ratio: auto;
+  height: 62px;
+  border-radius: 4px;
+  border: 2px solid var(--gold-bright);
+  outline: 1px solid var(--border);
+  outline-offset: -6px;
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+.theme-mercy .d-amount-currency { transform: none; font-size: 0.8em; }
+.theme-mercy .d-amount:hover { transform: none; background: var(--surface-2); box-shadow: none; }
+.theme-mercy .d-amount-selected,
+.theme-mercy .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: var(--gold);
+  outline-color: rgba(255, 255, 255, 0.7);
+  color: #3A2808;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-mercy .d-amount-selected::before { display: none; }
+.theme-mercy .d-gateway-selected,
+.theme-mercy .d-gateway-selected:hover {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--gold-bright);
+}
+.theme-mercy .d-btn-gold {
+  border-radius: 4px;
+  color: #3A2808;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1rem;
+}
+.theme-mercy .d-btn-shine { text-shadow: none; }
+
+/* ==== Nightsky (Midnight Light): deep navy with a field of stars, glassy
+   cards, a hexagon portrait with a blue glow, and glowing outlined tiles. */
+.theme-nightsky {
+  --bg: #0B1330;
+  --surface: rgba(22, 34, 78, 0.78);
+  --surface-2: #17234D;
+  --ink: #EEF2FF;
+  --ink-muted: #AFBCE4;
+  --border: #2D3F7A;
+  --heading: #F3F6FF;
+  --gold: #5AB8F0;
+  --gold-bright: #8FD3FF;
+  --gold-soft: rgba(143, 211, 255, 0.18);
+  --gold-gradient: linear-gradient(135deg, #8FD3FF, #4C7DF0);
+  --success-bg: #183B48;
+  --success-text: #9BE7D2;
+  background:
+    radial-gradient(1.5px 1.5px at 20px 30px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 120px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 160px 60px, rgba(200,225,255,0.7), transparent),
+    radial-gradient(1px 1px at 230px 170px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(ellipse 900px 520px at 50% -12%, rgba(76,125,240,0.35), transparent 62%),
+    var(--bg);
+  background-size: 260px 220px, 260px 220px, 260px 220px, 260px 220px, auto, auto;
+  color: var(--ink);
+}
+.theme-nightsky .d-card {
+  border-radius: 20px;
+  border-color: var(--border);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 0 1px rgba(143, 211, 255, 0.08), 0 20px 50px -20px rgba(0, 0, 0, 0.7);
+}
+.theme-nightsky .halo { width: 150px; height: 150px; }
+.theme-nightsky .halo::before {
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(143,211,255,0.35) 0%, transparent 70%);
+}
+.theme-nightsky .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%);
+}
+.theme-nightsky .grid:has(> .d-amount) { gap: 10px; }
+.theme-nightsky .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: rgba(23, 35, 77, 0.9);
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+.theme-nightsky .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-nightsky .d-amount:hover {
+  transform: none;
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 14px -2px rgba(143, 211, 255, 0.45);
+}
+.theme-nightsky .d-amount-selected,
+.theme-nightsky .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #08112E;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 0 22px -2px rgba(143, 211, 255, 0.7);
+  animation: none;
+}
+.theme-nightsky .d-amount-selected::before { display: none; }
+.theme-nightsky .d-gateway { background: transparent; }
+.theme-nightsky .d-gateway:hover { background: rgba(143, 211, 255, 0.06); }
+.theme-nightsky .d-gateway-selected,
+.theme-nightsky .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 1.5px var(--gold-bright);
+}
+.theme-nightsky .d-btn-gold {
+  border-radius: 14px;
+  color: #08112E;
+  box-shadow: 0 0 28px -6px rgba(143, 211, 255, 0.75);
+}
+.theme-nightsky .d-btn-shine { text-shadow: none; }
+
+.theme-harvest,
+.theme-mercy,
+.theme-nightsky {
+  position: relative;
+}
+
 .halo {
   position: relative;
   width: 112px;
