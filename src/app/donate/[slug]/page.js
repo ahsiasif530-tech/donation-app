@@ -114,6 +114,33 @@ export default async function DonatePage({ params }) {
     <PageViewTracker slug={slug} />
     <OpenInBrowser locale={page.locale} />
     <div className="mx-auto max-w-[600px] px-5 py-14 flex flex-col gap-7">
+      {/* Banner themes (theme name starting "banner-") open with a wide
+          picture carrying the title; every other theme with the small framed
+          portrait. */}
+      {page.theme?.startsWith('banner-') ? (
+        <div className="d-banner">
+          <div className="d-banner-image">
+            {page.hero_image_url && (
+              <Image
+                src={page.hero_image_url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, 600px"
+                quality={90}
+                loading="eager"
+                fetchPriority="high"
+                className="object-cover"
+              />
+            )}
+          </div>
+          <div className="d-banner-text">
+            <h1 className="text-4xl font-bold" style={{ fontFamily: 'var(--font-display)', textWrap: 'balance' }}>
+              {page.title}
+            </h1>
+            <p className="text-[15px] leading-relaxed font-medium max-w-[440px]">{page.subtitle}</p>
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-col items-center text-center gap-4">
         <div className="halo">
           <div
@@ -135,6 +162,7 @@ export default async function DonatePage({ params }) {
           {page.subtitle}
         </p>
       </div>
+      )}
 
       <DonationForm
         slug={slug}

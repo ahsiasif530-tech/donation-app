@@ -1916,6 +1916,45 @@
   position: relative;
 }
 
+/* ==== Banner layout (themes named banner-…): a wide picture card with the
+   title over a dark fade at its foot. Each banner theme sets its colours
+   and may reshape --banner-radius / --banner-clip / --banner-height. */
+.d-banner {
+  position: relative;
+  margin: -24px -20px 0;
+  border-radius: var(--banner-radius, 0 0 28px 28px);
+  overflow: hidden;
+  clip-path: var(--banner-clip, none);
+  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.55);
+}
+@media (min-width: 640px) {
+  .d-banner { margin: 0; border-radius: var(--banner-radius, 28px); }
+}
+.d-banner-image {
+  position: relative;
+  height: var(--banner-height, 300px);
+  background: var(--surface-2);
+}
+.d-banner-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--banner-fade, linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.72) 100%));
+}
+.d-banner-text {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 22px 24px 24px;
+  color: #fff;
+  text-align: var(--banner-align, left);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: var(--banner-items, flex-start);
+}
+.d-banner-text h1 { color: #fff; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45); }
+.d-banner-text p { color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
+
 .halo {
   position: relative;
   width: 112px;
