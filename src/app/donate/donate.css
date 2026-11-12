@@ -672,9 +672,324 @@
 }
 .theme-nightsky .d-btn-shine { text-shadow: none; }
 
+/* ==== Fountain (Faith Fountain): teal water on a pale aqua ground.
+   Diamond portrait, droplet-shaped amount tiles, cards with a teal band
+   across the top, a wave line under the title. */
+.theme-fountain {
+  --bg: #ECF7F6;
+  --surface: #FFFFFF;
+  --surface-2: #E3F3F1;
+  --ink: #0B2224;
+  --ink-muted: #36585A;
+  --border: #BFE3DF;
+  --heading: #0D4A4F;
+  --gold: #138A8C;
+  --gold-bright: #2BB5B0;
+  --gold-soft: rgba(43, 181, 176, 0.16);
+  --gold-gradient: linear-gradient(135deg, #39C6BE, #0E6E78);
+  --success-bg: #DDF2EC;
+  --success-text: #1E6B5C;
+  background:
+    radial-gradient(ellipse 900px 520px at 50% -12%, rgba(57,198,190,0.28), transparent 60%),
+    radial-gradient(ellipse 600px 400px at 100% 100%, rgba(14,110,120,0.10), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-fountain h1::after {
+  content: "";
+  display: block;
+  width: 120px;
+  height: 10px;
+  margin: 10px auto 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10'%3E%3Cpath d='M0 5 Q15 0 30 5 T60 5 T90 5 T120 5' fill='none' stroke='%232BB5B0' stroke-width='2.5'/%3E%3C/svg%3E") no-repeat center;
+}
+.theme-fountain .d-card {
+  border-radius: 16px;
+  box-shadow: inset 0 6px 0 var(--gold-bright), 0 16px 36px -22px rgba(13, 74, 79, 0.45);
+}
+.theme-fountain .halo { width: 160px; height: 160px; }
+.theme-fountain .halo::before {
+  inset: -8px;
+  border-radius: 0;
+  background: var(--gold-gradient);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  animation: none;
+  opacity: 0.85;
+}
+.theme-fountain .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 3%, 97% 50%, 50% 97%, 3% 50%);
+}
+.theme-fountain .grid:has(> .d-amount) { gap: 10px; }
+.theme-fountain .d-amount {
+  aspect-ratio: auto;
+  height: 54px;
+  border-radius: 0 50% 50% 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-fountain .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-fountain .d-amount:hover { transform: none; border-color: var(--gold-bright); box-shadow: none; }
+.theme-fountain .d-amount-selected,
+.theme-fountain .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 8px 18px -10px var(--gold);
+  animation: none;
+}
+.theme-fountain .d-amount-selected::before { display: none; }
+.theme-fountain .d-gateway-selected,
+.theme-fountain .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 -3px 0 var(--gold-bright);
+}
+.theme-fountain .d-btn-gold { border-radius: 12px 12px 28px 28px; }
+.theme-fountain .d-btn-shine { text-shadow: none; }
+
+/* ==== Rose (Rose Haven): blush pink and soft rose. Blob-shaped portrait,
+   very round cards with a dotted edge, soft cushion tiles, a pill button
+   with a heart. */
+.theme-rose {
+  --bg: #FDF0F3;
+  --surface: #FFFFFF;
+  --surface-2: #FCE6EC;
+  --ink: #2A0F18;
+  --ink-muted: #6A3D4B;
+  --border: #F4C9D5;
+  --heading: #8C2246;
+  --gold: #D2477A;
+  --gold-bright: #EE7CA3;
+  --gold-soft: rgba(238, 124, 163, 0.18);
+  --gold-gradient: linear-gradient(135deg, #F48FB1, #C93A6C);
+  --success-bg: #FBE3EA;
+  --success-text: #8C2246;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(244,143,177,0.25), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(255,214,226,0.6), transparent 40%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-rose .d-card {
+  border-radius: 34px;
+  border: 2px dotted var(--gold-bright);
+  box-shadow: 0 20px 40px -24px rgba(201, 58, 108, 0.45);
+}
+.theme-rose .halo { width: 150px; height: 150px; }
+.theme-rose .halo::before {
+  inset: -12px;
+  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  background: var(--gold-soft);
+  animation: none;
+}
+.theme-rose .halo > div {
+  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 10px 26px -10px rgba(201, 58, 108, 0.6);
+}
+.theme-rose .grid:has(> .d-amount) { gap: 10px; }
+.theme-rose .d-amount {
+  aspect-ratio: auto;
+  height: 56px;
+  border-radius: 20px;
+  border: none;
+  background: var(--surface-2);
+  color: var(--heading);
+  box-shadow: inset 0 -3px 0 rgba(201, 58, 108, 0.12);
+  font-size: 1.1rem;
+}
+.theme-rose .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-rose .d-amount:hover { transform: translateY(-2px); box-shadow: inset 0 -3px 0 rgba(201, 58, 108, 0.2); }
+.theme-rose .d-amount-selected,
+.theme-rose .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: 0 10px 20px -10px var(--gold);
+  animation: none;
+}
+.theme-rose .d-amount-selected::before { display: none; }
+.theme-rose .d-gateway-selected,
+.theme-rose .d-gateway-selected:hover {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--gold-bright);
+}
+.theme-rose .d-btn-gold { border-radius: 999px; }
+.theme-rose .d-btn-shine { text-shadow: none; }
+.theme-rose .d-btn-shine::after { display: none; }
+.theme-rose .d-btn-gold::before { content: "\2665  "; }
+
+/* ==== Flame (Sacred Flame): dark ember red. Shield-shaped portrait,
+   slanted amount tiles, sharp dark cards with a glowing edge, an
+   orange-red uppercase button. */
+.theme-flame {
+  --bg: #1B0A0C;
+  --surface: #2A1013;
+  --surface-2: #361519;
+  --ink: #FBEDE6;
+  --ink-muted: #D7AFA4;
+  --border: #5A2228;
+  --heading: #FFE3CF;
+  --gold: #E5532D;
+  --gold-bright: #FF8A3D;
+  --gold-soft: rgba(255, 138, 61, 0.18);
+  --gold-gradient: linear-gradient(135deg, #FFA14A, #D9302C);
+  --success-bg: #3A2215;
+  --success-text: #FFC28A;
+  background:
+    radial-gradient(ellipse 800px 520px at 50% -10%, rgba(229,83,45,0.38), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 50% 110%, rgba(255,138,61,0.14), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-flame h1 { text-transform: uppercase; letter-spacing: 0.04em; }
+.theme-flame .d-card {
+  border-radius: 2px;
+  border-color: var(--border);
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.15), 0 0 40px -18px rgba(229, 83, 45, 0.7);
+}
+.theme-flame .halo { width: 140px; height: 160px; }
+.theme-flame .halo::before {
+  inset: -7px;
+  border-radius: 0;
+  background: var(--gold-gradient);
+  clip-path: polygon(50% 0, 100% 12%, 100% 58%, 50% 100%, 0 58%, 0 12%);
+  animation: none;
+}
+.theme-flame .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 12%, 100% 58%, 50% 100%, 0 58%, 0 12%);
+}
+.theme-flame .grid:has(> .d-amount) { gap: 8px; }
+.theme-flame .d-amount {
+  aspect-ratio: auto;
+  height: 52px;
+  border-radius: 0;
+  border: none;
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 1.05rem;
+}
+.theme-flame .d-amount-currency { transform: none; font-size: 0.85em; }
+.theme-flame .d-amount:hover { transform: none; background: #45191E; box-shadow: none; }
+.theme-flame .d-amount-selected,
+.theme-flame .d-amount-selected:hover {
+  background: var(--gold-gradient);
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-flame .d-amount-selected::before { display: none; }
+.theme-flame .d-gateway { background: transparent; }
+.theme-flame .d-gateway:hover { background: rgba(255, 138, 61, 0.06); }
+.theme-flame .d-gateway-selected,
+.theme-flame .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 4px 0 0 var(--gold-bright), inset -4px 0 0 var(--gold-bright);
+}
+.theme-flame .d-btn-gold {
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 1rem;
+  box-shadow: 0 0 30px -8px rgba(255, 138, 61, 0.8);
+}
+
+/* ==== Violet (Violet Prayer): lavender and deep violet, like stained
+   glass. Pointed-arch portrait, underlined amount choices, cards framed
+   by thin double side lines, a violet button with squared ends. */
+.theme-violet {
+  --bg: #F3EEFB;
+  --surface: #FFFFFF;
+  --surface-2: #EEE6FA;
+  --ink: #16102A;
+  --ink-muted: #4C3F6E;
+  --border: #D9CCF2;
+  --heading: #3B1E78;
+  --gold: #6D3FD0;
+  --gold-bright: #9B72F2;
+  --gold-soft: rgba(155, 114, 242, 0.16);
+  --gold-gradient: linear-gradient(135deg, #8E5CF0, #4A22A8);
+  --success-bg: #E8E2F7;
+  --success-text: #4A2E8F;
+  background:
+    linear-gradient(90deg, rgba(109,63,208,0.06) 1px, transparent 1px) 0 0 / 48px 48px,
+    radial-gradient(ellipse 850px 520px at 50% -12%, rgba(142,92,240,0.25), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+}
+.theme-violet h1 { font-weight: 600; }
+.theme-violet .d-card {
+  border-radius: 6px;
+  border-left: 3px double var(--gold-bright);
+  border-right: 3px double var(--gold-bright);
+  box-shadow: 0 14px 34px -22px rgba(59, 30, 120, 0.5);
+}
+.theme-violet .halo { width: 130px; height: 170px; }
+.theme-violet .halo::before {
+  inset: -8px;
+  border-radius: 0;
+  background: var(--gold-gradient);
+  clip-path: polygon(50% 0, 78% 9%, 96% 30%, 100% 42%, 100% 100%, 0 100%, 0 42%, 4% 30%, 22% 9%);
+  animation: none;
+}
+.theme-violet .halo > div {
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 78% 9%, 96% 30%, 100% 42%, 100% 100%, 0 100%, 0 42%, 4% 30%, 22% 9%);
+}
+.theme-violet .grid:has(> .d-amount) { gap: 6px 14px; }
+.theme-violet .d-amount {
+  aspect-ratio: auto;
+  height: 50px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  background: transparent;
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.15rem;
+}
+.theme-violet .d-amount-currency { transform: none; font-size: 0.8em; }
+.theme-violet .d-amount:hover { transform: none; border-bottom-color: var(--gold-bright); box-shadow: none; }
+.theme-violet .d-amount-selected,
+.theme-violet .d-amount-selected:hover {
+  background: var(--gold-soft);
+  border-bottom: 3px solid var(--gold);
+  color: var(--gold);
+  text-shadow: none;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+.theme-violet .d-amount-selected::before { display: none; }
+.theme-violet .d-gateway-selected,
+.theme-violet .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 3px 0 0 var(--gold), inset -3px 0 0 var(--gold);
+}
+.theme-violet .d-btn-gold { border-radius: 6px; letter-spacing: 0.05em; }
+.theme-violet .d-btn-shine { text-shadow: none; }
+
 .theme-harvest,
 .theme-mercy,
-.theme-nightsky {
+.theme-nightsky,
+.theme-fountain,
+.theme-rose,
+.theme-flame,
+.theme-violet {
   position: relative;
 }
 
