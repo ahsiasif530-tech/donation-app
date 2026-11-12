@@ -120,11 +120,35 @@
   color: var(--ink);
 }
 
+/* Grace: warm ivory ground, deep plum headings and rose-gold accents, with a
+   plum glow above and a rose glow below. */
+.theme-grace {
+  --bg: #FBF7F2;
+  --surface: #FFFFFF;
+  --surface-2: #F5EDF3;
+  --ink: #0A0A0A;
+  --ink-muted: #3A2A3F;
+  --border: #E8D8E4;
+  --heading: #2A1240;
+  --gold: #9C5B6E;
+  --gold-bright: #C27D8C;
+  --gold-soft: rgba(194, 125, 140, 0.16);
+  --gold-gradient: linear-gradient(135deg, #E0A890, #9C5B6E);
+  --success-bg: #E4F0E7;
+  --success-text: #2F6B45;
+  background:
+    radial-gradient(ellipse 850px 500px at 50% -12%, rgba(42,18,64,0.12), transparent 60%),
+    radial-gradient(ellipse 700px 480px at 0% 100%, rgba(224,168,144,0.16), transparent 55%),
+    var(--bg);
+  color: var(--ink);
+}
+
 .theme-classic,
 .theme-royal,
 .theme-sage,
 .theme-amber,
-.theme-wine {
+.theme-wine,
+.theme-grace {
   position: relative;
 }
 
@@ -132,7 +156,8 @@
 .theme-royal::before,
 .theme-sage::before,
 .theme-amber::before,
-.theme-wine::before {
+.theme-wine::before,
+.theme-grace::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -148,7 +173,8 @@
 .theme-royal > *,
 .theme-sage > *,
 .theme-amber > *,
-.theme-wine > * {
+.theme-wine > *,
+.theme-grace > * {
   position: relative;
   z-index: 1;
 }
@@ -159,7 +185,8 @@
 .theme-royal :is(h1, h2),
 .theme-sage :is(h1, h2),
 .theme-amber :is(h1, h2),
-.theme-wine :is(h1, h2) {
+.theme-wine :is(h1, h2),
+.theme-grace :is(h1, h2) {
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9),
     0 -1px 0 rgba(0, 0, 0, 0.35),
