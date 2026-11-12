@@ -2135,6 +2135,178 @@
 .theme-banner-amethyst .d-gateway { background: transparent; }
 .theme-banner-amethyst .d-gateway-selected, .theme-banner-amethyst .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold-bright); }
 .theme-banner-amethyst .d-btn-gold { border-radius: 4px; color: #1A0F33; box-shadow: 0 0 28px -6px rgba(155,107,255,0.8); }
+
+/* -- Shepherd (The Good Shepherd): deep meadow green and sunlight; banner
+   with two round and two square corners, leaf-like tiles. */
+.theme-banner-shepherd {
+  --bg: #EFF4EA; --surface: #FFFFFF; --surface-2: #E6EFDD; --ink: #13200F; --ink-muted: #45583C;
+  --border: #CCDDBF; --heading: #2E4A1E; --gold: #4E7A2C; --gold-bright: #C9B248; --gold-soft: rgba(201,178,72,0.2);
+  --gold-gradient: linear-gradient(135deg, #6E9A3C, #2E5A1A); --success-bg: #E1EDD6; --success-text: #2E5A1A;
+  --banner-radius: 64px 10px 64px 10px; --banner-height: 300px;
+  background: radial-gradient(ellipse 700px 420px at 85% -5%, rgba(255,230,140,0.4), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-shepherd .d-banner { margin: 0; }
+.theme-banner-shepherd .d-card { border-radius: 28px 8px 28px 8px; box-shadow: 0 16px 34px -24px rgba(46,74,30,0.5); }
+.theme-banner-shepherd .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-shepherd .d-amount { border-radius: 18px 4px 18px 4px; border: 1.5px solid var(--border); background: #fff; color: var(--heading); }
+.theme-banner-shepherd .d-amount:hover { border-color: var(--gold); }
+.theme-banner-shepherd .d-amount-selected, .theme-banner-shepherd .d-amount-selected:hover { background: var(--gold-gradient); border-color: transparent; color: #fff; }
+.theme-banner-shepherd .d-gateway-selected, .theme-banner-shepherd .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 5px 0 0 var(--gold); }
+.theme-banner-shepherd .d-btn-gold { border-radius: 22px 6px 22px 6px; }
+
+/* -- Jubilee (Heaven's Joy): rich dark bronze with gold; letterbox banner
+   with gold bars above and below, tiles with gold corners. */
+.theme-banner-jubilee {
+  --bg: #1A130A; --surface: #241A0E; --surface-2: #302312; --ink: #FBF1DE; --ink-muted: #D3BE96;
+  --border: #4D3A1C; --heading: #FFDF8A; --gold: #D9A520; --gold-bright: #F5C84A; --gold-soft: rgba(245,200,74,0.16);
+  --gold-gradient: linear-gradient(180deg, #F8D468, #C88A12); --success-bg: #2E2A14; --success-text: #E8DB8A;
+  --banner-radius: 0; --banner-height: 290px; --banner-align: center; --banner-items: center;
+  background: radial-gradient(ellipse 800px 500px at 50% -10%, rgba(245,200,74,0.25), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-jubilee .d-banner { margin: 0; border-top: 4px solid var(--gold-bright); border-bottom: 4px solid var(--gold-bright); }
+.theme-banner-jubilee .d-card { border-radius: 6px; box-shadow: 0 0 0 1px rgba(245,200,74,0.18), 0 24px 50px -24px rgba(0,0,0,0.8); }
+.theme-banner-jubilee .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-jubilee .d-amount {
+  border-radius: 4px; border: 1px solid var(--border); color: var(--heading);
+  background:
+    linear-gradient(var(--gold-bright), var(--gold-bright)) 0 0 / 10px 2px no-repeat,
+    linear-gradient(var(--gold-bright), var(--gold-bright)) 0 0 / 2px 10px no-repeat,
+    linear-gradient(var(--gold-bright), var(--gold-bright)) 100% 100% / 10px 2px no-repeat,
+    linear-gradient(var(--gold-bright), var(--gold-bright)) 100% 100% / 2px 10px no-repeat,
+    var(--surface-2);
+}
+.theme-banner-jubilee .d-amount:hover { border-color: var(--gold); }
+.theme-banner-jubilee .d-amount-selected, .theme-banner-jubilee .d-amount-selected:hover { background: var(--gold-gradient); color: #2A1A04; border-color: transparent; }
+.theme-banner-jubilee .d-gateway { background: transparent; }
+.theme-banner-jubilee .d-gateway-selected, .theme-banner-jubilee .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 1.5px var(--gold); }
+.theme-banner-jubilee .d-btn-gold { border-radius: 4px; color: #2A1A04; text-transform: uppercase; letter-spacing: 0.12em; font-size: 1rem; }
+
+/* -- Market (Among the People): warm terracotta and sand; banner with a
+   solid offset shadow block, tiles with the same offset. */
+.theme-banner-market {
+  --bg: #F7EEE3; --surface: #FFFBF6; --surface-2: #F3E4D2; --ink: #2B1A10; --ink-muted: #6E4F3A;
+  --border: #E5CDB3; --heading: #8A3A1C; --gold: #B5532A; --gold-bright: #D9774A; --gold-soft: rgba(217,119,74,0.16);
+  --gold-gradient: linear-gradient(135deg, #D9774A, #A2421E); --success-bg: #F1E3D3; --success-text: #7A3A1C;
+  --banner-radius: 8px; --banner-height: 290px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.theme-banner-market .d-banner { margin: 0 10px 10px 0; box-shadow: 10px 10px 0 var(--gold-bright); }
+.theme-banner-market .d-card { border-radius: 8px; border: 2px solid var(--heading); box-shadow: 6px 6px 0 var(--border); }
+.theme-banner-market .grid:has(> .d-amount) { gap: 12px; }
+.theme-banner-market .d-amount { border-radius: 6px; border: 2px solid var(--heading); background: var(--surface); color: var(--heading); box-shadow: 3px 3px 0 var(--border); }
+.theme-banner-market .d-amount:hover { box-shadow: 4px 4px 0 var(--gold-bright); }
+.theme-banner-market .d-amount-selected, .theme-banner-market .d-amount-selected:hover { background: var(--gold-gradient); color: #fff; box-shadow: 3px 3px 0 var(--heading); }
+.theme-banner-market .d-gateway-selected, .theme-banner-market .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 2px var(--heading); }
+.theme-banner-market .d-btn-gold { border-radius: 6px; border: 2px solid var(--heading); box-shadow: 5px 5px 0 var(--heading); }
+.theme-banner-market .d-btn-shine::after { display: none; }
+
+/* -- Blaze (Rise in Glory): ember dark with fiery orange; banner ending in a
+   point, sharp glowing tiles. */
+.theme-banner-blaze {
+  --bg: #1A0B07; --surface: #26110B; --surface-2: #33170F; --ink: #FFF0E6; --ink-muted: #E0B39C;
+  --border: #5A2A18; --heading: #FFB27A; --gold: #FF6A2A; --gold-bright: #FF9A4A; --gold-soft: rgba(255,154,74,0.16);
+  --gold-gradient: linear-gradient(135deg, #FFB04A, #E8401C); --success-bg: #3A2214; --success-text: #FFC28A;
+  --banner-radius: 0; --banner-clip: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%); --banner-height: 330px;
+  --banner-align: center; --banner-items: center;
+  background: radial-gradient(ellipse 800px 520px at 50% -5%, rgba(255,106,42,0.35), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-blaze .d-banner-text { padding-bottom: 60px; }
+.theme-banner-blaze .d-card { border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,154,74,0.2), 0 0 44px -20px rgba(255,106,42,0.7); }
+.theme-banner-blaze .grid:has(> .d-amount) { gap: 8px; }
+.theme-banner-blaze .d-amount { border-radius: 2px; border: 1px solid var(--border); background: var(--surface-2); color: var(--heading); }
+.theme-banner-blaze .d-amount:hover { border-color: var(--gold); box-shadow: 0 0 16px -4px rgba(255,106,42,0.6); }
+.theme-banner-blaze .d-amount-selected, .theme-banner-blaze .d-amount-selected:hover { background: var(--gold-gradient); color: #fff; box-shadow: 0 0 22px -4px rgba(255,106,42,0.8); }
+.theme-banner-blaze .d-gateway { background: transparent; }
+.theme-banner-blaze .d-gateway-selected, .theme-banner-blaze .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 -3px 0 var(--gold); }
+.theme-banner-blaze .d-btn-gold { border-radius: 2px; text-transform: uppercase; letter-spacing: 0.14em; font-size: 1rem; box-shadow: 0 0 30px -8px rgba(255,106,42,0.9); }
+
+/* -- Dusk (Open Hands): charcoal storm with warm gold light; banner with a
+   fine gold inner line and the title on the left, outlined tiles. */
+.theme-banner-dusk {
+  --bg: #15171C; --surface: #1D2027; --surface-2: #262A33; --ink: #F1EFEA; --ink-muted: #B5B0A4;
+  --border: #383C47; --heading: #F2D49A; --gold: #D9A44A; --gold-bright: #F2C878; --gold-soft: rgba(242,200,120,0.14);
+  --gold-gradient: linear-gradient(135deg, #F2C878, #C08A2E); --success-bg: #22302A; --success-text: #A9E2C4;
+  --banner-radius: 24px; --banner-height: 330px;
+  background: radial-gradient(ellipse 700px 480px at 60% -10%, rgba(242,200,120,0.18), transparent 60%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-dusk .d-banner { margin: 0; }
+.theme-banner-dusk .d-banner-image::before { content: ""; position: absolute; inset: 10px; border: 1px solid rgba(242,200,120,0.55); border-radius: 16px; z-index: 1; pointer-events: none; }
+.theme-banner-dusk .d-banner-text { padding: 26px 30px 30px; }
+.theme-banner-dusk .d-card { border-radius: 20px; box-shadow: 0 24px 50px -24px rgba(0,0,0,0.8); }
+.theme-banner-dusk .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-dusk .d-amount { border-radius: 10px; border: 1.5px solid var(--gold); background: transparent; color: var(--heading); }
+.theme-banner-dusk .d-amount:hover { background: var(--gold-soft); }
+.theme-banner-dusk .d-amount-selected, .theme-banner-dusk .d-amount-selected:hover { background: var(--gold-gradient); color: #1D1608; border-color: transparent; }
+.theme-banner-dusk .d-gateway { background: transparent; }
+.theme-banner-dusk .d-gateway-selected, .theme-banner-dusk .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 4px 0 0 var(--gold-bright); }
+.theme-banner-dusk .d-btn-gold { border-radius: 10px; color: #1D1608; }
+
+/* -- Tender (Tender Love): soft peach and honey; an oval banner, soft
+   bubble tiles. */
+.theme-banner-tender {
+  --bg: #FFF5EC; --surface: #FFFFFF; --surface-2: #FFEBDD; --ink: #2B1A10; --ink-muted: #775744;
+  --border: #F6D6C0; --heading: #9A4B1E; --gold: #D9783A; --gold-bright: #F0A060; --gold-soft: rgba(240,160,96,0.18);
+  --gold-gradient: linear-gradient(135deg, #F6B272, #D9703A); --success-bg: #FBE8D9; --success-text: #8A4A1E;
+  --banner-radius: 50% / 46%; --banner-height: 320px; --banner-align: center; --banner-items: center;
+  background: radial-gradient(circle at 50% 10%, rgba(255,214,170,0.6), transparent 45%), var(--bg);
+  color: var(--ink);
+}
+.theme-banner-tender .d-banner { margin: 0 6px; }
+.theme-banner-tender .d-banner-text { padding-bottom: 46px; }
+.theme-banner-tender .d-card { border-radius: 30px; box-shadow: 0 20px 40px -26px rgba(154,75,30,0.45); }
+.theme-banner-tender .grid:has(> .d-amount) { gap: 10px; }
+.theme-banner-tender .d-amount { border-radius: 999px; border: none; background: var(--surface-2); color: var(--heading); box-shadow: 0 4px 10px -6px rgba(154,75,30,0.35); }
+.theme-banner-tender .d-amount:hover { background: #FFE0C8; }
+.theme-banner-tender .d-amount-selected, .theme-banner-tender .d-amount-selected:hover { background: var(--gold-gradient); color: #fff; }
+.theme-banner-tender .d-gateway-selected, .theme-banner-tender .d-gateway-selected:hover { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--gold-bright); }
+.theme-banner-tender .d-btn-gold { border-radius: 999px; }
+.theme-banner-tender .d-btn-gold::before { content: "\2665  "; }
+
+/* -- Ink (Charcoal Grace): black and white like a charcoal drawing; square
+   banner in a heavy black frame, monochrome tiles. */
+.theme-banner-ink {
+  --bg: #F4F2EE; --surface: #FFFFFF; --surface-2: #EEEBE5; --ink: #111111; --ink-muted: #555049;
+  --border: #D6D1C8; --heading: #111111; --gold: #111111; --gold-bright: #3A3631; --gold-soft: rgba(17,17,17,0.08);
+  --gold-gradient: linear-gradient(180deg, #2A2724, #0B0A09); --success-bg: #ECEAE5; --success-text: #2F2C28;
+  --banner-radius: 0; --banner-height: 320px; --banner-fade: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.78) 100%);
+  background: var(--bg);
+  color: var(--ink);
+}
+.theme-banner-ink h1 { text-transform: uppercase; letter-spacing: 0.06em; }
+.theme-banner-ink .d-banner { margin: 0; border: 4px solid #111; filter: grayscale(1) contrast(1.05); }
+.theme-banner-ink .d-card { border-radius: 0; border: 2px solid #111; box-shadow: none; }
+.theme-banner-ink .grid:has(> .d-amount) { gap: 0; border: 2px solid #111; }
+.theme-banner-ink .d-amount { border-radius: 0; border: none; box-shadow: inset -1px -1px 0 #111; background: #fff; color: #111; }
+.theme-banner-ink .d-amount:hover { background: var(--surface-2); }
+.theme-banner-ink .d-amount-selected, .theme-banner-ink .d-amount-selected:hover { background: #111; color: #fff; }
+.theme-banner-ink .d-gateway-selected, .theme-banner-ink .d-gateway-selected:hover { background: var(--surface-2); box-shadow: inset 0 0 0 2px #111; }
+.theme-banner-ink .d-btn-gold { border-radius: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 1rem; box-shadow: none; }
+.theme-banner-ink .d-btn-shine::after { display: none; }
+
+/* -- Sunset (Sunset Mercy): flat sunset orange-red; banner with a
+   zig-zag foot, bold orange tiles. */
+.theme-banner-sunset {
+  --bg: #FFF1E8; --surface: #FFFFFF; --surface-2: #FFE3D3; --ink: #2A0F06; --ink-muted: #7A3E26;
+  --border: #F8C9AE; --heading: #B3300E; --gold: #E5481A; --gold-bright: #FF7A3D; --gold-soft: rgba(255,122,61,0.16);
+  --gold-gradient: linear-gradient(135deg, #FF8A3D, #D9300E); --success-bg: #FCE3D6; --success-text: #8A2E0E;
+  --banner-radius: 0; --banner-height: 320px;
+  --banner-clip: polygon(0 0, 100% 0, 100% 92%, 95% 100%, 90% 92%, 85% 100%, 80% 92%, 75% 100%, 70% 92%, 65% 100%, 60% 92%, 55% 100%, 50% 92%, 45% 100%, 40% 92%, 35% 100%, 30% 92%, 25% 100%, 20% 92%, 15% 100%, 10% 92%, 5% 100%, 0 92%);
+  background: linear-gradient(180deg, #FFD9C2 0%, var(--bg) 380px);
+  color: var(--ink);
+}
+.theme-banner-sunset .d-banner-text { padding-bottom: 44px; }
+.theme-banner-sunset .d-card { border-radius: 14px; box-shadow: inset 0 -5px 0 var(--gold-bright), 0 16px 34px -24px rgba(179,48,14,0.5); }
+.theme-banner-sunset .grid:has(> .d-amount) { gap: 8px; }
+.theme-banner-sunset .d-amount { border-radius: 10px; border: 2px solid var(--gold-bright); background: #fff; color: var(--heading); font-weight: 800; }
+.theme-banner-sunset .d-amount:hover { background: var(--surface-2); }
+.theme-banner-sunset .d-amount-selected, .theme-banner-sunset .d-amount-selected:hover { background: var(--gold-gradient); color: #fff; border-color: transparent; }
+.theme-banner-sunset .d-gateway-selected, .theme-banner-sunset .d-gateway-selected:hover { background: var(--gold-soft); box-shadow: inset 0 0 0 2px var(--gold); }
+.theme-banner-sunset .d-btn-gold { border-radius: 10px; }
 .d-banner-text p { color: rgba(255, 255, 255, 0.88); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
 
 .halo {

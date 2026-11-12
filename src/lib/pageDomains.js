@@ -30,6 +30,14 @@ export const PAGE_BY_HOST = {
   'honeylight-give.vercel.app': 'honey-light',
   'walkoffaith-give.vercel.app': 'walk-of-faith',
   'amethystprayer-give.vercel.app': 'amethyst-prayer',
+  'goodshepherd-give.vercel.app': 'good-shepherd',
+  'heavensjoy-give.vercel.app': 'heavens-joy',
+  'amongthepeople-give.vercel.app': 'among-the-people',
+  'riseinglory-give.vercel.app': 'rise-in-glory',
+  'openhands-give.vercel.app': 'open-hands',
+  'tenderlove-give.vercel.app': 'tender-love',
+  'charcoalgrace-give.vercel.app': 'charcoal-grace',
+  'sunsetmercy-give.vercel.app': 'sunset-mercy',
 }
 
 // The main site, where every other page lives.
