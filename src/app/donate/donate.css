@@ -130,10 +130,10 @@
   --ink-muted: #3A2A3F;
   --border: #E8D8E4;
   --heading: #2A1240;
-  --gold: #9C5B6E;
-  --gold-bright: #C27D8C;
-  --gold-soft: rgba(194, 125, 140, 0.16);
-  --gold-gradient: linear-gradient(135deg, #E0A890, #9C5B6E);
+  --gold: #4A2268;
+  --gold-bright: #B86E80;
+  --gold-soft: rgba(74, 34, 104, 0.12);
+  --gold-gradient: linear-gradient(135deg, #5B2A80, #2A1240);
   --success-bg: #E4F0E7;
   --success-text: #2F6B45;
   background:
@@ -156,8 +156,7 @@
 .theme-royal::before,
 .theme-sage::before,
 .theme-amber::before,
-.theme-wine::before,
-.theme-grace::before {
+.theme-wine::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -185,8 +184,7 @@
 .theme-royal :is(h1, h2),
 .theme-sage :is(h1, h2),
 .theme-amber :is(h1, h2),
-.theme-wine :is(h1, h2),
-.theme-grace :is(h1, h2) {
+.theme-wine :is(h1, h2) {
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9),
     0 -1px 0 rgba(0, 0, 0, 0.35),
@@ -334,6 +332,99 @@
     transition: none;
     animation: none;
   }
+}
+
+/* ---- Grace layout: its own shapes, so it shares nothing with the other
+   themes' look. Square-cornered tiles instead of round coins, a framed
+   portrait instead of the glowing circle, flat headings, no cross
+   watermark, a plum bar on top of each card and a squared main button. */
+.theme-grace :is(h1, h2) {
+  text-shadow: none;
+  letter-spacing: -0.01em;
+}
+.theme-grace .d-card {
+  border-radius: 10px;
+  border-top: 4px solid var(--gold);
+  box-shadow: 0 12px 32px -18px rgba(42, 18, 64, 0.35);
+}
+.theme-grace .halo {
+  width: 136px;
+  height: 136px;
+}
+.theme-grace .halo::before {
+  inset: -8px;
+  border-radius: 22px;
+  background: none;
+  border: 2px solid var(--gold-bright);
+  transform: rotate(-6deg);
+  animation: none;
+}
+.theme-grace .halo > div {
+  border-radius: 18px;
+  border: 3px solid var(--surface);
+  box-shadow: 0 10px 24px -10px rgba(42, 18, 64, 0.5);
+}
+
+/* Amount tiles: three across, flat white with a thin edge; the chosen one
+   fills plum with a rose underline. */
+.theme-grace .grid:has(> .d-amount) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.theme-grace .d-amount {
+  aspect-ratio: auto;
+  height: 58px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: none;
+  font-size: 1.15rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.theme-grace .d-amount-currency {
+  transform: none;
+  font-size: 0.85em;
+  margin-right: 2px;
+}
+.theme-grace .d-amount:hover {
+  transform: none;
+  border-color: var(--gold-bright);
+  box-shadow: none;
+}
+.theme-grace .d-amount-selected,
+.theme-grace .d-amount-selected:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+  text-shadow: none;
+  transform: none;
+  box-shadow: inset 0 -4px 0 var(--gold-bright);
+  animation: none;
+}
+.theme-grace .d-amount-selected::before {
+  display: none;
+}
+
+/* Payment rows: the chosen one gets a full plum outline, not a side bar. */
+.theme-grace .d-gateway-selected,
+.theme-grace .d-gateway-selected:hover {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+/* Main button: squared corners, no light sweep. */
+.theme-grace .d-btn-gold {
+  border-radius: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 1.05rem;
+}
+.theme-grace .d-btn-shine {
+  text-shadow: none;
+}
+.theme-grace .d-btn-shine::after {
+  display: none;
 }
 
 .halo {
