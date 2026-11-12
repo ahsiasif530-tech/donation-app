@@ -47,6 +47,10 @@ const SMALL_COUNTRIES = {
 }
 
 const RED = '#ef4444'
+// The team works from Bangladesh: its own green (from the flag), a pulsing
+// "working" marker, and lines from the top giving countries to it.
+const HOME = { name: 'Bangladesh', center: [90.35, 23.7], green: '#0E9F6E', flagGreen: '#006A4E', flagRed: '#F42A41' }
+const FLOW_COUNTRIES = 8
 const MEDAL = ['🥇', '🥈', '🥉']
 const MIN_ZOOM = 1
 const MAX_ZOOM = 8
@@ -178,9 +182,9 @@ function FlatMap({ shapes, placed }) {
             <path
               key={i}
               d={d}
-              fill={fillFor(data, placed.max)}
-              stroke="#171A21"
-              strokeWidth="0.5"
+              fill={s.name === HOME.name ? HOME.flagGreen : fillFor(data, placed.max)}
+              stroke={s.name === HOME.name ? '#34D399' : '#171A21'}
+              strokeWidth={s.name === HOME.name ? 1 : 0.5}
               onMouseEnter={data ? () => setHover({ ...data, x: fx(s.center[0]), y: fy(s.center[1]) }) : undefined}
             />
           )
@@ -197,6 +201,34 @@ function FlatMap({ shapes, placed }) {
             </g>
           )
         })}
+        {placed.dots
+          .filter((d) => d.country !== HOME.name)
+          .slice(0, FLOW_COUNTRIES)
+          .map((d) => {
+            const x1 = fx(d.center[0])
+            const y1 = fy(d.center[1])
+            const x2 = fx(HOME.center[0])
+            const y2 = fy(HOME.center[1])
+            const lift = Math.min(90, Math.hypot(x2 - x1, y2 - y1) * 0.25)
+            return (
+              <path
+                key={`flow-${d.country}`}
+                className="a-flow"
+                d={`M${x1},${y1} Q${(x1 + x2) / 2},${Math.min(y1, y2) - lift} ${x2},${y2}`}
+                fill="none"
+                stroke="rgba(52,211,153,0.55)"
+                strokeWidth="1.2"
+              />
+            )
+          })}
+        <g>
+          <circle className="a-map-pulse a-map-pulse-home" cx={fx(HOME.center[0])} cy={fy(HOME.center[1])} r="6" fill="#34D399" />
+          <circle cx={fx(HOME.center[0])} cy={fy(HOME.center[1])} r="6" fill={HOME.flagGreen} stroke="#A7F3D0" strokeWidth="1.5" />
+          <circle cx={fx(HOME.center[0])} cy={fy(HOME.center[1])} r="3" fill={HOME.flagRed} />
+          <text x={fx(HOME.center[0]) + 10} y={fy(HOME.center[1]) + 18} fontSize="11" fontWeight="700" fill="#34D399" stroke="#0F1115" strokeWidth="3" paintOrder="stroke">
+            🇧🇩 Team HQ · Working
+          </text>
+        </g>
         {placed.dots.slice(0, 3).map((d) => {
           const x = fx(d.center[0])
           const y = fy(d.center[1])
@@ -277,7 +309,7 @@ function Globe({ shapes, placed }) {
     // A label in a dark pill, moved to the first spot that doesn't overlap
     // a label already drawn.
     const placedBoxes = []
-    const drawLabel = (x, y, r, lines, strong) => {
+    const drawLabel = (x, y, r, lines, strong, accent = '#FCA5A5', border = 'rgba(239,68,68,0.7)') => {
       ctx.font = `${strong ? 700 : 600} 11px ui-sans-serif, system-ui, sans-serif`
       const w = Math.max(...lines.map((t) => ctx.measureText(t).width)) + 12
       const h = lines.length * 13 + 6
@@ -295,14 +327,14 @@ function Globe({ shapes, placed }) {
       const [bx, by] = spot
       placedBoxes.push({ x: bx, y: by, w, h })
       ctx.fillStyle = 'rgba(15,17,21,0.88)'
-      ctx.strokeStyle = strong ? 'rgba(239,68,68,0.7)' : 'rgba(255,255,255,0.12)'
+      ctx.strokeStyle = strong ? border : 'rgba(255,255,255,0.12)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.roundRect(bx, by, w, h, 6)
       ctx.fill()
       ctx.stroke()
       lines.forEach((t, i) => {
-        ctx.fillStyle = i === 0 ? '#F2F4F7' : '#FCA5A5'
+        ctx.fillStyle = i === 0 ? '#F2F4F7' : accent
         ctx.font = `${i === 0 ? 700 : 600} 11px ui-sans-serif, system-ui, sans-serif`
         ctx.fillText(t, bx + 6, by + 14 + i * 13)
       })
@@ -380,14 +412,67 @@ function Globe({ shapes, placed }) {
           path.closePath()
         }
         if (!any) continue
-        ctx.fillStyle = fillFor(data, placed.max)
+        const isHome = shape.name === HOME.name
+        ctx.fillStyle = isHome ? HOME.flagGreen : fillFor(data, placed.max)
         ctx.fill(path)
-        ctx.stroke(path)
+        if (isHome) {
+          ctx.save()
+          ctx.strokeStyle = '#34D399'
+          ctx.lineWidth = 1.2
+          ctx.stroke(path)
+          ctx.restore()
+        } else ctx.stroke(path)
         if (data) hitPaths.push({ path, data, center: shape.center })
       }
 
-      // Dots, smallest last on top; the top country pulses.
       const scale = (R0 / 150) * Math.sqrt(s.zoom)
+
+      // Money flowing home: a great-circle line from each top giving country
+      // to Bangladesh, with a light travelling along it.
+      const toVec = ([lon, lat]) => [Math.cos(lat * rad) * Math.cos(lon * rad), Math.cos(lat * rad) * Math.sin(lon * rad), Math.sin(lat * rad)]
+      const toLonLat = ([x, y, z]) => [Math.atan2(y, x) / rad, Math.asin(Math.max(-1, Math.min(1, z))) / rad]
+      const homeVec = toVec(HOME.center)
+      const arcPoint = (a, b, t) => {
+        const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))
+        const w = Math.acos(dot)
+        if (w < 1e-6) return toLonLat(a)
+        const s1 = Math.sin((1 - t) * w) / Math.sin(w)
+        const s2 = Math.sin(t * w) / Math.sin(w)
+        return toLonLat([a[0] * s1 + b[0] * s2, a[1] * s1 + b[1] * s2, a[2] * s1 + b[2] * s2])
+      }
+      placed.dots
+        .filter((d) => d.country !== HOME.name)
+        .slice(0, FLOW_COUNTRIES)
+        .forEach((d, i) => {
+          const from = toVec(d.center)
+          ctx.strokeStyle = 'rgba(52,211,153,0.32)'
+          ctx.lineWidth = 1.2
+          ctx.beginPath()
+          let pen = false
+          for (let k = 0; k <= 40; k++) {
+            const [x, y, vis] = project(...arcPoint(from, homeVec, k / 40))
+            if (vis) {
+              pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
+              pen = true
+            } else pen = false
+          }
+          ctx.stroke()
+          if (!reduceMotion) {
+            const t = ((now / 2600) + i * 0.17) % 1
+            const [x, y, vis] = project(...arcPoint(from, homeVec, t))
+            if (vis) {
+              ctx.shadowColor = '#34D399'
+              ctx.shadowBlur = 8
+              ctx.fillStyle = '#A7F3D0'
+              ctx.beginPath()
+              ctx.arc(x, y, 2.2 * Math.sqrt(s.zoom), 0, Math.PI * 2)
+              ctx.fill()
+              ctx.shadowBlur = 0
+            }
+          }
+        })
+
+      // Dots, smallest last on top; the top country pulses.
       const dotsOnScreen = []
       for (const d of [...placed.dots].reverse()) {
         const [x, y, vis] = project(d.center[0], d.center[1])
@@ -419,9 +504,43 @@ function Globe({ shapes, placed }) {
         dotsOnScreen.push({ ...d, x, y, r })
       }
 
+      // Home marker: a green pulse round a flag-like dot, with its label
+      // placed first so others move around it.
+      placedBoxes.length = 0
+      {
+        const [hx, hy, vis] = project(...HOME.center)
+        if (vis) {
+          const hr = 6 * scale
+          if (!reduceMotion) {
+            const t = (now % 1400) / 1400
+            ctx.strokeStyle = `rgba(52,211,153,${0.8 * (1 - t)})`
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(hx, hy, hr * (1 + 2.2 * t), 0, Math.PI * 2)
+            ctx.stroke()
+          }
+          ctx.shadowColor = '#34D399'
+          ctx.shadowBlur = 14
+          ctx.fillStyle = HOME.flagGreen
+          ctx.beginPath()
+          ctx.arc(hx, hy, hr, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.shadowBlur = 0
+          ctx.strokeStyle = '#A7F3D0'
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+          ctx.fillStyle = HOME.flagRed
+          ctx.beginPath()
+          ctx.arc(hx, hy, hr * 0.5, 0, Math.PI * 2)
+          ctx.fill()
+          const blinkOn = reduceMotion || Math.floor(now / 700) % 2 === 0
+          drawLabel(hx, hy, hr, ['🇧🇩 Bangladesh · Team HQ', `${blinkOn ? '●' : '○'} Working now`], true, '#34D399', 'rgba(52,211,153,0.8)')
+          s.homeOnScreen = { x: hx, y: hy, r: hr }
+        } else s.homeOnScreen = null
+      }
+
       // Labels: the top three always; other giving countries once zoomed in
       // (2×); every country's name, faintly, when zoomed further (3×).
-      placedBoxes.length = 0
       const pct = (d) => {
         const share = placed.grand > 0 ? (d.total / placed.grand) * 100 : 0
         return share > 0 && share < 1 ? '<1%' : `${Math.round(share)}%`
@@ -441,7 +560,7 @@ function Globe({ shapes, placed }) {
         ctx.font = '500 10px ui-sans-serif, system-ui, sans-serif'
         ctx.textAlign = 'center'
         for (const shape of shapes) {
-          if (!shape.name || giving.has(shape.name) || shape.name === 'Antarctica') continue
+          if (!shape.name || giving.has(shape.name) || shape.name === 'Antarctica' || shape.name === HOME.name) continue
           const [x, y, , cosc] = project(shape.center[0], shape.center[1])
           if (cosc < 0.25 || x < 0 || x > size || y < 0 || y > size) continue
           ctx.fillStyle = 'rgba(242,244,247,0.55)'
