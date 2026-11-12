@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { COUNTRIES } from '@/lib/countries'
+import WorldMap from './WorldMap'
 
 // The top countries always show; "Load more" adds the next few below them.
 const SHOWN_AT_FIRST = 3
@@ -110,6 +111,12 @@ export default function CountryBreakdown({ byCountry, totalEarning }) {
               {allShown ? 'Show less' : `Load more (${byCountry.length - shown} more)`}
             </button>
           )}
+
+          <WorldMap
+            byCountry={byCountry.map((c) =>
+              /^[A-Z]{2}$/.test(c.country) ? { ...c, country: COUNTRIES.find((x) => x.code === c.country)?.name || c.country } : c
+            )}
+          />
         </div>
       )}
     </div>
