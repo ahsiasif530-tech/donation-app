@@ -96,6 +96,32 @@ function pips(kind) {
   })
 }
 
+// The always-on background "piiit", like a monitor quietly saying it is
+// alive. One shared audio context so a gap of a few seconds stays cheap.
+const PULSE_MS = 6500
+let pulseCtx = null
+function pulseBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    if (!pulseCtx || pulseCtx.state === 'closed') pulseCtx = new Ctx()
+    const ctx = pulseCtx
+    if (ctx.state === 'suspended') ctx.resume()
+    const start = ctx.currentTime + 0.02
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = 987.8
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(0.09, start + 0.02)
+    gain.gain.setValueAtTime(0.09, start + 0.28)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(start)
+    osc.stop(start + 0.5)
+  } catch {}
+}
+
 const MODES = [
   { id: 'voice', icon: '🔊', label: 'Voice', hint: 'Chime and spoken announcement' },
   { id: 'beep', icon: '🔔', label: 'Beep', hint: 'Short pit-pit sound only' },
@@ -158,10 +184,56 @@ export default function LiveDonations() {
     window.speechSynthesis?.getVoices()
   }, [])
 
+  // Background pulse: its own on/off, remembered per browser. It stays quiet
+  // while an alert is playing and for a moment after.
+  const [pulse, setPulse] = useState(false)
+  const busy = useRef(0)
+  const quietUntil = useRef(0)
+
+  useEffect(() => {
+    try {
+      setPulse(localStorage.getItem('admin-live-pulse') === '1')
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (!pulse) return
+    const timer = setInterval(() => {
+      if (busy.current > 0 || Date.now() < quietUntil.current) return
+      pulseBeep()
+    }, PULSE_MS)
+    return () => clearInterval(timer)
+  }, [pulse])
+
+  function togglePulse() {
+    const next = !pulse
+    setPulse(next)
+    try {
+      localStorage.setItem('admin-live-pulse', next ? '1' : '0')
+    } catch {}
+    if (next) pulseBeep()
+  }
+
+  // Runs a sound job in the queue while holding the pulse back.
+  const play = (job) => {
+    busy.current += 1
+    queue.current = queue.current
+      .then(job)
+      .catch(() => {})
+      .finally(() => {
+        busy.current -= 1
+        quietUntil.current = Date.now() + 2500
+      })
+  }
+
   const announce = (kind, text) => {
     const m = modeRef.current
-    if (m === 'off') return
-    queue.current = queue.current.then(async () => {
+    if (m === 'off') {
+      // Even with sound off, the pulse pauses so the moment stands out.
+      quietUntil.current = Date.now() + PULSE_MS
+      return
+    }
+    play(async () => {
       if (m === 'beep') return pips(kind)
       await airportChime()
       await speak(text)
@@ -227,14 +299,14 @@ export default function LiveDonations() {
       localStorage.setItem('admin-live-sound', next)
     } catch {}
     // Picking a sound plays a quick sample (and lets the browser play sound).
-    if (next === 'beep') queue.current = queue.current.then(() => pips('paid'))
+    if (next === 'beep') play(() => pips('paid'))
   }
 
   // Plays a sample so the admin can hear it (this click also lets the
   // browser play sound from now on).
   function test() {
     const sample = { amount: 25, country: 'United States', page: 'Sagor', pageTitle: 'Royal Grace' }
-    queue.current = queue.current.then(async () => {
+    play(async () => {
       if (modeRef.current === 'beep') {
         await pips('start')
         await new Promise((r) => setTimeout(r, 500))
@@ -281,6 +353,21 @@ export default function LiveDonations() {
             )
           })}
         </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={pulse}
+          onClick={togglePulse}
+          title={pulse ? 'Background piiit is on (every few seconds) — click to turn off' : 'Background piiit is off — click to turn on'}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold border-l"
+          style={{ borderColor: 'var(--a-border)', color: pulse ? 'var(--a-success)' : 'var(--a-text-muted)' }}
+        >
+          <span aria-hidden="true" className={pulse ? 'animate-pulse' : ''}>💓</span>
+          <span className="hidden sm:inline">Pulse</span>
+          <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: pulse ? 'var(--a-success)' : 'var(--a-border)' }} aria-hidden="true">
+            <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: pulse ? 14 : 2 }} />
+          </span>
+        </button>
         {mode !== 'off' && (
           <button
             type="button"
