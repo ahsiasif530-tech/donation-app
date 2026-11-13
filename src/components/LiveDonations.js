@@ -284,7 +284,11 @@ function openEngine(eng, level) {
   const master = ctx.createGain()
   master.gain.setValueAtTime(0.0001, ctx.currentTime)
   master.gain.exponentialRampToValueAtTime(level, ctx.currentTime + 4)
-  master.connect(ctx.destination)
+  // A gentle limiter keeps loud moments (thunder) from crackling.
+  const limiter = ctx.createDynamicsCompressor()
+  limiter.threshold.value = -10
+  limiter.ratio.value = 6
+  master.connect(limiter).connect(ctx.destination)
   eng.ctx = ctx
   eng.master = master
   eng.ducked = false
@@ -295,6 +299,8 @@ function closeEngine(eng) {
   const { ctx, master } = eng
   clearInterval(eng.timer)
   clearTimeout(eng.later)
+  ;(eng.timeouts || []).forEach(clearTimeout)
+  eng.timeouts = []
   eng.timer = null
   eng.ctx = null
   eng.master = null
@@ -321,9 +327,11 @@ function duckEngine(eng, down, level) {
   } catch {}
 }
 
-// Rain on a tin roof in a storm, heard from inside: the roar on the sheets,
-// bright metal "tak-tik" drops with a fat ringing drop now and then, a little
-// wind, and thunder — mostly far away, sometimes close with a crack first.
+// A night in a tin hut in the forest, in a storm: rain roaring on the
+// roof all around, bright metal drops with a fat ringing drop now and then,
+// wind rushing through the trees in gusts, frogs out in the wet, and thunder
+// — far off and rolling, or close with a crack. Spread left and right, with a
+// little room echo, so it feels like lying inside.
 const RAIN_LEVEL = 0.35
 const rain = { ctx: null, master: null, timer: null, later: null, ducked: false }
 
@@ -341,7 +349,44 @@ function noiseBuffer(ctx, seconds, brown) {
   return buffer
 }
 
-function loopNoise(ctx, buffer, out, { type, freq, q = 0.7, level, lfoHz, lfoDepth }) {
+// A small "room": a soft echo so it sounds like being inside a hut.
+function makeRoom(ctx, seconds, decay) {
+  const len = Math.floor(ctx.sampleRate * seconds)
+  const buffer = ctx.createBuffer(2, len, ctx.sampleRate)
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch)
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay)
+  }
+  const room = ctx.createConvolver()
+  room.buffer = buffer
+  return room
+}
+
+// Sends a sound left/right (-1…1) and, a little, into the room echo.
+function routeOut(node, pan = 0, wet = 0) {
+  const { ctx, master, room } = rain
+  let out = node
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner()
+    p.pan.value = Math.max(-1, Math.min(1, pan))
+    out.connect(p)
+    out = p
+  }
+  out.connect(master)
+  if (wet && room) {
+    const w = ctx.createGain()
+    w.gain.value = wet
+    out.connect(w).connect(room)
+  }
+  return out
+}
+
+function rainLater(fn, ms) {
+  if (!rain.ctx) return
+  rain.timeouts = [...(rain.timeouts || []).slice(-20), setTimeout(fn, ms)]
+}
+
+function loopNoise(ctx, buffer, { type, freq, q = 0.7, level, lfoHz, lfoDepth, sweepHz, sweepDepth, pan = 0, wet = 0 }) {
   const src = ctx.createBufferSource()
   src.buffer = buffer
   src.loop = true
@@ -359,81 +404,207 @@ function loopNoise(ctx, buffer, out, { type, freq, q = 0.7, level, lfoHz, lfoDep
     lfo.connect(depth).connect(gain.gain)
     lfo.start()
   }
-  src.connect(filter).connect(gain).connect(out)
+  if (sweepHz) {
+    // Slowly moves the filter so the wind "sings" up and down.
+    const lfo = ctx.createOscillator()
+    const depth = ctx.createGain()
+    lfo.frequency.value = sweepHz
+    depth.gain.value = sweepDepth
+    lfo.connect(depth).connect(filter.frequency)
+    lfo.start()
+  }
+  src.connect(filter).connect(gain)
+  routeOut(gain, pan, wet)
   src.start(0, Math.random() * buffer.duration)
 }
 
 function thunder(close) {
-  const { ctx, master } = rain
+  const { ctx } = rain
   if (!ctx || rain.ducked) return
   const now = ctx.currentTime + 0.05
+  const side = Math.random() * 1.4 - 0.7
   if (close) {
     // The crack, right before the boom.
     const crack = ctx.createBufferSource()
     crack.buffer = rain.white
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 1200
+    hp.frequency.value = 1100
     const cg = ctx.createGain()
     cg.gain.setValueAtTime(0.0001, now)
-    cg.gain.exponentialRampToValueAtTime(0.45, now + 0.02)
-    cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
-    crack.connect(hp).connect(cg).connect(master)
-    crack.start(now, Math.random() * 2, 0.6)
+    cg.gain.exponentialRampToValueAtTime(0.55, now + 0.015)
+    cg.gain.exponentialRampToValueAtTime(0.08, now + 0.25)
+    cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.9)
+    crack.connect(hp).connect(cg)
+    routeOut(cg, side, 0.6)
+    crack.start(now, Math.random() * 2, 1)
   }
   // The rolling rumble: deep noise whose tone sinks as it rolls away.
   const boom = ctx.createBufferSource()
   boom.buffer = rain.thunderNoise
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.setValueAtTime(close ? 900 : 380, now)
-  lp.frequency.exponentialRampToValueAtTime(80, now + 7)
+  lp.frequency.setValueAtTime(close ? 1000 : 420, now)
+  lp.frequency.exponentialRampToValueAtTime(70, now + 8)
   const g = ctx.createGain()
-  const peak = close ? 1.1 : 0.6
-  const rise = close ? 0.12 : 0.9
+  const peak = close ? 1.5 : 0.9
+  const rise = close ? 0.1 : 0.8
   g.gain.setValueAtTime(0.0001, now)
   g.gain.exponentialRampToValueAtTime(peak, now + rise)
   let t = now + rise
-  for (let i = 0; i < 4; i++) {
-    t += 0.5 + Math.random() * 0.9
-    g.gain.linearRampToValueAtTime(peak * (0.3 + Math.random() * 0.6) * (1 - i * 0.18), t)
+  for (let i = 0; i < 5; i++) {
+    t += 0.4 + Math.random() * 0.9
+    g.gain.linearRampToValueAtTime(peak * (0.35 + Math.random() * 0.6) * (1 - i * 0.15), t)
   }
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 3)
-  boom.connect(lp).connect(g).connect(master)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 3.5)
+  boom.connect(lp).connect(g)
+  routeOut(g, side * 0.6, 0.45)
   boom.start(now)
-  boom.stop(t + 3.2)
+  boom.stop(t + 3.7)
 }
 
 function nextThunder(first) {
-  if (!rain.ctx) return
-  const wait = first ? 8000 + Math.random() * 7000 : 20000 + Math.random() * 35000
-  rain.later = setTimeout(() => {
-    thunder(Math.random() < 0.3)
-    nextThunder(false)
-  }, wait)
+  rainLater(
+    () => {
+      thunder(Math.random() < 0.4)
+      nextThunder(false)
+    },
+    first ? 4000 + Math.random() * 4000 : 12000 + Math.random() * 18000
+  )
+}
+
+// A gust: wind rushing through the trees from one side to the other, with
+// the leaves hissing in it.
+function gust() {
+  const { ctx } = rain
+  if (!ctx || rain.ducked) return
+  const now = ctx.currentTime + 0.05
+  const len = 4 + Math.random() * 3
+  const from = Math.random() < 0.5 ? -0.9 : 0.9
+  const env = (gain, peak) => {
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(peak, now + len * 0.35)
+    gain.gain.linearRampToValueAtTime(peak * 0.7, now + len * 0.6)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + len)
+  }
+  const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null
+  if (pan) {
+    pan.pan.setValueAtTime(from, now)
+    pan.pan.linearRampToValueAtTime(-from * 0.8, now + len)
+  }
+  const out = ctx.createGain()
+  if (pan) out.connect(pan).connect(rain.master)
+  else out.connect(rain.master)
+
+  const rush = ctx.createBufferSource()
+  rush.buffer = rain.brown
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.Q.value = 0.9
+  bp.frequency.setValueAtTime(380, now)
+  bp.frequency.exponentialRampToValueAtTime(950, now + len * 0.4)
+  bp.frequency.exponentialRampToValueAtTime(450, now + len)
+  const rg = ctx.createGain()
+  env(rg, 1.4)
+  rush.connect(bp).connect(rg).connect(out)
+  rush.start(now, Math.random() * 3, len + 0.2)
+
+  const leaves = ctx.createBufferSource()
+  leaves.buffer = rain.white
+  const lf = ctx.createBiquadFilter()
+  lf.type = 'bandpass'
+  lf.frequency.value = 4200
+  lf.Q.value = 0.6
+  const lg = ctx.createGain()
+  env(lg, 0.09)
+  leaves.connect(lf).connect(lg).connect(out)
+  leaves.start(now, Math.random() * 2, len + 0.2)
+}
+
+function nextGust(first) {
+  rainLater(
+    () => {
+      gust()
+      nextGust(false)
+    },
+    first ? 2500 : 7000 + Math.random() * 9000
+  )
+}
+
+// Frogs croaking out in the wet forest, near and far.
+function frog() {
+  const { ctx } = rain
+  if (!ctx || rain.ducked) return
+  const base = 180 + Math.random() * 220
+  const pulses = 3 + Math.floor(Math.random() * 4)
+  const gap = 0.07 + Math.random() * 0.05
+  const level = 0.025 + Math.random() * 0.035
+  const out = ctx.createGain()
+  out.gain.value = 1
+  routeOut(out, Math.random() * 1.8 - 0.9, 0.35)
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 900 + Math.random() * 500
+  lp.connect(out)
+  for (let i = 0; i < pulses; i++) {
+    const at = ctx.currentTime + 0.05 + i * gap
+    const osc = ctx.createOscillator()
+    const g = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(base * 1.08, at)
+    osc.frequency.exponentialRampToValueAtTime(base, at + 0.05)
+    g.gain.setValueAtTime(0.0001, at)
+    g.gain.exponentialRampToValueAtTime(level, at + 0.008)
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.055)
+    osc.connect(g).connect(lp)
+    osc.start(at)
+    osc.stop(at + 0.07)
+  }
+}
+
+function nextFrog() {
+  rainLater(
+    () => {
+      if (Math.random() < 0.75) frog()
+      nextFrog()
+    },
+    1800 + Math.random() * 4500
+  )
 }
 
 function startRain() {
   try {
     if (!openEngine(rain, RAIN_LEVEL)) return
-    const { ctx, master } = rain
+    const { ctx } = rain
+    rain.timeouts = []
     const brown = noiseBuffer(ctx, 8, true)
     const white = noiseBuffer(ctx, 4, false)
+    rain.brown = brown
     rain.white = white
     rain.thunderNoise = noiseBuffer(ctx, 12, true)
+    rain.room = makeRoom(ctx, 1.6, 3)
+    const roomOut = ctx.createGain()
+    roomOut.gain.value = 0.5
+    rain.room.connect(roomOut).connect(rain.master)
 
-    // The steady roar of rain on the roof, coming in waves.
-    loopNoise(ctx, brown, master, { type: 'lowpass', freq: 2200, level: 0.55, lfoHz: 0.07, lfoDepth: 0.2 })
-    // The bright metallic hiss of the sheets under the rain.
-    loopNoise(ctx, white, master, { type: 'bandpass', freq: 5200, q: 0.5, level: 0.06, lfoHz: 0.07, lfoDepth: 0.025 })
+    // Rain roaring on the tin, spread across the whole roof.
+    loopNoise(ctx, brown, { type: 'lowpass', freq: 2200, level: 0.4, lfoHz: 0.07, lfoDepth: 0.15, pan: -0.5 })
+    loopNoise(ctx, brown, { type: 'lowpass', freq: 2400, level: 0.4, lfoHz: 0.06, lfoDepth: 0.15, pan: 0.5 })
+    // The bright metallic hiss of the sheets.
+    loopNoise(ctx, white, { type: 'bandpass', freq: 5200, q: 0.5, level: 0.045, lfoHz: 0.07, lfoDepth: 0.02, pan: -0.6 })
+    loopNoise(ctx, white, { type: 'bandpass', freq: 4600, q: 0.5, level: 0.045, lfoHz: 0.05, lfoDepth: 0.02, pan: 0.6 })
     // The sheets humming low as the rain hammers them.
-    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 240, q: 1.5, level: 0.25, lfoHz: 0.05, lfoDepth: 0.12 })
-    // Wind, softer now, outside.
-    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 380, q: 0.8, level: 0.18, lfoHz: 0.031, lfoDepth: 0.15 })
+    loopNoise(ctx, brown, { type: 'bandpass', freq: 240, q: 1.5, level: 0.22, lfoHz: 0.05, lfoDepth: 0.1, wet: 0.2 })
+    // Wind in the forest: two moving layers and a faint howl.
+    loopNoise(ctx, brown, { type: 'bandpass', freq: 480, q: 0.9, level: 0.75, lfoHz: 0.04, lfoDepth: 0.4, sweepHz: 0.06, sweepDepth: 220, pan: -0.45 })
+    loopNoise(ctx, brown, { type: 'bandpass', freq: 680, q: 0.9, level: 0.6, lfoHz: 0.027, lfoDepth: 0.35, sweepHz: 0.045, sweepDepth: 260, pan: 0.45 })
+    loopNoise(ctx, white, { type: 'bandpass', freq: 820, q: 14, level: 0.06, lfoHz: 0.05, lfoDepth: 0.045, sweepHz: 0.08, sweepDepth: 280, wet: 0.3 })
 
     // A metal "tong": a few out-of-tune partials that ring briefly, like a
     // fat drop hitting a tin sheet.
-    const tong = (at, base, level) => {
+    const tong = (at, base, level, pan) => {
+      const out = ctx.createGain()
+      routeOut(out, pan, 0.3)
       ;[1, 2.76, 5.4].forEach((mult, i) => {
         const osc = ctx.createOscillator()
         const g = ctx.createGain()
@@ -444,14 +615,14 @@ function startRain() {
         g.gain.setValueAtTime(0.0001, at)
         g.gain.exponentialRampToValueAtTime(peak, at + 0.003)
         g.gain.exponentialRampToValueAtTime(0.0001, at + ring)
-        osc.connect(g).connect(master)
+        osc.connect(g).connect(out)
         osc.start(at)
         osc.stop(at + ring + 0.02)
       })
     }
 
-    // Drops on the tin: sharp bright "tak-tik" clicks, lots at once, with
-    // a fat drop now and then that rings the metal and thuds the sheet.
+    // Drops on the tin, all over the roof: sharp bright "tak-tik" clicks,
+    // with a fat drop now and then that rings the metal and thuds the sheet.
     const tapBuffer = noiseBuffer(ctx, 0.12, false)
     rain.timer = setInterval(() => {
       if (rain.ducked || !rain.ctx) return
@@ -469,13 +640,14 @@ function startRain() {
         const len = 0.02 + Math.random() * 0.04
         g.gain.setValueAtTime(peak, at)
         g.gain.exponentialRampToValueAtTime(0.0001, at + len)
-        tap.connect(tone).connect(g).connect(master)
+        tap.connect(tone).connect(g)
+        routeOut(g, Math.random() * 1.8 - 0.9, 0.12)
         tap.start(at, Math.random() * 0.05, len + 0.02)
       }
       if (Math.random() < 0.18) {
         const at = ctx.currentTime + 0.02 + Math.random() * 0.07
-        tong(at, 520 + Math.random() * 700, 0.035 + Math.random() * 0.03)
-        // The sheet's dull thud under it.
+        const pan = Math.random() * 1.6 - 0.8
+        tong(at, 520 + Math.random() * 700, 0.035 + Math.random() * 0.03, pan)
         const thud = ctx.createBufferSource()
         thud.buffer = tapBuffer
         const low = ctx.createBiquadFilter()
@@ -485,11 +657,14 @@ function startRain() {
         const tg = ctx.createGain()
         tg.gain.setValueAtTime(0.5, at)
         tg.gain.exponentialRampToValueAtTime(0.0001, at + 0.11)
-        thud.connect(low).connect(tg).connect(master)
+        thud.connect(low).connect(tg)
+        routeOut(tg, pan, 0.2)
         thud.start(at, 0, 0.12)
       }
     }, 70)
 
+    nextGust(true)
+    nextFrog()
     nextThunder(true)
   } catch {}
 }
@@ -923,7 +1098,7 @@ export default function LiveDonations() {
       </button>
 
       {/* Sleep sounds: rain and a slow piano, each its own switch. */}
-      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Rain on the tin roof is on — click to turn off' : 'Rain on a tin roof, with a storm now and then'} />
+      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Storm night in a tin hut is on — click to turn off' : 'Lying in a tin hut in the forest: rain, wind, frogs and thunder'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
 
       {/* My music: a song from this computer, its own control again. */}
