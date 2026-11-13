@@ -139,11 +139,10 @@ const PIANO_CHORDS = [
 const PIANO_ORDER = [0, 2, 1, 3, 2, 1, 3, 2]
 const PIANO_MELODY = [2, 9 / 4, 5 / 2, 3, 10 / 3]
 
-function pianoKey(freq, velocity = 1, delay = 0) {
-  const { ctx, master } = calm
+function pianoKey(freq, velocity = 1, delay = 0, eng = calm, length = 3.2) {
+  const { ctx, master } = eng
   if (!ctx || !master) return
   const start = ctx.currentTime + 0.03 + delay
-  const length = 3.2
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
   filter.frequency.setValueAtTime(2600, start)
@@ -271,6 +270,219 @@ function duckCalm(down) {
   } catch {}
 }
 
+// ---- Sleep sounds: gentle rain, and a slow sleepy piano. Each is its own
+// switch, made in the browser (no files), and dips while an alert plays.
+
+function openEngine(eng, level) {
+  const Ctx = window.AudioContext || window.webkitAudioContext
+  if (!Ctx) return false
+  if (eng.ctx) {
+    if (eng.ctx.state === 'suspended') eng.ctx.resume()
+    return false
+  }
+  const ctx = new Ctx()
+  const master = ctx.createGain()
+  master.gain.setValueAtTime(0.0001, ctx.currentTime)
+  master.gain.exponentialRampToValueAtTime(level, ctx.currentTime + 4)
+  master.connect(ctx.destination)
+  eng.ctx = ctx
+  eng.master = master
+  eng.ducked = false
+  return true
+}
+
+function closeEngine(eng) {
+  const { ctx, master } = eng
+  clearInterval(eng.timer)
+  eng.timer = null
+  eng.ctx = null
+  eng.master = null
+  if (!ctx) return
+  try {
+    master.gain.cancelScheduledValues(ctx.currentTime)
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), ctx.currentTime)
+    master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5)
+    setTimeout(() => ctx.close(), 1700)
+  } catch {
+    ctx.close()
+  }
+}
+
+function duckEngine(eng, down, level) {
+  const { ctx, master } = eng
+  if (!ctx || eng.ducked === down) return
+  eng.ducked = down
+  try {
+    const now = ctx.currentTime
+    master.gain.cancelScheduledValues(now)
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now)
+    master.gain.exponentialRampToValueAtTime(down ? 0.0001 : level, now + (down ? 0.5 : 3))
+  } catch {}
+}
+
+// Rain: soft "brown" noise shaped like rain on a window, a slow swell as
+// the shower comes and goes, and little drops tapping now and then.
+const RAIN_LEVEL = 0.35
+const rain = { ctx: null, master: null, timer: null, ducked: false }
+
+function noiseBuffer(ctx, seconds, brown) {
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  let last = 0
+  for (let i = 0; i < data.length; i++) {
+    const white = Math.random() * 2 - 1
+    if (brown) {
+      last = (last + 0.02 * white) / 1.02
+      data[i] = last * 3.5
+    } else data[i] = white
+  }
+  return buffer
+}
+
+function startRain() {
+  try {
+    if (!openEngine(rain, RAIN_LEVEL)) return
+    const { ctx, master } = rain
+    // The steady shower.
+    const shower = ctx.createBufferSource()
+    shower.buffer = noiseBuffer(ctx, 6, true)
+    shower.loop = true
+    const body = ctx.createBiquadFilter()
+    body.type = 'lowpass'
+    body.frequency.value = 1400
+    const swell = ctx.createGain()
+    swell.gain.value = 0.8
+    const lfo = ctx.createOscillator()
+    const lfoDepth = ctx.createGain()
+    lfo.frequency.value = 0.05
+    lfoDepth.gain.value = 0.2
+    lfo.connect(lfoDepth).connect(swell.gain)
+    lfo.start()
+    shower.connect(body).connect(swell).connect(master)
+    shower.start()
+    // A light hiss on top, the fine spray.
+    const spray = ctx.createBufferSource()
+    spray.buffer = noiseBuffer(ctx, 4, false)
+    spray.loop = true
+    const sprayFilter = ctx.createBiquadFilter()
+    sprayFilter.type = 'bandpass'
+    sprayFilter.frequency.value = 3500
+    sprayFilter.Q.value = 0.6
+    const sprayGain = ctx.createGain()
+    sprayGain.gain.value = 0.035
+    spray.connect(sprayFilter).connect(sprayGain).connect(master)
+    spray.start()
+    // Drops: tiny filtered taps at random moments.
+    const tapBuffer = noiseBuffer(ctx, 0.05, false)
+    rain.timer = setInterval(() => {
+      if (rain.ducked || !rain.ctx) return
+      const count = 1 + Math.floor(Math.random() * 3)
+      for (let i = 0; i < count; i++) {
+        const at = ctx.currentTime + Math.random() * 0.25
+        const tap = ctx.createBufferSource()
+        tap.buffer = tapBuffer
+        const tone = ctx.createBiquadFilter()
+        tone.type = 'bandpass'
+        tone.frequency.value = 1800 + Math.random() * 2500
+        tone.Q.value = 4
+        const g = ctx.createGain()
+        const peak = 0.05 + Math.random() * 0.1
+        g.gain.setValueAtTime(peak, at)
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.05)
+        tap.connect(tone).connect(g).connect(master)
+        tap.start(at)
+      }
+    }, 280)
+  } catch {}
+}
+
+// Sleep piano: slower and lower than Calm 777, long soft notes with lots of
+// space, drifting through four warm chords.
+const SLEEP_LEVEL = 0.09
+const SLEEP_BEAT_MS = 1700
+const SLEEP_ROOT = 196 // a low, warm G
+const SLEEP_CHORDS = [
+  [1, 5 / 4, 3 / 2, 15 / 8, 9 / 4],
+  [5 / 6, 1, 5 / 4, 3 / 2, 2],
+  [2 / 3, 5 / 6, 1, 5 / 4, 5 / 3],
+  [3 / 4, 1, 9 / 8, 3 / 2, 15 / 8],
+]
+const SLEEP_ORDER = [0, 2, 3, 4, 3, 2]
+const sleepPiano = { ctx: null, master: null, timer: null, ducked: false }
+
+function startSleepPiano() {
+  try {
+    if (!openEngine(sleepPiano, SLEEP_LEVEL)) return
+    let step = 0
+    const play = () => {
+      if (sleepPiano.ducked || !sleepPiano.ctx) return
+      const beat = step % SLEEP_ORDER.length
+      const chord = SLEEP_CHORDS[Math.floor(step / SLEEP_ORDER.length) % SLEEP_CHORDS.length]
+      step++
+      if (beat === 0) pianoKey(SLEEP_ROOT * chord[0] * 0.5, 0.6, 0, sleepPiano, 6)
+      if (beat !== 0 && Math.random() < 0.3) return
+      pianoKey(SLEEP_ROOT * chord[SLEEP_ORDER[beat]] * 2, beat === 0 ? 0.55 : 0.35 + Math.random() * 0.15, Math.random() * 0.08, sleepPiano, 5.5)
+    }
+    setTimeout(play, 600)
+    sleepPiano.timer = setInterval(play, SLEEP_BEAT_MS)
+  } catch {}
+}
+
+// One on/off switch for a background sound, remembered in this browser.
+// After a reload, the first click on the page starts it (browsers need one).
+function useAmbient(storageKey, start, eng, level, busy, quietUntil) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    try {
+      setOn(localStorage.getItem(storageKey) === '1')
+    } catch {}
+  }, [storageKey])
+  useEffect(() => {
+    if (!on) return
+    start()
+    const wake = () => start()
+    document.addEventListener('pointerdown', wake)
+    const timer = setInterval(() => duckEngine(eng, busy.current > 0 || Date.now() < quietUntil.current, level), 400)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('pointerdown', wake)
+      closeEngine(eng)
+    }
+  }, [on, start, eng, level, busy, quietUntil])
+  const toggle = () => {
+    const next = !on
+    setOn(next)
+    try {
+      localStorage.setItem(storageKey, next ? '1' : '0')
+    } catch {}
+  }
+  return [on, toggle]
+}
+
+function SoundSwitch({ on, onClick, icon, label, color, tint, hint }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onClick}
+      title={hint}
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors"
+      style={{
+        background: on ? tint : 'var(--a-surface)',
+        border: `1px solid ${on ? color : 'var(--a-border)'}`,
+        color: on ? color : 'var(--a-text-muted)',
+      }}
+    >
+      <span aria-hidden="true" className={on ? 'animate-pulse' : ''}>{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
+      <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: on ? color : 'var(--a-border)' }} aria-hidden="true">
+        <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: on ? 14 : 2 }} />
+      </span>
+    </button>
+  )
+}
+
 const MODES = [
   { id: 'voice', icon: '🔊', label: 'Voice', hint: 'Chime and spoken announcement' },
   { id: 'beep', icon: '🔔', label: 'Beep', hint: 'Short pit-pit sound only' },
@@ -367,6 +579,9 @@ export default function LiveDonations() {
       localStorage.setItem('admin-live-calm', next ? '1' : '0')
     } catch {}
   }
+
+  const [rainOn, toggleRain] = useAmbient('admin-live-rain', startRain, rain, RAIN_LEVEL, busy, quietUntil)
+  const [sleepOn, toggleSleep] = useAmbient('admin-live-sleep-piano', startSleepPiano, sleepPiano, SLEEP_LEVEL, busy, quietUntil)
 
   // "My music": a song the admin picks from their own computer. It plays
   // straight from that file in this browser — nothing is uploaded — loops,
@@ -608,6 +823,10 @@ export default function LiveDonations() {
         </span>
         <span className="hidden sm:inline">{pulse ? 'On' : 'Off'}</span>
       </button>
+
+      {/* Sleep sounds: rain and a slow piano, each its own switch. */}
+      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Soft rain is on — click to turn off' : 'Play soft rain sound'} />
+      <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
 
       {/* My music: a song from this computer, its own control again. */}
       <input ref={fileInput} type="file" accept="audio/*,video/mp4" className="hidden" onChange={pickMusic} />
