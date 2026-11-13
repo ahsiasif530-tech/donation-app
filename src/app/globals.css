@@ -104,7 +104,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(15, 17, 21, 0.72);
+  background: rgba(15, 17, 21, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--a-border);

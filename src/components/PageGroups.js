@@ -12,10 +12,10 @@ export default function PageGroups({ groups, head }) {
 
   return (
     <>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto"><table className="w-full text-sm">
         {head}
         <tbody>{current}</tbody>
-      </table>
+      </table></div>
       <GroupPager index={index} count={groups.length} onChange={setIndex} />
     </>
   )

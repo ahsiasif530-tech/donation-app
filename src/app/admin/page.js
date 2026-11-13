@@ -537,10 +537,10 @@ export default async function AdminPage({ searchParams }) {
               <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
                 <h2 className="a-section-title"><span className="a-icon"><Icon name="flag" /></span>México</h2>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 {pagesHead}
                 <tbody>{separatePages.map(pageRow)}</tbody>
-              </table>
+              </table></div>
             </div>
           )}
           </div>
