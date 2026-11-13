@@ -1121,6 +1121,14 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
   // True while the sound is on only because it is really raining outside
   // (AdminSky reports the weather); it then stops by itself with the rain.
   const byRain = useRef(false)
+  // Switched off by hand during an automatic stretch: stay off till it ends.
+  const snoozed = () => {
+    try {
+      return Date.now() < Number(localStorage.getItem(`${storageKey}-snooze`) || 0)
+    } catch {
+      return false
+    }
+  }
   useEffect(() => {
     try {
       setOn(localStorage.getItem(storageKey) === '1')
@@ -1131,7 +1139,7 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
     let wasRaining = false
     const onWeather = (e) => {
       const raining = !!e.detail?.raining
-      if (raining && !wasRaining) {
+      if (raining && !wasRaining && !snoozed()) {
         setOn((cur) => {
           if (!cur) byRain.current = true
           return true
@@ -1155,7 +1163,7 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
       const h = new Date().getHours()
       const [from, to] = hours
       const morning = from < to ? h >= from && h < to : h >= from || h < to
-      if (morning && !wasMorning) {
+      if (morning && !wasMorning && !snoozed()) {
         setOn((cur) => {
           if (!cur) byRain.current = true
           return true
@@ -1184,7 +1192,27 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
   }, [on, start, eng, level, busy, quietUntil])
   const toggle = () => {
     const next = !on
-    // Pressing the switch yourself always wins over the weather.
+    // Pressing the switch yourself always wins over the weather and clock.
+    // Turning it off while it is on by itself keeps it off until that
+    // stretch is over (the rain stops, or the morning/night ends), even
+    // across a page reload; then it is free to come on by itself next time.
+    if (!next && byRain.current) {
+      let until = Date.now() + 3 * 60 * 60 * 1000
+      if (hours) {
+        const end = new Date()
+        end.setHours(hours[1], 0, 0, 0)
+        if (end.getTime() <= Date.now()) end.setDate(end.getDate() + 1)
+        until = end.getTime()
+      }
+      try {
+        localStorage.setItem(`${storageKey}-snooze`, String(until))
+      } catch {}
+    }
+    if (next) {
+      try {
+        localStorage.removeItem(`${storageKey}-snooze`)
+      } catch {}
+    }
     byRain.current = false
     setOn(next)
     try {
