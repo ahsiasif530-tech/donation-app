@@ -73,7 +73,7 @@ const skyNow = (lat, lon) => {
 // The moon's face: the lit part drawn with the right shape for the phase
 // (waxing lit on the right, waning on the left), a few soft craters, and a
 // halo of moonlight.
-function MoonDisc({ moon, size = 56 }) {
+function MoonDisc({ moon }) {
   const r = 20
   const c = 25
   const waxing = moon.phase < 0.5
@@ -84,7 +84,7 @@ function MoonDisc({ moon, size = 56 }) {
   const inner = waxing ? (crescent ? 0 : 1) : crescent ? 1 : 0
   const lit = `M ${c} ${c - r} A ${r} ${r} 0 0 ${outer} ${c} ${c + r} A ${rx} ${r} 0 0 ${inner} ${c} ${c - r} Z`
   return (
-    <svg width={size} height={size} viewBox="0 0 50 50" style={{ overflow: 'visible' }}>
+    <svg width="100%" height="100%" viewBox="0 0 50 50" style={{ overflow: 'visible', display: 'block' }}>
       <defs>
         <radialGradient id="moon-lit" cx="40%" cy="38%" r="70%">
           <stop offset="0%" stopColor="#FFFDF2" />
@@ -95,7 +95,7 @@ function MoonDisc({ moon, size = 56 }) {
         </clipPath>
       </defs>
       {/* The dark side, just visible (earthshine) */}
-      <circle cx={c} cy={c} r={r} fill="rgba(160,170,200,0.10)" />
+      <circle cx={c} cy={c} r={r} fill="rgba(150,162,195,0.2)" stroke="rgba(220,228,255,0.28)" strokeWidth="0.6" />
       {moon.lit > 0.02 && (
         <>
           <path d={lit} fill="url(#moon-lit)" />
@@ -443,12 +443,10 @@ export default function AdminSky() {
         {/* The moon, where it really is right now, with today's phase. Bright
             at night, pale in daylight, hidden behind thick cloud. */}
         {sky.moon && sky.moon.elevation > -3 && (
-          <div className="a-sky-moon absolute" style={{ left: `${sky.moon.x}%`, top: `${sky.moon.y}%`, transition: 'left 60s linear, top 60s linear' }}>
+          <div className="a-sky-moon a-moon-pos absolute" style={{ left: `${sky.moon.x}%`, top: `${sky.moon.y}%`, transition: 'left 60s linear, top 60s linear' }}>
             <div
-              className="a-moon-float"
+              className="a-moon-float a-moon-size"
               style={{
-                marginLeft: -28,
-                marginTop: -28,
                 opacity:
                   Math.min(1, (sky.moon.elevation + 3) / 6) *
                   (sky.phase === 'night' ? 1 : sky.phase === 'dawn' || sky.phase === 'dusk' ? 0.75 : 0.35) *

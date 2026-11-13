@@ -514,8 +514,12 @@ export default async function AdminPage({ searchParams }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          <div className="lg:col-span-2 flex flex-col gap-4">
+        {/* Pages and México on the left, countries + map on the right (it stays
+            in view while scrolling), and the invoices continue on the left
+            right under México, so no empty gap opens beside a tall map. On
+            phones it is one column in the same order. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-4 gap-y-6 items-start">
+          <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 flex flex-col gap-4 min-w-0">
           <div id="pages" className="a-card overflow-hidden scroll-mt-24">
             <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--a-border)' }}>
               <h2 className="a-section-title"><span className="a-icon"><Icon name="pages" /></span>Pages</h2>
@@ -541,16 +545,18 @@ export default async function AdminPage({ searchParams }) {
           )}
           </div>
 
-          <div id="countries" className="scroll-mt-24"><CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} /></div>
-        </div>
+          <div id="countries" className="scroll-mt-24 min-w-0 lg:col-start-3 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-20">
+            <CountryBreakdown byCountry={byCountry} totalEarning={totalEarning} />
+          </div>
 
-        <div id="invoices" className="scroll-mt-24">
+        <div id="invoices" className="scroll-mt-24 min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h2 className="a-section-title text-lg"><span className="a-icon"><Icon name="receipt" /></span>All invoices, by gateway</h2>
             <RecoverPaypalButton />
           </div>
           <InvoiceFilterBar pages={(pages || []).map((p) => ({ id: p.id, label: pageFullName(p) }))} />
           <InvoiceSections initialHidden={hiddenSections} sections={invoiceSections} />
+        </div>
         </div>
       </div>
       </div>

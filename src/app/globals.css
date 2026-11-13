@@ -444,3 +444,23 @@ body {
   .admin-theme .a-sky-moon { transform: none; }
   .admin-theme .a-moon-float { animation: none; }
 }
+
+/* Moon size: big on a computer, still clear on a phone. On a phone most of
+   the screen is cards, so the moon sits in the open sky near the top
+   (beside the welcome title) instead of its true spot. */
+.admin-theme .a-moon-size {
+  width: 104px;
+  height: 104px;
+  margin: -52px 0 0 -52px;
+}
+@media (max-width: 1023px) {
+  .admin-theme .a-moon-size {
+    width: 78px;
+    height: 78px;
+    margin: -39px 0 0 -39px;
+  }
+  .admin-theme .a-moon-pos {
+    left: 84% !important;
+    top: 118px !important;
+  }
+}
