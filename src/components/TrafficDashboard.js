@@ -36,7 +36,11 @@ function Change({ now, before, invert = false }) {
   )
 }
 
-function Tile({ label, value, now, before, accent }) {
+// parts: [{ name, color, value }] — who the number came from, as a stacked
+// bar and a short list (biggest first).
+function Tile({ label, value, now, before, accent, parts, format = (n) => n }) {
+  const total = parts ? parts.reduce((s, p) => s + p.value, 0) : 0
+  const shown = parts ? parts.filter((p) => p.value > 0).sort((a, b) => b.value - a.value) : []
   return (
     <div className={`a-card a-stat ${accent ? 'a-card-hero' : ''}`}>
       <p className="a-stat-label">{label}</p>
@@ -44,6 +48,30 @@ function Tile({ label, value, now, before, accent }) {
       <p className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--a-text-muted)' }}>
         <Change now={now} before={before} /> vs before
       </p>
+      {parts && (
+        total > 0 ? (
+          <div className="mt-1.5">
+            <div className="flex h-1.5 rounded-full overflow-hidden gap-[2px]" style={{ background: 'var(--a-surface-2)' }}>
+              {shown.map((p) => (
+                <span key={p.name} title={`${p.name}: ${format(p.value)}`} style={{ width: `${(p.value / total) * 100}%`, background: p.color }} />
+              ))}
+            </div>
+            <ul className="mt-2 space-y-0.5">
+              {shown.map((p) => (
+                <li key={p.name} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+                    <span className="truncate">{p.name}</span>
+                  </span>
+                  <span className="tabular-nums font-bold shrink-0">{format(p.value)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-[11px] mt-1" style={{ color: 'var(--a-text-muted)' }}>No one yet</p>
+        )
+      )}
     </div>
   )
 }
@@ -453,6 +481,15 @@ export default function TrafficDashboard({ data }) {
   const p = team.prev
   const payRate = rate(t.paid, t.visitors)
   const prevPayRate = rate(p.paid, p.visitors)
+  // Each person's share of a number (all their pages added; México counts
+  // as its own name). Visitors are added per page, so one browser seen on
+  // two pages counts twice here.
+  const partsOf = (key) =>
+    data.people.map((person) => ({
+      name: person.name,
+      color: person.color,
+      value: data.pages.filter((pg) => pg.person === person.name).reduce((s, pg) => s + pg.total[key], 0),
+    }))
 
   return (
     <div className="space-y-6">
@@ -471,11 +508,11 @@ export default function TrafficDashboard({ data }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Tile label="Visitors" value={t.visitors} now={t.visitors} before={p.visitors} />
-        <Tile label="Views" value={t.views} now={t.views} before={p.views} />
-        <Tile label="Donate clicks" value={t.clicks} now={t.clicks} before={p.clicks} />
-        <Tile label="Paid" value={t.paid} now={t.paid} before={p.paid} />
-        <Tile label="Earned" value={money(t.earned)} now={t.earned} before={p.earned} accent />
+        <Tile label="Visitors" value={t.visitors} now={t.visitors} before={p.visitors} parts={partsOf('visitors')} />
+        <Tile label="Views" value={t.views} now={t.views} before={p.views} parts={partsOf('views')} />
+        <Tile label="Donate clicks" value={t.clicks} now={t.clicks} before={p.clicks} parts={partsOf('clicks')} />
+        <Tile label="Paid" value={t.paid} now={t.paid} before={p.paid} parts={partsOf('paid')} />
+        <Tile label="Earned" value={money(t.earned)} now={t.earned} before={p.earned} accent parts={partsOf('earned')} format={money} />
         <Tile label="Pay rate" value={pct(payRate)} now={payRate} before={prevPayRate} />
       </div>
 
