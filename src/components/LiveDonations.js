@@ -294,6 +294,7 @@ function openEngine(eng, level) {
 function closeEngine(eng) {
   const { ctx, master } = eng
   clearInterval(eng.timer)
+  clearTimeout(eng.later)
   eng.timer = null
   eng.ctx = null
   eng.master = null
@@ -320,13 +321,14 @@ function duckEngine(eng, down, level) {
   } catch {}
 }
 
-// Rain: soft "brown" noise shaped like rain on a window, a slow swell as
-// the shower comes and goes, and little drops tapping now and then.
+// Rain on a tent in a storm: a muffled downpour as heard from inside, the
+// canvas drumming with thousands of drops, wind gusts, and thunder now and
+// then — mostly far away, sometimes close with a crack first.
 const RAIN_LEVEL = 0.35
-const rain = { ctx: null, master: null, timer: null, ducked: false }
+const rain = { ctx: null, master: null, timer: null, later: null, ducked: false }
 
 function noiseBuffer(ctx, seconds, brown) {
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate)
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate)
   const data = buffer.getChannelData(0)
   let last = 0
   for (let i = 0; i < data.length; i++) {
@@ -339,60 +341,119 @@ function noiseBuffer(ctx, seconds, brown) {
   return buffer
 }
 
+function loopNoise(ctx, buffer, out, { type, freq, q = 0.7, level, lfoHz, lfoDepth }) {
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+  src.loop = true
+  const filter = ctx.createBiquadFilter()
+  filter.type = type
+  filter.frequency.value = freq
+  filter.Q.value = q
+  const gain = ctx.createGain()
+  gain.gain.value = level
+  if (lfoHz) {
+    const lfo = ctx.createOscillator()
+    const depth = ctx.createGain()
+    lfo.frequency.value = lfoHz
+    depth.gain.value = lfoDepth
+    lfo.connect(depth).connect(gain.gain)
+    lfo.start()
+  }
+  src.connect(filter).connect(gain).connect(out)
+  src.start(0, Math.random() * buffer.duration)
+}
+
+function thunder(close) {
+  const { ctx, master } = rain
+  if (!ctx || rain.ducked) return
+  const now = ctx.currentTime + 0.05
+  if (close) {
+    // The crack, right before the boom.
+    const crack = ctx.createBufferSource()
+    crack.buffer = rain.white
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 1200
+    const cg = ctx.createGain()
+    cg.gain.setValueAtTime(0.0001, now)
+    cg.gain.exponentialRampToValueAtTime(0.45, now + 0.02)
+    cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
+    crack.connect(hp).connect(cg).connect(master)
+    crack.start(now, Math.random() * 2, 0.6)
+  }
+  // The rolling rumble: deep noise whose tone sinks as it rolls away.
+  const boom = ctx.createBufferSource()
+  boom.buffer = rain.thunderNoise
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(close ? 900 : 380, now)
+  lp.frequency.exponentialRampToValueAtTime(80, now + 7)
+  const g = ctx.createGain()
+  const peak = close ? 1.1 : 0.6
+  const rise = close ? 0.12 : 0.9
+  g.gain.setValueAtTime(0.0001, now)
+  g.gain.exponentialRampToValueAtTime(peak, now + rise)
+  let t = now + rise
+  for (let i = 0; i < 4; i++) {
+    t += 0.5 + Math.random() * 0.9
+    g.gain.linearRampToValueAtTime(peak * (0.3 + Math.random() * 0.6) * (1 - i * 0.18), t)
+  }
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 3)
+  boom.connect(lp).connect(g).connect(master)
+  boom.start(now)
+  boom.stop(t + 3.2)
+}
+
+function nextThunder(first) {
+  if (!rain.ctx) return
+  const wait = first ? 8000 + Math.random() * 7000 : 20000 + Math.random() * 35000
+  rain.later = setTimeout(() => {
+    thunder(Math.random() < 0.3)
+    nextThunder(false)
+  }, wait)
+}
+
 function startRain() {
   try {
     if (!openEngine(rain, RAIN_LEVEL)) return
     const { ctx, master } = rain
-    // The steady shower.
-    const shower = ctx.createBufferSource()
-    shower.buffer = noiseBuffer(ctx, 6, true)
-    shower.loop = true
-    const body = ctx.createBiquadFilter()
-    body.type = 'lowpass'
-    body.frequency.value = 1400
-    const swell = ctx.createGain()
-    swell.gain.value = 0.8
-    const lfo = ctx.createOscillator()
-    const lfoDepth = ctx.createGain()
-    lfo.frequency.value = 0.05
-    lfoDepth.gain.value = 0.2
-    lfo.connect(lfoDepth).connect(swell.gain)
-    lfo.start()
-    shower.connect(body).connect(swell).connect(master)
-    shower.start()
-    // A light hiss on top, the fine spray.
-    const spray = ctx.createBufferSource()
-    spray.buffer = noiseBuffer(ctx, 4, false)
-    spray.loop = true
-    const sprayFilter = ctx.createBiquadFilter()
-    sprayFilter.type = 'bandpass'
-    sprayFilter.frequency.value = 3500
-    sprayFilter.Q.value = 0.6
-    const sprayGain = ctx.createGain()
-    sprayGain.gain.value = 0.035
-    spray.connect(sprayFilter).connect(sprayGain).connect(master)
-    spray.start()
-    // Drops: tiny filtered taps at random moments.
-    const tapBuffer = noiseBuffer(ctx, 0.05, false)
+    const brown = noiseBuffer(ctx, 8, true)
+    const white = noiseBuffer(ctx, 4, false)
+    rain.white = white
+    rain.thunderNoise = noiseBuffer(ctx, 12, true)
+
+    // The downpour outside, muffled by the canvas, coming in waves.
+    loopNoise(ctx, brown, master, { type: 'lowpass', freq: 900, level: 0.75, lfoHz: 0.07, lfoDepth: 0.25 })
+    // The canvas itself hissing under the rain.
+    loopNoise(ctx, white, master, { type: 'bandpass', freq: 2200, q: 0.5, level: 0.05, lfoHz: 0.07, lfoDepth: 0.02 })
+    // Wind gusting around the tent.
+    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 320, q: 0.8, level: 0.35, lfoHz: 0.031, lfoDepth: 0.3 })
+
+    // Drops drumming on the tent: soft, dull taps, many at a time.
+    const tapBuffer = noiseBuffer(ctx, 0.12, false)
     rain.timer = setInterval(() => {
       if (rain.ducked || !rain.ctx) return
-      const count = 1 + Math.floor(Math.random() * 3)
+      const count = 2 + Math.floor(Math.random() * 4)
       for (let i = 0; i < count; i++) {
-        const at = ctx.currentTime + Math.random() * 0.25
+        const at = ctx.currentTime + 0.02 + Math.random() * 0.07
         const tap = ctx.createBufferSource()
         tap.buffer = tapBuffer
         const tone = ctx.createBiquadFilter()
         tone.type = 'bandpass'
-        tone.frequency.value = 1800 + Math.random() * 2500
-        tone.Q.value = 4
+        tone.frequency.value = 450 + Math.random() * 1100
+        tone.Q.value = 2.2
         const g = ctx.createGain()
-        const peak = 0.05 + Math.random() * 0.1
+        const big = Math.random() < 0.12
+        const peak = big ? 0.22 + Math.random() * 0.12 : 0.05 + Math.random() * 0.09
+        const len = big ? 0.1 : 0.035 + Math.random() * 0.04
         g.gain.setValueAtTime(peak, at)
-        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.05)
+        g.gain.exponentialRampToValueAtTime(0.0001, at + len)
         tap.connect(tone).connect(g).connect(master)
-        tap.start(at)
+        tap.start(at, Math.random() * 0.05, len + 0.02)
       }
-    }, 280)
+    }, 70)
+
+    nextThunder(true)
   } catch {}
 }
 
@@ -825,7 +886,7 @@ export default function LiveDonations() {
       </button>
 
       {/* Sleep sounds: rain and a slow piano, each its own switch. */}
-      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Soft rain is on — click to turn off' : 'Play soft rain sound'} />
+      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Rain on the tent is on — click to turn off' : 'Rain on a tent, with a storm now and then'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
 
       {/* My music: a song from this computer, its own control again. */}
