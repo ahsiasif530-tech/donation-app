@@ -6,12 +6,16 @@ import { personColor } from '@/lib/avatar'
 import AdminTopbar from '@/components/AdminTopbar'
 import TrafficDashboard from '@/components/TrafficDashboard'
 
-const PERIODS = [7, 14, 30]
+// 1 = today (by hour), the rest by day.
+const PERIODS = [1, 7, 14, 30]
 const DEFAULT_DAYS = 14
 const TIME_ZONE = 'Asia/Dhaka'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const dayOf = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: TIME_ZONE })
+const hourOf = (ms) => new Date(ms).toLocaleString("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: TIME_ZONE })
+const hourLabel = (key) => { const h = Number(key); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}` }
+const dayLabel = (key, opts) => new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", { ...opts, timeZone: "UTC" })
 
 function emptyStats() {
   return { views: 0, visitors: new Set(), clicks: 0, paid: 0, earned: 0 }
@@ -60,10 +64,24 @@ export default async function AdminTrafficPage({ searchParams }) {
 
   if (profile?.role !== 'admin') redirect('/dashboard')
 
-  // The days shown, oldest first, as Bangladesh calendar days.
+  // The buckets shown, oldest first: Bangladesh calendar days, or for
+  // today its hours. The period before is the same number of days before
+  // the first one (for today: yesterday).
   const dayKeys = Array.from({ length: days }, (_, i) => dayOf(now - (days - 1 - i) * DAY_MS))
+  const prevFirstDay = dayOf(now - (2 * days - 1) * DAY_MS)
+  const hourly = days === 1
+  const bucketKeys = hourly ? Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")) : dayKeys
+  const bucketOf = (iso) => (hourly ? hourOf(new Date(iso).getTime()) : dayOf(new Date(iso).getTime()))
+  const bucketLabel = (key) =>
+    hourly
+      ? { short: hourLabel(key), long: `Today ${hourLabel(key)}–${hourLabel(String((Number(key) + 1) % 24).padStart(2, "0"))}` }
+      : { short: dayLabel(key, { month: "short", day: "numeric" }), long: dayLabel(key, { weekday: "short", month: "short", day: "numeric" }) }
   const firstDay = dayKeys[0]
   const inPeriod = (iso) => dayOf(new Date(iso).getTime()) >= firstDay
+  const inPrev = (iso) => {
+    const day = dayOf(new Date(iso).getTime())
+    return day >= prevFirstDay && day < firstDay
+  }
 
   const personOrder = [...new Set((pages || []).map((p) => p.label || p.title))]
   const byPage = new Map(
@@ -78,22 +96,23 @@ export default async function AdminTrafficPage({ searchParams }) {
         color: personColor(p.label || p.title, personOrder),
         total: emptyStats(),
         prev: emptyStats(),
-        daily: new Map(dayKeys.map((d) => [d, emptyStats()])),
+        daily: new Map(bucketKeys.map((d) => [d, emptyStats()])),
         sources: new Map(),
       },
     ])
   )
-  const team = { total: emptyStats(), prev: emptyStats(), daily: new Map(dayKeys.map((d) => [d, emptyStats()])), sources: new Map() }
+  const team = { total: emptyStats(), prev: emptyStats(), daily: new Map(bucketKeys.map((d) => [d, emptyStats()])), sources: new Map() }
 
   for (const v of views || []) {
     const page = byPage.get(v.page_id)
     if (!page) continue
     if (!inPeriod(v.created_at)) {
+      if (!inPrev(v.created_at)) continue
       addView(page.prev, v.visitor_id)
       addView(team.prev, v.visitor_id)
       continue
     }
-    const day = dayOf(new Date(v.created_at).getTime())
+    const day = bucketOf(v.created_at)
     const source = v.source || 'direct'
     addView(page.total, v.visitor_id)
     addView(team.total, v.visitor_id)
@@ -107,11 +126,12 @@ export default async function AdminTrafficPage({ searchParams }) {
     const page = byPage.get(d.page_id)
     if (!page) continue
     if (!inPeriod(d.created_at)) {
+      if (!inPrev(d.created_at)) continue
       addDonation(page.prev, d)
       addDonation(team.prev, d)
       continue
     }
-    const day = dayOf(new Date(d.created_at).getTime())
+    const day = bucketOf(d.created_at)
     addDonation(page.total, d)
     addDonation(team.total, d)
     if (page.daily.has(day)) addDonation(page.daily.get(day), d)
@@ -128,7 +148,7 @@ export default async function AdminTrafficPage({ searchParams }) {
     team: {
       total: plain(team.total),
       prev: plain(team.prev),
-      daily: dayKeys.map((d) => ({ day: d, ...plain(team.daily.get(d)) })),
+      daily: bucketKeys.map((d) => ({ day: d, ...bucketLabel(d), ...plain(team.daily.get(d)) })),
       sources: sortedSources(team.sources),
     },
     pages: [...byPage.values()].map((p) => ({
@@ -140,7 +160,7 @@ export default async function AdminTrafficPage({ searchParams }) {
       color: p.color,
       total: plain(p.total),
       prev: plain(p.prev),
-      daily: dayKeys.map((d) => ({ day: d, ...plain(p.daily.get(d)) })),
+      daily: bucketKeys.map((d) => ({ day: d, ...bucketLabel(d), ...plain(p.daily.get(d)) })),
       sources: sortedSources(p.sources),
     })),
   }

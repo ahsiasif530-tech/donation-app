@@ -8,8 +8,6 @@ import GroupPager from './GroupPager'
 const money = (n) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const rate = (part, whole) => (whole ? (part / whole) * 100 : 0)
 const pct = (n) => `${n.toFixed(1)}%`
-const shortDay = (key) => new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-const longDay = (key) => new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
 const SOURCE_ICON = { facebook: '📘', instagram: '📸', whatsapp: '💬', google: '🔎', direct: '🔗', tiktok: '🎵', youtube: '▶️', messenger: '💬', email: '✉️' }
 const sourceIcon = (s) => SOURCE_ICON[Object.keys(SOURCE_ICON).find((k) => s.toLowerCase().includes(k))] || '🌐'
@@ -132,7 +130,7 @@ function DailyChart({ daily }) {
                   opacity={hover === null || hover === i ? 1 : 0.55}
                 />
                 {(i % labelEvery === 0 || i === daily.length - 1) && (
-                  <text x={x + bw * 0.35} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--a-text-muted)">{shortDay(d.day)}</text>
+                  <text x={x + bw * 0.35} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--a-text-muted)">{d.short}</text>
                 )}
               </g>
             )
@@ -149,7 +147,7 @@ function DailyChart({ daily }) {
               minWidth: 160,
             }}
           >
-            <p className="font-bold mb-1">{longDay(daily[hover].day)}</p>
+            <p className="font-bold mb-1">{daily[hover].long}</p>
             {METRICS.map((x) => (
               <p key={x.key} className="flex justify-between gap-4">
                 <span style={{ color: 'var(--a-text-muted)' }}>{x.label}</span>
@@ -288,7 +286,7 @@ function PageRows({ pages }) {
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
                       {[...p.daily].reverse().filter((d) => d.views || d.clicks).map((d) => (
                         <div key={d.day} className="rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)' }}>
-                          <p className="font-bold mb-0.5">{longDay(d.day)}</p>
+                          <p className="font-bold mb-0.5">{d.long}</p>
                           <p style={{ color: 'var(--a-text-muted)' }}>{d.visitors} visitors · {d.clicks} clicks</p>
                           <p>
                             <b>{d.paid}</b> paid · <b className="tabular-nums">{money(d.earned)}</b>
@@ -398,12 +396,12 @@ export default function TrafficDashboard({ data }) {
         <div>
           <h1 className="text-3xl font-semibold">Traffic</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--a-text-muted)' }}>
-            Last {days} days, Bangladesh time · compared with the {days} days before. Visitors are unique browsers; donate clicks are invoices started.
+            {days === 1 ? "Today, Bangladesh time · compared with yesterday." : `Last ${days} days, Bangladesh time · compared with the ${days} days before.`} Visitors are unique browsers; donate clicks are invoices started.
           </p>
         </div>
         <nav className="a-nav inline-flex" aria-label="Period">
           {data.periods.map((d) => (
-            <a key={d} href={`/admin/traffic?days=${d}`} aria-current={d === days ? 'page' : undefined}>{d} days</a>
+            <a key={d} href={`/admin/traffic?days=${d}`} aria-current={d === days ? "page" : undefined}>{d === 1 ? "Today" : `${d} days`}</a>
           ))}
         </nav>
       </div>
@@ -419,7 +417,7 @@ export default function TrafficDashboard({ data }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="a-card p-5 lg:col-span-2">
-          <h2 className="a-section-title mb-3">Day by day</h2>
+          <h2 className="a-section-title mb-3">{days === 1 ? "Hour by hour" : "Day by day"}</h2>
           <DailyChart daily={team.daily} />
         </div>
         <div className="a-card p-5">
