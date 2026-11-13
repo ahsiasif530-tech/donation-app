@@ -443,7 +443,7 @@ export default function AdminSky() {
         {/* The moon, where it really is right now, with today's phase. Bright
             at night, pale in daylight, hidden behind thick cloud. */}
         {sky.moon && sky.moon.elevation > -3 && (
-          <div className="a-sky-moon a-moon-pos absolute" style={{ left: `${sky.moon.x}%`, top: `${sky.moon.y}%`, transition: 'left 60s linear, top 60s linear' }}>
+          <div className="a-sky-moon a-moon-pos absolute" style={{ left: `${sky.moon.x}%`, top: `${sky.moon.y}%`, '--mx': `${36 + ((sky.moon.x - 8) / 84) * 34}%`, transition: 'left 60s linear, top 60s linear' }}>
             <div
               className="a-moon-float a-moon-size"
               style={{

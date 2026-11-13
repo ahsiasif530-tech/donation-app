@@ -464,3 +464,18 @@ body {
     top: 118px !important;
   }
 }
+
+/* On a computer the cards cover most of the sky, so the moon sits in the
+   open band between the welcome title and the clock; left/right still
+   follows where it really is (east left, west right). */
+@media (min-width: 1024px) {
+  .admin-theme .a-moon-pos {
+    left: var(--mx) !important;
+    top: 128px !important;
+  }
+  .admin-theme .a-moon-size {
+    width: 88px;
+    height: 88px;
+    margin: -44px 0 0 -44px;
+  }
+}
