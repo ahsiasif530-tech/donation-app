@@ -139,8 +139,8 @@ export default async function PageInvoicesPage({ params, searchParams }) {
   }
 
   return (
-    <main className="admin-theme min-h-screen px-4 py-10">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <main className="admin-theme min-h-screen py-10">
+      <div className="a-wide space-y-6">
         <div>
           <Link href="/admin" className="text-sm font-medium" style={{ color: 'var(--a-text-muted)' }}>← Back to admin</Link>
           <h1 className="text-2xl font-bold mt-2">{page.label || page.title} — invoices</h1>

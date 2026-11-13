@@ -209,6 +209,17 @@ body {
 }
 .admin-theme select:hover,
 .admin-theme input[type="text"]:hover { border-color: #3A4150 !important; }
+/* Admin screens use the whole width on a computer (capped on very wide
+   monitors so lines stay readable) and stay one column on a phone. */
+.admin-theme .a-wide {
+  width: 100%;
+  max-width: 2200px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 768px) { .admin-theme .a-wide { padding-inline: 24px; } }
+@media (min-width: 1280px) { .admin-theme .a-wide { padding-inline: 40px; } }
+
 /* List rows: slide up one after another (--i is the row's place among the
    new ones), highlight on hover with an arrow that steps in. */
 .admin-theme .a-row-in {

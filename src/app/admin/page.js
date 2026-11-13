@@ -391,7 +391,7 @@ export default async function AdminPage({ searchParams }) {
     <main className="admin-theme min-h-screen">
       <AdminTopbar active="dashboard" name={profile.full_name} />
 
-      <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-8">
+      <div className="a-wide py-8 lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8 2xl:grid-cols-[230px_minmax(0,1fr)] 2xl:gap-10">
         <aside className="hidden lg:block">
           <AdminSidebar
             sections={[

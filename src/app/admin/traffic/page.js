@@ -168,7 +168,7 @@ export default async function AdminTrafficPage({ searchParams }) {
   return (
     <main className="admin-theme min-h-screen">
       <AdminTopbar active="traffic" name={profile.full_name} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="a-wide py-8">
         <TrafficDashboard data={data} />
       </div>
     </main>

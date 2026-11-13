@@ -22,7 +22,7 @@ export default function AdminTopbar({ active, name }) {
 
   return (
     <header className="a-topbar">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div className="a-wide h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 min-w-0">
           <Link href="/admin" className="a-brand-sm a-gold-text">BlessedHands</Link>
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest rounded-md px-1.5 py-0.5" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>Admin</span>

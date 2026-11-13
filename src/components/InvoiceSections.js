@@ -63,7 +63,7 @@ export default function InvoiceSections({ sections, initialHidden = [] }) {
           Shob section off kora. Upore &quot;Sections&quot; theke on koro.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
           {visible.map((s) => (
             <div key={s.key} className="min-w-0 grid">
               {s.content}
