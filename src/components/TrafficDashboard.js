@@ -383,6 +383,70 @@ function PagesTable({ pages, people }) {
   )
 }
 
+const MEDALS = ['🥇', '🥈', '🥉']
+
+// Each person's pages added together for the period, ranked by money in,
+// with the change against the period before.
+function PeopleToday({ pages, people, days }) {
+  const sum = (list, key, part) => list.reduce((s, p) => s + p[part][key], 0)
+  const rows = people
+    .map((person) => {
+      const own = pages.filter((p) => p.person === person.name && !SEPARATE_PAGE_SLUGS.includes(p.slug))
+      if (own.length === 0) return null
+      const t = Object.fromEntries(['visitors', 'views', 'clicks', 'paid', 'earned'].map((k) => [k, sum(own, k, 'total')]))
+      const b = Object.fromEntries(['visitors', 'clicks', 'paid', 'earned'].map((k) => [k, sum(own, k, 'prev')]))
+      return { ...person, pages: own.length, t, b }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.t.earned - a.t.earned || b.t.paid - a.t.paid || b.t.visitors - a.t.visitors)
+
+  const when = days === 1 ? 'today' : `last ${days} days`
+  const before = days === 1 ? 'yesterday' : 'before'
+
+  return (
+    <div>
+      <h2 className="a-section-title mb-3">
+        Team {when}
+        <span className="text-xs font-normal" style={{ color: 'var(--a-text-muted)' }}>· all of each person's pages · vs {before}</span>
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {rows.map((r, i) => (
+          <div key={r.name} className={`a-card p-4 ${i === 0 && r.t.earned > 0 ? 'a-card-hero' : ''}`}>
+            <div className="flex items-center gap-2.5">
+              <span className="a-avatar" style={{ background: r.color }}>{initials(r.name)}</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold truncate">{r.name}</p>
+                <p className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>{r.pages} pages</p>
+              </div>
+              <span className="text-xl" aria-label={`Rank ${i + 1}`}>{MEDALS[i] || <span className="text-sm font-bold" style={{ color: 'var(--a-text-muted)' }}>#{i + 1}</span>}</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-3">
+              <p className={`a-display text-2xl font-semibold tabular-nums ${i === 0 && r.t.earned > 0 ? 'a-gold-text' : ''}`}>{money(r.t.earned)}</p>
+              <Change now={r.t.earned} before={r.b.earned} />
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+              {[
+                ['Visitors', r.t.visitors, r.b.visitors],
+                ['Clicks', r.t.clicks, r.b.clicks],
+                ['Paid', r.t.paid, r.b.paid],
+              ].map(([label, now, was]) => (
+                <div key={label} className="rounded-lg py-1.5" style={{ background: 'var(--a-surface-2)' }}>
+                  <p className="font-bold tabular-nums">{now}</p>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--a-text-muted)' }}>{label}</p>
+                  <p className="text-[10px] tabular-nums" style={{ color: 'var(--a-text-muted)' }}>{before}: {was}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--a-text-muted)' }}>
+              Pay rate <b style={{ color: 'var(--a-text)' }}>{pct(rate(r.t.paid, r.t.visitors))}</b>
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TrafficDashboard({ data }) {
   const { team, days } = data
   const t = team.total
@@ -414,6 +478,8 @@ export default function TrafficDashboard({ data }) {
         <Tile label="Earned" value={money(t.earned)} now={t.earned} before={p.earned} accent />
         <Tile label="Pay rate" value={pct(payRate)} now={payRate} before={prevPayRate} />
       </div>
+
+      <PeopleToday pages={data.pages} people={data.people} days={days} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="a-card p-5 lg:col-span-2">
