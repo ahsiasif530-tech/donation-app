@@ -763,7 +763,7 @@ function birdSpot() {
 const BIRD_CALLS = {
   // Doel: a sweet, varied whistled phrase.
   doel(t, out) {
-    const n = 5 + Math.floor(Math.random() * 5)
+    const n = 4 + Math.floor(Math.random() * 3)
     for (let i = 0; i < n; i++) {
       const f = 1800 + Math.random() * 1800
       const dur = 0.08 + Math.random() * 0.16
@@ -775,7 +775,7 @@ const BIRD_CALLS = {
   },
   // Chorui (sparrow): quick bright chirps.
   sparrow(t, out) {
-    const n = 2 + Math.floor(Math.random() * 5)
+    const n = 2 + Math.floor(Math.random() * 3)
     const base = 3400 + Math.random() * 1200
     for (let i = 0; i < n; i++) {
       birdNote(t, base * 1.25, base * 0.85, 0.05 + Math.random() * 0.03, 0.12, out)
@@ -812,7 +812,7 @@ const BIRD_CALLS = {
   // A tiny bird's fast trill.
   trill(t, out) {
     const f = 4200 + Math.random() * 1800
-    const n = 8 + Math.floor(Math.random() * 10)
+    const n = 6 + Math.floor(Math.random() * 6)
     for (let i = 0; i < n; i++) {
       birdNote(t, f * 1.05, f * 0.95, 0.025, 0.07, out)
       t += 0.045
@@ -855,13 +855,10 @@ function startBirds() {
         if (!spots[kind] || Math.random() < 0.25) spots[kind] = birdSpot()
         BIRD_CALLS[kind](ctx.currentTime + 0.05, spots[kind])
       }
-      const id = setTimeout(sing, 500 + Math.random() * 2200)
+      const id = setTimeout(sing, 3000 + Math.random() * 5000)
       birds.timeouts = [...birds.timeouts.slice(-20), id]
     }
     sing()
-    // A second voice so two birds sometimes overlap, like a real chorus.
-    const id = setTimeout(sing, 1300)
-    birds.timeouts.push(id)
   } catch {}
 }
 
@@ -935,13 +932,13 @@ function cricket() {
   const spot = nightSpot(0.2)
   const pitch = 3800 + Math.random() * 1500
   const pulses = 2 + Math.floor(Math.random() * 3)
-  const every = 380 + Math.random() * 350
+  const every = 900 + Math.random() * 700
   const sing = () => {
     if (!night.ctx) return
     if (!night.ducked) {
       let t = night.ctx.currentTime + 0.03
       for (let i = 0; i < pulses; i++) {
-        nightNote(t, pitch, pitch * 0.99, 0.028, 0.07, spot, 'sine', 0, 0.004)
+        nightNote(t, pitch, pitch * 0.99, 0.028, 0.045, spot, 'sine', 0, 0.004)
         t += 0.045
       }
     }
@@ -969,11 +966,11 @@ function jhijhi(white) {
   flutter.connect(fDepth).connect(buzz.gain)
   flutter.start()
   const swell = ctx.createGain()
-  swell.gain.value = 0.09
+  swell.gain.value = 0.045
   const slow = ctx.createOscillator()
   const sDepth = ctx.createGain()
   slow.frequency.value = 0.04 + Math.random() * 0.05
-  sDepth.gain.value = 0.07
+  sDepth.gain.value = 0.035
   slow.connect(sDepth).connect(swell.gain)
   slow.start()
   src.connect(bp).connect(buzz).connect(swell)
@@ -989,7 +986,7 @@ const NIGHT_CALLS = {
   // Bang: the big frog's throaty "ghangor-ghang", a few in a row.
   frog(t, out) {
     const base = 120 + Math.random() * 90
-    const n = 2 + Math.floor(Math.random() * 4)
+    const n = 1 + Math.floor(Math.random() * 3)
     for (let i = 0; i < n; i++) {
       const pulses = 5 + Math.floor(Math.random() * 4)
       for (let p = 0; p < pulses; p++) nightNote(t + p * 0.022, base * 1.1, base, 0.02, 0.09, out, 'sawtooth', 0, 0.003)
@@ -999,7 +996,7 @@ const NIGHT_CALLS = {
   // Tiny tree frogs: quick high "tik-tik-tik".
   treefrog(t, out) {
     const f = 1500 + Math.random() * 1200
-    const n = 3 + Math.floor(Math.random() * 6)
+    const n = 3 + Math.floor(Math.random() * 3)
     for (let i = 0; i < n; i++) {
       nightNote(t, f * 1.1, f, 0.03, 0.05, out, 'triangle', 0, 0.003)
       t += 0.13 + Math.random() * 0.05
@@ -1023,6 +1020,71 @@ function owl() {
     t += dur + (i === 0 ? 0.45 : 0.1)
   })
 }
+
+// Bou-kotha-kao (Indian cuckoo): four clear whistled notes, "bou-ka-tha-kao",
+// the last one falling; sung two or three times.
+function boukothakao() {
+  const out = nightSpot(0.35)
+  const base = 1150 + Math.random() * 150
+  let t = night.ctx.currentTime + 0.05
+  const times = 2 + Math.floor(Math.random() * 2)
+  for (let r = 0; r < times; r++) {
+    ;[
+      [1.0, 1.0, 0.2],
+      [0.92, 0.9, 0.16],
+      [0.86, 0.84, 0.16],
+      [0.78, 0.66, 0.32],
+    ].forEach(([a, b, dur]) => {
+      nightNote(t, base * a, base * b, dur, 0.1, out, 'sine', 0, 0.02)
+      t += dur + 0.08
+    })
+    t += 1.4 + Math.random() * 0.6
+  }
+}
+
+// Chokh-gelo (hawk-cuckoo): a two-note "chokh-gelo", rising a step each time
+// and getting more urgent, then stopping.
+function chokhgelo() {
+  const out = nightSpot(0.4)
+  let base = 900 + Math.random() * 100
+  let t = night.ctx.currentTime + 0.05
+  const times = 3 + Math.floor(Math.random() * 3)
+  for (let r = 0; r < times; r++) {
+    nightNote(t, base, base * 1.02, 0.16, 0.09, out, 'sine', 0, 0.02)
+    nightNote(t + 0.22, base * 1.25, base * 1.45, 0.34, 0.1, out, 'sine', 0, 0.02)
+    t += 1.1 - r * 0.08
+    base *= 1.09
+  }
+}
+
+// Raatchora (nightjar): a hollow "chuk… chuk… chuk-chuk-chuk", speeding up
+// like a stone skipping on water.
+function raatchora() {
+  const out = nightSpot(0.3)
+  const f = 900 + Math.random() * 300
+  let t = night.ctx.currentTime + 0.05
+  let gap = 0.45
+  const n = 8 + Math.floor(Math.random() * 8)
+  for (let i = 0; i < n; i++) {
+    nightNote(t, f * 1.15, f * 0.8, 0.05, 0.09, out, 'triangle', 0, 0.004)
+    t += gap
+    gap = Math.max(0.09, gap * 0.82)
+  }
+}
+
+// Khuruley pecha (spotted owlet): a short, scratchy "chirr-chirr-chirrup".
+function khuruley() {
+  const out = nightSpot(0.4)
+  let t = night.ctx.currentTime + 0.05
+  const n = 3 + Math.floor(Math.random() * 3)
+  for (let i = 0; i < n; i++) {
+    const f = 1700 + Math.random() * 400
+    nightNote(t, f, f * 0.85, 0.12, 0.07, out, 'sawtooth', 90, 0.01)
+    t += 0.2 + Math.random() * 0.1
+  }
+}
+
+const NIGHT_BIRDS = [owl, owl, boukothakao, boukothakao, chokhgelo, raatchora, raatchora, khuruley]
 
 // Tokkhok (tokay gecko): a croaky "tok-khok", repeated and slowing down.
 function tokkhok() {
@@ -1082,8 +1144,7 @@ function startNight() {
     breeze.start()
 
     // Crickets and jhijhi poka all around.
-    for (let i = 0; i < 5; i++) cricket()
-    jhijhi(white)
+    for (let i = 0; i < 2; i++) cricket()
     jhijhi(white)
 
     // Frogs croaking near and far, some answering each other.
@@ -1095,10 +1156,10 @@ function startNight() {
         if (!spots[kind] || Math.random() < 0.35) spots[kind] = nightSpot()
         NIGHT_CALLS[kind](ctx.currentTime + 0.05, spots[kind])
       }
-      nightLater(croak, 700 + Math.random() * 2500)
+      nightLater(croak, 5000 + Math.random() * 9000)
     }
     croak()
-    nightLater(croak, 1500)
+
 
     // The rarer voices of the night.
     const every = (fn, first, min, spread) => {
@@ -1108,9 +1169,12 @@ function startNight() {
       }
       nightLater(go, first)
     }
-    every(owl, 6000 + Math.random() * 8000, 25000, 35000)
-    every(tokkhok, 15000 + Math.random() * 15000, 45000, 60000)
-    every(jackals, 40000 + Math.random() * 40000, 120000, 120000)
+    // Night birds, one at a time with long quiet in between, as on a still
+    // Bangladeshi night: bou-kotha-kao, chokh-gelo, raatchora, owls.
+    const nightBird = () => NIGHT_BIRDS[Math.floor(Math.random() * NIGHT_BIRDS.length)]()
+    every(nightBird, 5000 + Math.random() * 6000, 18000, 22000)
+    every(tokkhok, 40000 + Math.random() * 30000, 90000, 90000)
+    every(jackals, 90000 + Math.random() * 60000, 240000, 180000)
   } catch {}
 }
 
