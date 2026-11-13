@@ -187,30 +187,41 @@ export default function LiveDonations() {
 
   return (
     <>
-      <div className="hidden sm:inline-flex items-center rounded-lg overflow-hidden" style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)' }}>
-        <button
-          type="button"
-          onClick={toggleMute}
-          title={muted ? 'Announcements off — click to turn on' : 'Announcements on — click to turn off'}
-          aria-label={muted ? 'Turn on announcements' : 'Turn off announcements'}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold"
-          style={{ color: 'var(--a-text-muted)' }}
-        >
+      <div className="inline-flex items-center rounded-lg overflow-hidden" style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)' }}>
+        <span className="hidden sm:inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 text-xs font-bold" style={{ color: 'var(--a-text-muted)' }} title="New checkouts and payments show up here live">
           <span className="relative flex w-2 h-2">
             <span className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" style={{ background: 'var(--a-success)' }} />
             <span className="relative inline-flex w-2 h-2 rounded-full" style={{ background: 'var(--a-success)' }} />
           </span>
-          Live {muted ? '🔕' : '🔊'}
-        </button>
+          Live
+        </span>
         <button
           type="button"
-          onClick={test}
-          title="Hear a sample announcement"
-          className="px-2 py-1.5 text-[11px] font-bold border-l"
-          style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}
+          role="switch"
+          aria-checked={!muted}
+          onClick={toggleMute}
+          title={muted ? 'Voice is off — click to turn it on' : 'Voice is on — click to turn it off'}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold sm:border-l"
+          style={{ borderColor: 'var(--a-border)', color: muted ? 'var(--a-text-muted)' : 'var(--a-success)' }}
         >
-          ▶ Test
+          <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
+          <span className="hidden sm:inline">Voice</span>
+          <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: muted ? 'var(--a-border)' : 'var(--a-success)' }} aria-hidden="true">
+            <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: muted ? 2 : 14 }} />
+          </span>
+          <span className="hidden sm:inline">{muted ? 'Off' : 'On'}</span>
         </button>
+        {!muted && (
+          <button
+            type="button"
+            onClick={test}
+            title="Hear a sample announcement"
+            className="hidden sm:inline px-2 py-1.5 text-[11px] font-bold border-l"
+            style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}
+          >
+            ▶ Test
+          </button>
+        )}
       </div>
 
       <AdminPortal>
