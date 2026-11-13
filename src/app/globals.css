@@ -364,3 +364,68 @@ body {
   .admin-theme .a-star,
   .admin-theme .a-cloud { animation: none; }
 }
+
+/* Scroll parallax for the living sky: each layer moves at its own speed. */
+.admin-theme .a-sky-stars {
+  transform: translate3d(0, calc(var(--sy) * -0.03px), 0) rotate(calc(var(--sy) * 0.006deg));
+  will-change: transform;
+}
+.admin-theme .a-sky-glow {
+  transform: translate3d(0, calc(var(--sy) * -0.06px), 0) scale(calc(1 + var(--sp) * 0.25));
+  will-change: transform;
+}
+.admin-theme .a-sky-near {
+  transform: translate3d(0, calc(var(--sy) * -0.22px), 0);
+  will-change: transform;
+}
+.admin-theme .a-sky-clouds {
+  transform: translate3d(calc(var(--sy) * 0.08px), calc(var(--sy) * -0.12px), 0);
+  will-change: transform;
+}
+/* Always-on gentle motion */
+.admin-theme .a-stars-spin { animation: a-spin 600s linear infinite; }
+.admin-theme .a-rays { animation: a-spin 240s linear infinite; }
+.admin-theme .a-glow-breathe { animation: a-breathe 14s ease-in-out infinite; }
+@keyframes a-spin { to { transform: rotate(360deg); } }
+@keyframes a-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.15); }
+}
+.admin-theme .a-floater {
+  filter: blur(6px);
+  animation: a-float 40s ease-in-out infinite;
+}
+@keyframes a-float {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translate3d(30px, -120px, 0) scale(1.2); opacity: 0.8; }
+  85% { opacity: 1; }
+  100% { transform: translate3d(-20px, -240px, 0) scale(0.9); opacity: 0; }
+}
+.admin-theme .a-shooting {
+  width: 140px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
+  transform: rotate(-30deg) translateX(0);
+  opacity: 0;
+  animation: a-shoot 13s ease-out infinite;
+  animation-delay: 4s;
+}
+.admin-theme .a-shooting-2 { animation-duration: 21s; animation-delay: 11s; }
+@keyframes a-shoot {
+  0%, 92% { opacity: 0; transform: rotate(150deg) translateX(0); }
+  93% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(150deg) translateX(420px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .a-sky-stars,
+  .admin-theme .a-sky-glow,
+  .admin-theme .a-sky-near,
+  .admin-theme .a-sky-clouds { transform: none; }
+  .admin-theme .a-stars-spin,
+  .admin-theme .a-rays,
+  .admin-theme .a-glow-breathe,
+  .admin-theme .a-floater,
+  .admin-theme .a-shooting { animation: none; }
+}

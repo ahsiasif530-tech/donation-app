@@ -188,6 +188,15 @@ const STARS = Array.from({ length: 90 }, (_, i) => {
   return { x: r(1) * 100, y: r(2) * 70, s: 1 + r(3) * 1.8, d: r(4) * 4, o: 0.4 + r(5) * 0.6 }
 })
 
+
+// Soft floating lights, placed once.
+const FLOATERS = Array.from({ length: 14 }, (_, i) => {
+  const r = (n) => {
+    const x = Math.sin(i * 91.17 + n * 37.71) * 24634.6345
+    return x - Math.floor(x)
+  }
+  return { x: r(1) * 100, y: 10 + r(2) * 90, s: 40 + r(3) * 110, d: 26 + r(4) * 30, o: r(5) * 40 }
+})
 export default function AdminSky() {
   const [sky, setSky] = useState(null)
   const [weather, setWeather] = useState(null)
@@ -267,45 +276,128 @@ export default function AdminSky() {
     return () => clearTimeout(timer)
   }, [weather?.kind])
 
+  // Scrolling moves the sky in layers, like looking up while walking: far
+  // stars barely shift and the whole sky turns a touch, the sunlight rises,
+  // clouds and floating lights slide past faster. Written straight into CSS
+  // variables so scrolling never re-renders anything.
+  const [wrapEl, setWrapEl] = useState(null)
+
+  useEffect(() => {
+    const el = wrapEl
+    if (!el) return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const y = window.scrollY
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+      el.style.setProperty('--sy', String(Math.round(y)))
+      el.style.setProperty('--sp', (y / max).toFixed(4))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [wrapEl])
+
   if (!sky) return null
   const clouds = weather?.clouds ?? 0
   const rain = weather?.rain ?? 0
   // Clouds and rain dim the light.
   const glow = sky.glowStrength * (1 - clouds * 0.7)
   const stars = sky.stars * (1 - clouds)
+  const night = sky.phase === 'night' && clouds < 0.5
 
   return (
     <AdminPortal>
-      <div aria-hidden="true" className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -1 }} data-phase={sky.phase}>
-        {/* The sky itself */}
+      <div ref={setWrapEl} aria-hidden="true" className="a-sky fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -1, '--sy': 0, '--sp': 0 }} data-phase={sky.phase}>
+        {/* The sky itself, a little deeper the further down the page */}
         <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${sky.top}, ${sky.bottom})`, opacity: 0.85, transition: 'background 60s linear' }} />
-        {/* Sunlight */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(ellipse 70% 60% at ${sky.x}% ${sky.y}%, ${sky.glow}, transparent 70%)`,
-            opacity: glow,
-            transition: 'opacity 60s linear, background 60s linear',
-          }}
-        />
-        {/* Stars */}
-        <div className="absolute inset-0" style={{ opacity: stars, transition: 'opacity 60s linear' }}>
-          {STARS.map((s, i) => (
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent, rgba(5,7,15,0.45))', opacity: 'calc(var(--sp) * 0.9)' }} />
+        {/* Sunlight: breathes slowly, and rises as you scroll */}
+        <div className="a-sky-glow absolute" style={{ inset: '-20%' }}>
+          <div
+            className="a-glow-breathe absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 58% 50% at ${sky.x}% ${sky.y * 0.7 + 15}%, ${sky.glow}, transparent 70%)`,
+              opacity: glow,
+              transition: 'opacity 60s linear, background 60s linear',
+            }}
+          />
+        </div>
+        {/* Sun rays turning slowly in daylight */}
+        {glow > 0.15 && (
+          <div className="a-sky-glow absolute" style={{ inset: '-20%' }}>
+            <div
+              className="a-rays absolute"
+              style={{
+                left: `${sky.x}%`,
+                top: `${sky.y * 0.7 + 15}%`,
+                width: '160vmax',
+                height: '160vmax',
+                marginLeft: '-80vmax',
+                marginTop: '-80vmax',
+                background: `repeating-conic-gradient(from 0deg, ${sky.glow} 0deg 4deg, transparent 4deg 18deg)`,
+                opacity: glow * 0.16,
+                maskImage: 'radial-gradient(circle, black 0%, transparent 45%)',
+                WebkitMaskImage: 'radial-gradient(circle, black 0%, transparent 45%)',
+              }}
+            />
+          </div>
+        )}
+        {/* Stars: the far layer, the sky turning slightly as you scroll */}
+        <div className="a-sky-stars absolute" style={{ inset: '-25%', opacity: stars, transition: 'opacity 60s linear' }}>
+          <div className="a-stars-spin absolute inset-0">
+            {STARS.map((s, i) => (
+              <span
+                key={i}
+                className="a-star absolute rounded-full bg-white"
+                style={{ left: `${20 + s.x * 0.6}%`, top: `${20 + s.y * 0.8}%`, width: s.s, height: s.s, opacity: s.o, animationDelay: `${s.d}s` }}
+              />
+            ))}
+          </div>
+        </div>
+        {/* A shooting star now and then on a clear night */}
+        {night && (
+          <>
+            <span className="a-shooting absolute" style={{ top: '12%', left: '70%' }} />
+            <span className="a-shooting a-shooting-2 absolute" style={{ top: '28%', left: '35%' }} />
+          </>
+        )}
+        {/* Floating lights: soft glowing specks drifting up, the near layer */}
+        <div className="a-sky-near absolute" style={{ inset: '-30% 0', opacity: 0.55 * (1 - rain * 0.6) }}>
+          {FLOATERS.map((b, i) => (
             <span
               key={i}
-              className="a-star absolute rounded-full bg-white"
-              style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.s, height: s.s, opacity: s.o, animationDelay: `${s.d}s` }}
+              className="a-floater absolute rounded-full"
+              style={{
+                left: `${b.x}%`,
+                top: `${b.y}%`,
+                width: b.s,
+                height: b.s,
+                background: `radial-gradient(circle, ${night ? 'rgba(170,190,255,0.55)' : sky.glow}, transparent 70%)`,
+                animationDuration: `${b.d}s`,
+                animationDelay: `${-b.o}s`,
+              }}
             />
           ))}
         </div>
-        {/* Clouds drifting */}
-        <div className="absolute inset-0" style={{ opacity: clouds, transition: 'opacity 8s' }}>
-          <div className="a-cloud absolute" style={{ top: '4%', left: '-30%', width: '70%', height: '32%' }} />
-          <div className="a-cloud a-cloud-slow absolute" style={{ top: '18%', left: '20%', width: '80%', height: '36%' }} />
-          <div className="a-cloud absolute" style={{ top: '45%', left: '-10%', width: '60%', height: '30%', animationDelay: '-40s' }} />
-          {/* Rain clouds make everything greyer */}
-          <div className="absolute inset-0" style={{ background: 'rgba(40,46,58,0.35)', opacity: rain > 0 ? 1 : 0.4 }} />
+        {/* Clouds drifting, sliding past faster as you scroll */}
+        <div className="a-sky-clouds absolute" style={{ inset: '-20% -30%', opacity: clouds, transition: 'opacity 8s' }}>
+          <div className="a-cloud absolute" style={{ top: '10%', left: '-5%', width: '55%', height: '28%' }} />
+          <div className="a-cloud a-cloud-slow absolute" style={{ top: '25%', left: '30%', width: '60%', height: '30%' }} />
+          <div className="a-cloud absolute" style={{ top: '50%', left: '5%', width: '50%', height: '26%', animationDelay: '-40s' }} />
+          <div className="a-cloud a-cloud-slow absolute" style={{ top: '70%', left: '45%', width: '50%', height: '26%', animationDelay: '-80s' }} />
         </div>
+        {/* Rain clouds make everything greyer */}
+        <div className="absolute inset-0" style={{ background: 'rgba(40,46,58,0.35)', opacity: clouds * (rain > 0 ? 1 : 0.4), transition: 'opacity 8s' }} />
         {/* Fog */}
         {weather?.fog && <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(200,210,225,0.18), rgba(200,210,225,0.05) 60%, transparent)' }} />}
         {/* Rain */}
