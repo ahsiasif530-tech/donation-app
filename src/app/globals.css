@@ -209,6 +209,47 @@ body {
 }
 .admin-theme select:hover,
 .admin-theme input[type="text"]:hover { border-color: #3A4150 !important; }
+/* List rows: slide up one after another (--i is the row's place among the
+   new ones), highlight on hover with an arrow that steps in. */
+.admin-theme .a-row-in {
+  animation: a-row-in 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes a-row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.admin-theme .a-row { transition: background-color 0.15s ease, transform 0.15s ease; }
+.admin-theme .a-row:hover { background: var(--a-surface-2); transform: translateX(2px); }
+.admin-theme .a-row-arrow { opacity: 0; transform: translateX(-4px); transition: opacity 0.15s ease, transform 0.15s ease; }
+.admin-theme .a-row:hover .a-row-arrow { opacity: 1; transform: none; }
+.admin-theme .a-btn-soft {
+  border-color: var(--a-border);
+  background: var(--a-surface-2);
+  color: var(--a-text);
+  transition: border-color 0.15s ease, transform 0.15s ease, background-color 0.15s ease;
+}
+.admin-theme .a-btn-soft:hover { border-color: var(--a-accent); transform: translateY(-1px); }
+.admin-theme .a-btn-soft:disabled { opacity: 0.35; transform: none; border-color: var(--a-border); }
+.admin-theme .a-tab {
+  border: 1px solid var(--a-border);
+  color: var(--a-text-muted);
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.admin-theme .a-tab:hover { color: var(--a-text); border-color: #3A4150; }
+.admin-theme .a-tab[aria-pressed="true"] {
+  background: linear-gradient(135deg, var(--a-accent-strong), var(--a-accent));
+  border-color: transparent;
+  color: var(--a-accent-ink);
+  transform: scale(1.03);
+}
+.admin-theme .a-card-lift { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+.admin-theme .a-card-lift:hover { border-color: #3A4150; box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 26px 50px -24px rgba(0,0,0,0.65); }
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .a-row-in { animation: none; }
+  .admin-theme .a-row:hover, .admin-theme .a-btn-soft:hover, .admin-theme .a-tab[aria-pressed="true"] { transform: none; }
+}
+
 /* New-donation toasts slide in from the right. */
 .admin-theme .a-toast { animation: a-toast-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
 @keyframes a-toast-in {

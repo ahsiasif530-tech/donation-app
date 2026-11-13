@@ -73,25 +73,28 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
   }
 
   return (
-    <div className="rounded-2xl border" style={{ background: 'var(--a-surface)', borderColor: 'var(--a-border)' }}>
-      <div className="px-5 py-3.5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
-        <h3 className="font-bold">Withdrawals</h3>
-        <div className="flex items-center gap-3">
+    <div className="a-card a-card-lift overflow-hidden">
+      <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--a-border)' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black shrink-0" style={{ background: 'linear-gradient(135deg, #F87171, #B91C1C)', color: '#fff' }} aria-hidden="true">↓</span>
+          <div className="min-w-0">
+            <h3 className="font-bold truncate">Withdrawals</h3>
+            <p className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
+              {withdrawals.length} {withdrawals.length === 1 ? 'withdrawal' : 'withdrawals'} · {days.length} {days.length === 1 ? 'day' : 'days'}
+            </p>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="a-display text-xl font-semibold tabular-nums" style={{ color: 'var(--a-danger)' }}>−${total.toFixed(2)}</p>
           {withdrawals.length > 0 && (
-            <button
-              type="button"
-              onClick={downloadExcel}
-              className="text-xs font-bold hover:underline"
-              style={{ color: 'var(--a-text-muted)' }}
-            >
-              Excel
+            <button type="button" onClick={downloadExcel} className="a-btn-soft rounded-md border px-2 py-0.5 text-[10px] font-bold mt-1">
+              ⬇ Excel
             </button>
           )}
-          <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--a-danger)' }}>−${total.toFixed(2)}</span>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b" style={{ borderColor: 'var(--a-border)' }}>
+      <div className="flex flex-wrap items-center gap-1.5 px-4 py-3 border-b" style={{ borderColor: 'var(--a-border)' }}>
         <DateRangePicker
           from={range.from}
           to={range.to}
@@ -101,28 +104,21 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
           }}
         />
         {people.length > 0 &&
-          ['all', ...people].map((person) => {
-            const active = person === selectedPerson
-            return (
-              <button
-                key={person}
-                type="button"
-                onClick={() => {
-                  setSelectedPerson(person)
-                  setSelectedPageId('all')
-                  setDayIndex(0)
-                }}
-                className="rounded-full border px-3 py-1 text-xs font-bold hover:opacity-80"
-                style={
-                  active
-                    ? { background: 'var(--a-accent)', borderColor: 'var(--a-accent)', color: 'var(--a-accent-ink)' }
-                    : { background: 'transparent', borderColor: 'var(--a-border)', color: 'var(--a-text)' }
-                }
-              >
-                {person === 'all' ? 'All' : person}
-              </button>
-            )
-          })}
+          ['all', ...people].map((person) => (
+            <button
+              key={person}
+              type="button"
+              onClick={() => {
+                setSelectedPerson(person)
+                setSelectedPageId('all')
+                setDayIndex(0)
+              }}
+              className="a-tab rounded-full px-3 py-1 text-xs font-bold"
+              aria-pressed={person === selectedPerson}
+            >
+              {person === 'all' ? 'All' : person}
+            </button>
+          ))}
         {personPages.length > 1 && (
           <select
             value={selectedPageId}
@@ -131,7 +127,7 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
               setDayIndex(0)
             }}
             aria-label={`${selectedPerson}'s pages`}
-            className="rounded-lg border px-2.5 py-1 text-xs font-bold"
+            className="a-row-in rounded-lg border px-2.5 py-1 text-xs font-bold"
             style={{ background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
           >
             <option value="all">All {personPages.length} pages</option>
@@ -143,29 +139,38 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
       </div>
 
       {withdrawals.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-center" style={{ color: 'var(--a-text-muted)' }}>
-          {filtered ? 'Ei filter e kono withdraw nei.' : 'Ekhono kono withdraw kora hoyni.'}
-        </p>
+        <div className="px-5 py-10 text-center a-row-in">
+          <p className="text-2xl mb-1" aria-hidden="true">🪙</p>
+          <p className="text-sm" style={{ color: 'var(--a-text-muted)' }}>
+            {filtered ? 'Ei filter e kono withdraw nei.' : 'Ekhono kono withdraw kora hoyni.'}
+          </p>
+        </div>
       ) : (
-        <div>
-          <div className="flex items-center justify-between gap-3 px-5 py-2.5 border-b" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
-            <div className="min-w-0">
-              <p className="text-sm font-bold" suppressHydrationWarning>
-                {day.at.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
-              <p className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
-                {day.rows.length} {day.rows.length === 1 ? 'withdrawal' : 'withdrawals'}
-              </p>
+        <div key={`${day.key}|${selectedPerson}|${selectedPageId}`}>
+          <div className="a-row-in flex items-center justify-between gap-3 px-5 py-3 border-b" style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)' }}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-lg" aria-hidden="true">📅</span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" suppressHydrationWarning>
+                  {day.at.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
+                  {day.rows.length} {day.rows.length === 1 ? 'withdrawal' : 'withdrawals'}
+                </p>
+              </div>
             </div>
             <p className="text-sm font-bold tabular-nums shrink-0" style={{ color: 'var(--a-danger)' }}>−${dayTotal.toFixed(2)}</p>
           </div>
 
-          <div className="divide-y" style={{ borderColor: 'var(--a-border)' }}>
-            {day.rows.map((w) => {
+          <div className="p-2 space-y-1">
+            {day.rows.map((w, i) => {
               const at = new Date(w.created_at)
               return (
-                <div key={w.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                  <div className="min-w-0">
+                <div key={w.id} className="a-row a-row-in flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm" style={{ '--i': i + 1 }}>
+                  <span className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'rgba(248,113,113,0.14)', color: 'var(--a-danger)' }} aria-hidden="true">
+                    ↓
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <p className="font-semibold truncate">{w.page_name || pageName || '—'}</p>
                     <p className="text-xs truncate" style={{ color: 'var(--a-text-muted)' }} suppressHydrationWarning>
                       {[at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), w.note].filter(Boolean).join(' · ')}
@@ -179,25 +184,13 @@ export default function WithdrawalHistory({ withdrawals: allWithdrawals, pageNam
 
           {days.length > 1 && (
             <div className="flex items-center justify-between gap-2 border-t px-5 py-3" style={{ borderColor: 'var(--a-border)' }}>
-              <button
-                type="button"
-                disabled={dayIndex === 0}
-                onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
-                className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:opacity-80 disabled:opacity-30"
-                style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)', color: 'var(--a-text)' }}
-              >
+              <button type="button" disabled={dayIndex === 0} onClick={() => setDayIndex((i) => Math.max(0, i - 1))} className="a-btn-soft rounded-lg border px-3.5 py-1.5 text-xs font-bold">
                 ‹ Newer
               </button>
               <span className="text-[11px]" style={{ color: 'var(--a-text-muted)' }}>
-                Day {Math.min(dayIndex, days.length - 1) + 1} of {days.length}
+                Day <b style={{ color: 'var(--a-text)' }}>{Math.min(dayIndex, days.length - 1) + 1}</b> of {days.length}
               </span>
-              <button
-                type="button"
-                disabled={dayIndex >= days.length - 1}
-                onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))}
-                className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:opacity-80 disabled:opacity-30"
-                style={{ borderColor: 'var(--a-border)', background: 'var(--a-surface-2)', color: 'var(--a-text)' }}
-              >
+              <button type="button" disabled={dayIndex >= days.length - 1} onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} className="a-btn-soft rounded-lg border px-3.5 py-1.5 text-xs font-bold">
                 Older ›
               </button>
             </div>
