@@ -21,6 +21,7 @@ import { initials, personColor } from '@/lib/avatar'
 import AdminSidebar from '@/components/AdminSidebar'
 import AdminTopbar from '@/components/AdminTopbar'
 import CopyButton from '@/components/CopyButton'
+import BangladeshClock from '@/components/BangladeshClock'
 
 
 // Several pages share a person's name (label), so a page is told apart by
@@ -416,13 +417,16 @@ export default async function AdminPage({ searchParams }) {
               {mainPages.length + separatePages.length} pages · {completed.length} gifts received
             </p>
           </div>
-          <a
-            href="#invoices"
-            className="text-sm font-bold rounded-xl px-4 py-2 hover:opacity-90"
-            style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
-          >
-            View invoices ↓
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <BangladeshClock />
+            <a
+              href="#invoices"
+              className="text-sm font-bold rounded-xl px-4 py-2 hover:opacity-90"
+              style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)', color: 'var(--a-accent-strong)' }}
+            >
+              View invoices ↓
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
