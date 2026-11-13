@@ -429,3 +429,18 @@ body {
   .admin-theme .a-floater,
   .admin-theme .a-shooting { animation: none; }
 }
+
+/* The moon: drifts a little with scroll, and floats gently. */
+.admin-theme .a-sky-moon {
+  transform: translate3d(0, calc(var(--sy) * -0.045px), 0);
+  will-change: transform;
+}
+.admin-theme .a-moon-float { animation: a-moon-float 18s ease-in-out infinite; }
+@keyframes a-moon-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -6px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .a-sky-moon { transform: none; }
+  .admin-theme .a-moon-float { animation: none; }
+}

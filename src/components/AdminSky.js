@@ -36,6 +36,82 @@ function sunAt(ms, lat, lon) {
   return { elevation, morning: ha < 0, hourAngle: ha }
 }
 
+// The moon: where it is in the sky and how much of it is lit. Low-precision
+// formulas (a degree or so), plenty for a picture of the sky.
+const SYNODIC = 29.530588853
+const NEW_MOON_2000 = 947182440000 // 2000-01-06 18:14 UTC
+
+function moonAt(ms, lat, lon) {
+  const d = ms / 86400000 - 10957.5
+  const L = rad(218.316 + 13.176396 * d)
+  const M = rad(134.963 + 13.064993 * d)
+  const F = rad(93.272 + 13.22935 * d)
+  const l = L + rad(6.289) * Math.sin(M)
+  const b = rad(5.128) * Math.sin(F)
+  const e = rad(23.4397)
+  const ra = deg(Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l)))
+  const dec = Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l))
+  const gmst = (18.697374558 + 24.06570982441908 * d) * 15
+  const ha = (((gmst + lon - ra) % 360) + 540) % 360 - 180
+  const elevation = deg(Math.asin(Math.sin(rad(lat)) * Math.sin(dec) + Math.cos(rad(lat)) * Math.cos(dec) * Math.cos(rad(ha))))
+  // 0 = new moon, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter.
+  const phase = ((((ms - NEW_MOON_2000) / 86400000) % SYNODIC) + SYNODIC) % SYNODIC / SYNODIC
+  return {
+    elevation,
+    phase,
+    lit: (1 - Math.cos(phase * 2 * Math.PI)) / 2,
+    x: 50 + Math.max(-42, Math.min(42, ha / 2.4)),
+    y: Math.max(4, Math.min(92, 92 - Math.max(0, elevation) * 1.3)),
+  }
+}
+
+const skyNow = (lat, lon) => {
+  const now = Date.now()
+  return { ...skyFor(sunAt(now, lat, lon)), moon: moonAt(now, lat, lon) }
+}
+
+// The moon's face: the lit part drawn with the right shape for the phase
+// (waxing lit on the right, waning on the left), a few soft craters, and a
+// halo of moonlight.
+function MoonDisc({ moon, size = 56 }) {
+  const r = 20
+  const c = 25
+  const waxing = moon.phase < 0.5
+  const k = Math.cos(moon.phase * 2 * Math.PI)
+  const rx = Math.abs(k) * r
+  const crescent = k > 0
+  const outer = waxing ? 1 : 0
+  const inner = waxing ? (crescent ? 0 : 1) : crescent ? 1 : 0
+  const lit = `M ${c} ${c - r} A ${r} ${r} 0 0 ${outer} ${c} ${c + r} A ${rx} ${r} 0 0 ${inner} ${c} ${c - r} Z`
+  return (
+    <svg width={size} height={size} viewBox="0 0 50 50" style={{ overflow: 'visible' }}>
+      <defs>
+        <radialGradient id="moon-lit" cx="40%" cy="38%" r="70%">
+          <stop offset="0%" stopColor="#FFFDF2" />
+          <stop offset="100%" stopColor="#E6DEC6" />
+        </radialGradient>
+        <clipPath id="moon-lit-clip">
+          <path d={lit} />
+        </clipPath>
+      </defs>
+      {/* The dark side, just visible (earthshine) */}
+      <circle cx={c} cy={c} r={r} fill="rgba(160,170,200,0.10)" />
+      {moon.lit > 0.02 && (
+        <>
+          <path d={lit} fill="url(#moon-lit)" />
+          <g clipPath="url(#moon-lit-clip)" fill="rgba(150,140,120,0.22)">
+            <circle cx={c - 7} cy={c - 6} r="4" />
+            <circle cx={c + 6} cy={c + 4} r="5.5" />
+            <circle cx={c - 3} cy={c + 9} r="2.6" />
+            <circle cx={c + 9} cy={c - 9} r="2" />
+            <circle cx={c - 11} cy={c + 3} r="2.2" />
+          </g>
+        </>
+      )}
+    </svg>
+  )
+}
+
 // Sky colours by sun height. Each stop: [height, top, bottom, glow, glow
 // strength, stars]. Morning and evening differ around sunrise/sunset.
 const STOPS_MORNING = [
@@ -218,7 +294,7 @@ export default function AdminSky() {
           localStorage.setItem(POS_KEY, JSON.stringify(next))
         } catch {}
         if (moved) {
-          setSky(skyFor(sunAt(Date.now(), next.lat, next.lon)))
+          setSky(skyNow(next.lat, next.lon))
           loadWeather()
         }
       },
@@ -226,7 +302,7 @@ export default function AdminSky() {
       { maximumAge: 30 * 60 * 1000, timeout: 15000 }
     )
 
-    const tick = () => setSky(skyFor(sunAt(Date.now(), pos.current.lat, pos.current.lon)))
+    const tick = () => setSky(skyNow(pos.current.lat, pos.current.lon))
     tick()
     const sunTimer = setInterval(tick, SUN_MS)
 
@@ -364,6 +440,36 @@ export default function AdminSky() {
             ))}
           </div>
         </div>
+        {/* The moon, where it really is right now, with today's phase. Bright
+            at night, pale in daylight, hidden behind thick cloud. */}
+        {sky.moon && sky.moon.elevation > -3 && (
+          <div className="a-sky-moon absolute" style={{ left: `${sky.moon.x}%`, top: `${sky.moon.y}%`, transition: 'left 60s linear, top 60s linear' }}>
+            <div
+              className="a-moon-float"
+              style={{
+                marginLeft: -28,
+                marginTop: -28,
+                opacity:
+                  Math.min(1, (sky.moon.elevation + 3) / 6) *
+                  (sky.phase === 'night' ? 1 : sky.phase === 'dawn' || sky.phase === 'dusk' ? 0.75 : 0.35) *
+                  (1 - clouds * 0.85),
+                filter: `drop-shadow(0 0 ${8 + sky.moon.lit * 22}px rgba(255,248,220,${0.25 + sky.moon.lit * 0.45}))`,
+                transition: 'opacity 8s',
+              }}
+            >
+              <MoonDisc moon={sky.moon} />
+            </div>
+          </div>
+        )}
+        {/* Moonlight softly brightening the sky around it on a clear night */}
+        {sky.moon && sky.moon.elevation > 0 && sky.phase === 'night' && (
+          <div
+            className="a-sky-moon absolute inset-0"
+            style={{
+              background: `radial-gradient(circle 38vmax at ${sky.moon.x}% ${sky.moon.y}%, rgba(190,205,240,${0.1 * sky.moon.lit * (1 - clouds)}), transparent 70%)`,
+            }}
+          />
+        )}
         {/* A shooting star now and then on a clear night */}
         {night && (
           <>
