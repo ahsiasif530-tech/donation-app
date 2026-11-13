@@ -2,6 +2,7 @@ import Link from 'next/link'
 import SignOutButton from '@/components/SignOutButton'
 import CommandSearch from '@/components/CommandSearch'
 import LiveDonations from '@/components/LiveDonations'
+import AdminSky from '@/components/AdminSky'
 import { initials } from '@/lib/avatar'
 
 const TABS = [
@@ -31,6 +32,7 @@ export default function AdminTopbar({ active, name }) {
         <div className="flex items-center gap-2 sm:gap-3">
           <CommandSearch />
           <LiveDonations />
+          <AdminSky />
           <span className="a-avatar hidden sm:inline-flex" style={{ background: 'linear-gradient(135deg, var(--a-accent-strong), var(--a-accent))', width: 32, height: 32, borderRadius: 10 }} title={name}>
             {initials(name)}
           </span>

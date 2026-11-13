@@ -703,13 +703,36 @@ function startSleepPiano() {
 
 // One on/off switch for a background sound, remembered in this browser.
 // After a reload, the first click on the page starts it (browsers need one).
-function useAmbient(storageKey, start, eng, level, busy, quietUntil) {
+function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain = false) {
   const [on, setOn] = useState(false)
+  // True while the sound is on only because it is really raining outside
+  // (AdminSky reports the weather); it then stops by itself with the rain.
+  const byRain = useRef(false)
   useEffect(() => {
     try {
       setOn(localStorage.getItem(storageKey) === '1')
     } catch {}
   }, [storageKey])
+  useEffect(() => {
+    if (!followRain) return
+    let wasRaining = false
+    const onWeather = (e) => {
+      const raining = !!e.detail?.raining
+      if (raining && !wasRaining) {
+        setOn((cur) => {
+          if (!cur) byRain.current = true
+          return true
+        })
+      } else if (!raining && wasRaining && byRain.current) {
+        byRain.current = false
+        setOn(false)
+      }
+      wasRaining = raining
+    }
+    if (window.__adminWeather) onWeather({ detail: window.__adminWeather })
+    window.addEventListener('admin-weather', onWeather)
+    return () => window.removeEventListener('admin-weather', onWeather)
+  }, [followRain])
   useEffect(() => {
     if (!on) return
     start()
@@ -724,12 +747,14 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil) {
   }, [on, start, eng, level, busy, quietUntil])
   const toggle = () => {
     const next = !on
+    // Pressing the switch yourself always wins over the weather.
+    byRain.current = false
     setOn(next)
     try {
       localStorage.setItem(storageKey, next ? '1' : '0')
     } catch {}
   }
-  return [on, toggle]
+  return [on, toggle, byRain.current]
 }
 
 function SoundSwitch({ on, onClick, icon, label, color, tint, hint }) {
@@ -853,7 +878,7 @@ export default function LiveDonations() {
     } catch {}
   }
 
-  const [rainOn, toggleRain] = useAmbient('admin-live-rain', startRain, rain, RAIN_LEVEL, busy, quietUntil)
+  const [rainOn, toggleRain, rainByWeather] = useAmbient('admin-live-rain', startRain, rain, RAIN_LEVEL, busy, quietUntil, true)
   const [sleepOn, toggleSleep] = useAmbient('admin-live-sleep-piano', startSleepPiano, sleepPiano, SLEEP_LEVEL, busy, quietUntil)
 
   // "My music": a song the admin picks from their own computer. It plays
@@ -1098,7 +1123,7 @@ export default function LiveDonations() {
       </button>
 
       {/* Sleep sounds: rain and a slow piano, each its own switch. */}
-      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Storm night in a tin hut is on — click to turn off' : 'Lying in a tin hut in the forest: rain, wind, frogs and thunder'} />
+      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label={rainByWeather ? "Rain · auto" : "Rain"} color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? (rainByWeather ? 'It is raining where you are, so the rain sound came on by itself — click to turn off' : 'Storm night in a tin hut is on — click to turn off') : 'Lying in a tin hut in the forest: rain, wind, frogs and thunder'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
 
       {/* My music: a song from this computer, its own control again. */}

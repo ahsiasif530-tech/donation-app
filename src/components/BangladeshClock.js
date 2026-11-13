@@ -17,11 +17,19 @@ const DATE_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 's
 // time and the date, all in Bangladesh time.
 export default function BangladeshClock() {
   const [now, setNow] = useState(null)
+  // The weather where the admin is, as AdminSky reports it.
+  const [weather, setWeather] = useState(null)
 
   useEffect(() => {
     setNow(Date.now())
     const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
+    if (window.__adminWeather) setWeather(window.__adminWeather)
+    const onWeather = (e) => setWeather(e.detail)
+    window.addEventListener('admin-weather', onWeather)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('admin-weather', onWeather)
+    }
   }, [])
 
   const t = now == null ? null : bdParts(now)
@@ -65,6 +73,12 @@ export default function BangladeshClock() {
         </span>
         <span className="block text-[11px] font-semibold" style={{ color: 'var(--a-text-muted)' }}>
           🇧🇩 Dhaka{t ? ` · ${DATE_FMT.format(t.day)}` : ''}
+          {weather && (
+            <span title={`Weather where you are: ${weather.label}`} style={{ color: weather.raining ? '#60A5FA' : 'var(--a-text-muted)' }}>
+              {' · '}
+              {weather.icon} {weather.temp}°C
+            </span>
+          )}
         </span>
       </span>
     </div>

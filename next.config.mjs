@@ -21,7 +21,7 @@ const securityHeaders = [
   // No Flash/PDF plug-in may load cross-site policy files from this site.
   { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   // Payment stays allowed: Apple Pay / Google Pay run inside PayPal's frames.
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), usb=(), interest-cohort=()' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), usb=(), interest-cohort=()' },
 ]
 
 // Admin, dashboard and login are never shown in search results.

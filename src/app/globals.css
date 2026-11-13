@@ -333,3 +333,34 @@ body {
 .admin-theme ::-webkit-scrollbar { width: 10px; height: 10px; }
 .admin-theme ::-webkit-scrollbar-thumb { background: #2C313C; border-radius: 999px; border: 2px solid var(--a-bg); }
 .admin-theme ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- Living sky behind the admin (AdminSky) ---- */
+.admin-theme {
+  position: relative;
+  isolation: isolate;
+}
+.admin-theme .a-star {
+  animation: a-twinkle 4s ease-in-out infinite;
+}
+@keyframes a-twinkle {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(0.6); filter: brightness(0.5); }
+}
+.admin-theme .a-cloud {
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(150,160,180,0.22), rgba(150,160,180,0.08) 45%, transparent 70%);
+  filter: blur(30px);
+  animation: a-cloud-drift 120s ease-in-out infinite alternate;
+}
+.admin-theme .a-cloud-slow {
+  animation-duration: 190s;
+  animation-direction: reverse;
+}
+@keyframes a-cloud-drift {
+  from { transform: translateX(-15%); }
+  to { transform: translateX(45%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .a-star,
+  .admin-theme .a-cloud { animation: none; }
+}
