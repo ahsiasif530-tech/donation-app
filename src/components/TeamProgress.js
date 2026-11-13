@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { initials } from '@/lib/avatar'
 
 const PERIODS = [
@@ -36,8 +36,43 @@ function Growth({ now, before }) {
 // Running total per person across the period, so whoever is ahead sits on
 // top and the gaps between lines are the gaps between people.
 // chart: { labels: [...], values: { [name]: [amount per bucket] } }
+// A smooth line through the points that never overshoots between them
+// (monotone cubic), so a running total never seems to dip.
+function smoothPath(pts) {
+  if (pts.length < 3) return pts.map(([px, py], i) => `${i ? 'L' : 'M'}${px},${py}`).join(' ')
+  const n = pts.length
+  const d = []
+  const m = []
+  for (let i = 0; i < n - 1; i++) d.push((pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0] || 1))
+  m.push(d[0])
+  for (let i = 1; i < n - 1; i++) m.push(d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2)
+  m.push(d[n - 2])
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) {
+      m[i] = 0
+      m[i + 1] = 0
+      continue
+    }
+    const a = m[i] / d[i]
+    const b = m[i + 1] / d[i]
+    const s = a * a + b * b
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s)
+      m[i] = t * a * d[i]
+      m[i + 1] = t * b * d[i]
+    }
+  }
+  let path = `M${pts[0][0]},${pts[0][1]}`
+  for (let i = 0; i < n - 1; i++) {
+    const h = (pts[i + 1][0] - pts[i][0]) / 3
+    path += ` C${pts[i][0] + h},${pts[i][1] + m[i] * h} ${pts[i + 1][0] - h},${pts[i + 1][1] - m[i + 1] * h} ${pts[i + 1][0]},${pts[i + 1][1]}`
+  }
+  return path
+}
+
 function RaceChart({ chart, people }) {
   const [hover, setHover] = useState(null)
+  const uid = useId().replace(/:/g, '')
   const W = 560
   const H = 240
   const pad = { l: 44, r: 12, t: 12, b: 26 }
@@ -49,6 +84,7 @@ function RaceChart({ chart, people }) {
     })
   )
   const max = Math.max(1, ...people.map((p) => running[p.name].at(-1) || 0))
+  const leaderName = [...people].sort((a, b) => (running[b.name].at(-1) || 0) - (running[a.name].at(-1) || 0))[0]?.name
   const niceMax = (() => {
     const step = 10 ** Math.floor(Math.log10(max))
     return Math.ceil(max / step) * step
@@ -74,17 +110,64 @@ function RaceChart({ chart, people }) {
           ) : null
         )}
         {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--a-text-muted)" strokeWidth="1" opacity="0.5" />}
-        {people.map((p) => (
-          <polyline
-            key={p.name}
-            points={running[p.name].map((v, i) => `${x(i)},${y(v)}`).join(' ')}
-            fill="none"
-            stroke={p.color}
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        ))}
+        <defs>
+          {people.map((p, idx) => (
+            <linearGradient key={p.name} id={`${uid}-area-${idx}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={p.color} stopOpacity="0.32" />
+              <stop offset="1" stopColor={p.color} stopOpacity="0" />
+            </linearGradient>
+          ))}
+          <linearGradient id={`${uid}-gloss`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.06" />
+            <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <rect x={pad.l} y={pad.t} width={W - pad.l - pad.r} height={H - pad.t - pad.b} fill={`url(#${uid}-gloss)`} rx="8" />
+        {people.map((p, idx) => {
+          const pts = running[p.name].map((v, i) => [x(i), y(v)])
+          if (pts.length === 0) return null
+          const line = smoothPath(pts)
+          return (
+            <path
+              key={`area-${p.name}`}
+              className="a-area-fade"
+              d={`${line} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z`}
+              fill={`url(#${uid}-area-${idx})`}
+              style={{ '--i': idx }}
+            />
+          )
+        })}
+        {people.map((p, idx) => {
+          const pts = running[p.name].map((v, i) => [x(i), y(v)])
+          if (pts.length === 0) return null
+          return (
+            <path
+              key={`line-${p.name}`}
+              className="a-line-draw"
+              d={smoothPath(pts)}
+              pathLength="1"
+              fill="none"
+              stroke={p.color}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              style={{ '--i': idx, filter: `drop-shadow(0 0 5px ${p.color}88)` }}
+            />
+          )
+        })}
+        {people.map((p, idx) => {
+          const last = running[p.name].at(-1)
+          if (last === undefined) return null
+          const cx = x(running[p.name].length - 1)
+          const cy = y(last)
+          return (
+            <g key={`end-${p.name}`} className="a-dot-pop" style={{ '--i': idx }}>
+              {p.name === leaderName && last > 0 && <circle className="a-dot-pulse" cx={cx} cy={cy} r="5" fill={p.color} />}
+              <circle cx={cx} cy={cy} r="4.5" fill={p.color} stroke="var(--a-surface)" strokeWidth="2" />
+              <circle cx={cx - 1.2} cy={cy - 1.2} r="1.4" fill="#fff" opacity="0.7" />
+            </g>
+          )
+        })}
         {hover !== null &&
           people.map((p) => (
             <circle key={p.name} cx={x(hover)} cy={y(running[p.name][hover] || 0)} r="4" fill={p.color} stroke="var(--a-surface)" strokeWidth="2" />
@@ -224,7 +307,7 @@ export default function TeamProgress({ people, charts }) {
         </ol>
 
         <div className="p-4">
-          <RaceChart chart={charts[period]} people={people} />
+          <RaceChart key={period} chart={charts[period]} people={people} />
         </div>
       </div>
     </div>

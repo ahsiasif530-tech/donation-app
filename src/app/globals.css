@@ -250,6 +250,43 @@ body {
   .admin-theme .a-row:hover, .admin-theme .a-btn-soft:hover, .admin-theme .a-tab[aria-pressed="true"] { transform: none; }
 }
 
+/* Team race chart: each line draws itself in turn, its glow area fades in
+   after it, then the end dot pops; the leader's dot keeps pulsing. */
+.admin-theme .a-line-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: a-line-draw 1.3s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 140ms);
+}
+@keyframes a-line-draw { to { stroke-dashoffset: 0; } }
+.admin-theme .a-area-fade {
+  opacity: 0;
+  animation: a-fade-in 0.9s ease forwards;
+  animation-delay: calc(var(--i, 0) * 140ms + 0.6s);
+}
+@keyframes a-fade-in { to { opacity: 1; } }
+.admin-theme .a-dot-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: a-dot-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 140ms + 1.2s);
+}
+@keyframes a-dot-pop {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+.admin-theme .a-dot-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: a-map-pulse 1.8s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .a-line-draw { animation: none; stroke-dashoffset: 0; }
+  .admin-theme .a-area-fade, .admin-theme .a-dot-pop { animation: none; opacity: 1; }
+  .admin-theme .a-dot-pulse { animation: none; opacity: 0; }
+}
+
 /* New-donation toasts slide in from the right. */
 .admin-theme .a-toast { animation: a-toast-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
 @keyframes a-toast-in {
