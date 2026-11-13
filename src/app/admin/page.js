@@ -6,7 +6,6 @@ import { statusNote, dayStart, dayEnd } from '@/lib/invoices'
 import { fetchAll } from '@/lib/supabase/fetchAll'
 import { readPaymentSettings } from '@/lib/paymentSettings'
 import { getPaypalAccounts, getActivePaypalAccountId } from '@/lib/paypalAccounts'
-import SignOutButton from '@/components/SignOutButton'
 import InvoiceFilterBar from '@/components/InvoiceFilterBar'
 import GatewayInvoiceCard from '@/components/GatewayInvoiceCard'
 import WithdrawButton from '@/components/WithdrawButton'
@@ -20,8 +19,7 @@ import PageGroups from '@/components/PageGroups'
 import TeamProgress from '@/components/TeamProgress'
 import { initials, personColor } from '@/lib/avatar'
 import AdminSidebar from '@/components/AdminSidebar'
-import CommandSearch from '@/components/CommandSearch'
-import LiveDonations from '@/components/LiveDonations'
+import AdminTopbar from '@/components/AdminTopbar'
 import CopyButton from '@/components/CopyButton'
 
 const PAGES_PER_GROUP = 4
@@ -380,32 +378,7 @@ export default async function AdminPage({ searchParams }) {
 
   return (
     <main className="admin-theme min-h-screen">
-      <header className="a-topbar">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="a-brand-sm a-gold-text">BlessedHands</span>
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest rounded-md px-1.5 py-0.5" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>Admin</span>
-          </div>
-          <nav className="a-nav hidden md:inline-flex" aria-label="Admin">
-            <Link href="/admin" aria-current="page">Dashboard</Link>
-            <Link href="/admin/traffic">Traffic</Link>
-            <Link href="/admin/settings">Payment Settings</Link>
-          </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <CommandSearch />
-            <LiveDonations />
-            <span className="a-avatar hidden sm:inline-flex" style={{ background: 'linear-gradient(135deg, var(--a-accent-strong), var(--a-accent))', width: 32, height: 32, borderRadius: 10 }} title={profile.full_name}>
-              {initials(profile.full_name)}
-            </span>
-            <SignOutButton />
-          </div>
-        </div>
-        <nav className="a-nav flex md:hidden w-fit mx-auto mb-3" aria-label="Admin">
-          <Link href="/admin" aria-current="page">Dashboard</Link>
-          <Link href="/admin/traffic">Traffic</Link>
-          <Link href="/admin/settings">Settings</Link>
-        </nav>
-      </header>
+      <AdminTopbar active="dashboard" name={profile.full_name} />
 
       <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-8">
         <aside className="hidden lg:block">
