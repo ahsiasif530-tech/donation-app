@@ -865,9 +865,258 @@ function startBirds() {
   } catch {}
 }
 
+const BIRD_HOURS = [5, 7]
+const NIGHT_HOURS = [19, 5]
+
+// ---- Night in a Bangladeshi village, made in the browser: crickets and
+// jhijhi poka singing all around, frogs croaking ("ghangor-ghang") and tiny
+// tree frogs ticking, an owl (pecha) hooting now and then, a tokkhok calling
+// "tok-khok", and once in a while jackals (sheyal) howling far away.
+const NIGHT_LEVEL = 0.3
+const night = { ctx: null, master: null, timer: null, later: null, ducked: false }
+
+function nightSpot(minFar = 0) {
+  const { ctx, master } = night
+  const far = minFar + Math.random() * (1 - minFar)
+  const out = ctx.createGain()
+  out.gain.value = 1 - far * 0.75
+  const tone = ctx.createBiquadFilter()
+  tone.type = 'lowpass'
+  tone.frequency.value = 9000 - far * 6000
+  out.connect(tone)
+  let last = tone
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner()
+    p.pan.value = Math.random() * 1.8 - 0.9
+    last.connect(p)
+    last = p
+  }
+  last.connect(master)
+  if (night.room) {
+    const w = ctx.createGain()
+    w.gain.value = 0.15 + far * 0.45
+    last.connect(w).connect(night.room)
+  }
+  return out
+}
+
+function nightNote(at, f0, f1, dur, level, out, type = 'sine', warble = 0, attack = 0.01) {
+  const { ctx } = night
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = type
+  osc.frequency.setValueAtTime(f0, at)
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40, f1), at + dur)
+  if (warble) {
+    const lfo = ctx.createOscillator()
+    const depth = ctx.createGain()
+    lfo.frequency.value = 5 + Math.random() * 3
+    depth.gain.value = warble
+    lfo.connect(depth).connect(osc.frequency)
+    lfo.start(at)
+    lfo.stop(at + dur + 0.05)
+  }
+  g.gain.setValueAtTime(0.0001, at)
+  g.gain.exponentialRampToValueAtTime(level, at + Math.min(attack, dur / 2))
+  g.gain.setValueAtTime(level, at + dur * 0.6)
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur)
+  osc.connect(g).connect(out)
+  osc.start(at)
+  osc.stop(at + dur + 0.02)
+}
+
+function nightLater(fn, ms) {
+  if (!night.ctx) return
+  night.timeouts = [...(night.timeouts || []).slice(-30), setTimeout(fn, ms)]
+}
+
+// A cricket: short pulses of a high tone in little groups, again and again.
+function cricket() {
+  const spot = nightSpot(0.2)
+  const pitch = 3800 + Math.random() * 1500
+  const pulses = 2 + Math.floor(Math.random() * 3)
+  const every = 380 + Math.random() * 350
+  const sing = () => {
+    if (!night.ctx) return
+    if (!night.ducked) {
+      let t = night.ctx.currentTime + 0.03
+      for (let i = 0; i < pulses; i++) {
+        nightNote(t, pitch, pitch * 0.99, 0.028, 0.07, spot, 'sine', 0, 0.004)
+        t += 0.045
+      }
+    }
+    nightLater(sing, every + Math.random() * 60)
+  }
+  sing()
+}
+
+// Jhijhi poka: a steady shimmering buzz that swells and fades slowly.
+function jhijhi(white) {
+  const { ctx, master } = night
+  const src = ctx.createBufferSource()
+  src.buffer = white
+  src.loop = true
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 6200 + Math.random() * 1500
+  bp.Q.value = 9
+  const buzz = ctx.createGain()
+  buzz.gain.value = 0.5
+  const flutter = ctx.createOscillator()
+  const fDepth = ctx.createGain()
+  flutter.frequency.value = 45 + Math.random() * 25
+  fDepth.gain.value = 0.5
+  flutter.connect(fDepth).connect(buzz.gain)
+  flutter.start()
+  const swell = ctx.createGain()
+  swell.gain.value = 0.09
+  const slow = ctx.createOscillator()
+  const sDepth = ctx.createGain()
+  slow.frequency.value = 0.04 + Math.random() * 0.05
+  sDepth.gain.value = 0.07
+  slow.connect(sDepth).connect(swell.gain)
+  slow.start()
+  src.connect(bp).connect(buzz).connect(swell)
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner()
+    p.pan.value = Math.random() * 1.6 - 0.8
+    swell.connect(p).connect(master)
+  } else swell.connect(master)
+  src.start(0, Math.random() * 3)
+}
+
+const NIGHT_CALLS = {
+  // Bang: the big frog's throaty "ghangor-ghang", a few in a row.
+  frog(t, out) {
+    const base = 120 + Math.random() * 90
+    const n = 2 + Math.floor(Math.random() * 4)
+    for (let i = 0; i < n; i++) {
+      const pulses = 5 + Math.floor(Math.random() * 4)
+      for (let p = 0; p < pulses; p++) nightNote(t + p * 0.022, base * 1.1, base, 0.02, 0.09, out, 'sawtooth', 0, 0.003)
+      t += 0.32 + Math.random() * 0.15
+    }
+  },
+  // Tiny tree frogs: quick high "tik-tik-tik".
+  treefrog(t, out) {
+    const f = 1500 + Math.random() * 1200
+    const n = 3 + Math.floor(Math.random() * 6)
+    for (let i = 0; i < n; i++) {
+      nightNote(t, f * 1.1, f, 0.03, 0.05, out, 'triangle', 0, 0.003)
+      t += 0.13 + Math.random() * 0.05
+    }
+  },
+}
+const NIGHT_MIX = ['frog', 'frog', 'frog', 'treefrog', 'treefrog']
+
+// Pecha (owl): a soft, low "huu… hu-hu-huuu".
+function owl() {
+  const out = nightSpot(0.5)
+  const base = 330 + Math.random() * 60
+  let t = night.ctx.currentTime + 0.05
+  ;[
+    [0.55, 1],
+    [0.18, 0.94],
+    [0.18, 0.94],
+    [0.8, 1],
+  ].forEach(([dur, k], i) => {
+    nightNote(t, base * k * 1.03, base * k * 0.97, dur, 0.12, out, 'sine', 3, 0.12)
+    t += dur + (i === 0 ? 0.45 : 0.1)
+  })
+}
+
+// Tokkhok (tokay gecko): a croaky "tok-khok", repeated and slowing down.
+function tokkhok() {
+  const out = nightSpot(0.3)
+  const n = 5 + Math.floor(Math.random() * 4)
+  let t = night.ctx.currentTime + 0.05
+  let gap = 0.9
+  for (let i = 0; i < n; i++) {
+    const loud = 0.11 * (1 - i * 0.07)
+    nightNote(t, 380, 640, 0.13, loud, out, 'square', 0, 0.006)
+    nightNote(t + 0.2, 520, 330, 0.24, loud * 0.9, out, 'square', 0, 0.006)
+    t += gap
+    gap += 0.12
+  }
+}
+
+// Sheyal (jackals): far away, a few voices howling together.
+function jackals() {
+  const voices = 3 + Math.floor(Math.random() * 3)
+  for (let v = 0; v < voices; v++) {
+    const out = nightSpot(0.75)
+    let t = night.ctx.currentTime + 0.1 + v * (0.3 + Math.random() * 0.6)
+    const howls = 2 + Math.floor(Math.random() * 3)
+    for (let h = 0; h < howls; h++) {
+      const low = 480 + Math.random() * 150
+      const high = low * (1.5 + Math.random() * 0.4)
+      const up = 0.5 + Math.random() * 0.4
+      const down = 0.8 + Math.random() * 0.6
+      nightNote(t, low, high, up, 0.07, out, 'sine', 12, 0.15)
+      nightNote(t + up - 0.02, high, low * 0.9, down, 0.07, out, 'sine', 14, 0.02)
+      t += up + down + 0.25
+    }
+  }
+}
+
+function startNight() {
+  try {
+    if (!openEngine(night, NIGHT_LEVEL)) return
+    const { ctx, master } = night
+    night.timeouts = []
+    night.room = makeRoom(ctx, 2.2, 2.2)
+    const roomOut = ctx.createGain()
+    roomOut.gain.value = 0.6
+    night.room.connect(roomOut).connect(master)
+    const white = noiseBuffer(ctx, 4, false)
+
+    // A calm night breeze.
+    const breeze = ctx.createBufferSource()
+    breeze.buffer = noiseBuffer(ctx, 8, true)
+    breeze.loop = true
+    const bf = ctx.createBiquadFilter()
+    bf.type = 'lowpass'
+    bf.frequency.value = 420
+    const bg = ctx.createGain()
+    bg.gain.value = 0.1
+    breeze.connect(bf).connect(bg).connect(master)
+    breeze.start()
+
+    // Crickets and jhijhi poka all around.
+    for (let i = 0; i < 5; i++) cricket()
+    jhijhi(white)
+    jhijhi(white)
+
+    // Frogs croaking near and far, some answering each other.
+    const spots = {}
+    const croak = () => {
+      if (!night.ctx) return
+      if (!night.ducked) {
+        const kind = NIGHT_MIX[Math.floor(Math.random() * NIGHT_MIX.length)]
+        if (!spots[kind] || Math.random() < 0.35) spots[kind] = nightSpot()
+        NIGHT_CALLS[kind](ctx.currentTime + 0.05, spots[kind])
+      }
+      nightLater(croak, 700 + Math.random() * 2500)
+    }
+    croak()
+    nightLater(croak, 1500)
+
+    // The rarer voices of the night.
+    const every = (fn, first, min, spread) => {
+      const go = () => {
+        if (!night.ducked) fn()
+        nightLater(go, min + Math.random() * spread)
+      }
+      nightLater(go, first)
+    }
+    every(owl, 6000 + Math.random() * 8000, 25000, 35000)
+    every(tokkhok, 15000 + Math.random() * 15000, 45000, 60000)
+    every(jackals, 40000 + Math.random() * 40000, 120000, 120000)
+  } catch {}
+}
+
 // One on/off switch for a background sound, remembered in this browser.
 // After a reload, the first click on the page starts it (browsers need one).
-function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain = false, followMorning = false) {
+function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain = false, hours = null) {
   const [on, setOn] = useState(false)
   // True while the sound is on only because it is really raining outside
   // (AdminSky reports the weather); it then stops by itself with the rain.
@@ -897,14 +1146,15 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
     window.addEventListener('admin-weather', onWeather)
     return () => window.removeEventListener('admin-weather', onWeather)
   }, [followRain])
-  // Morning birds: on by themselves from 5:00 to 7:00 (this computer's
-  // clock), off again after — the same way the rain follows the weather.
+  // Time of day: e.g. birds on by themselves 5–7 AM, night sounds 7 PM–5 AM
+  // (this computer's clock), off again after — like the rain and weather.
   useEffect(() => {
-    if (!followMorning) return
+    if (!hours) return
     let wasMorning = false
     const check = () => {
       const h = new Date().getHours()
-      const morning = h >= 5 && h < 7
+      const [from, to] = hours
+      const morning = from < to ? h >= from && h < to : h >= from || h < to
       if (morning && !wasMorning) {
         setOn((cur) => {
           if (!cur) byRain.current = true
@@ -919,7 +1169,7 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
     check()
     const timer = setInterval(check, 30000)
     return () => clearInterval(timer)
-  }, [followMorning])
+  }, [hours?.[0], hours?.[1]])
   useEffect(() => {
     if (!on) return
     start()
@@ -1067,7 +1317,8 @@ export default function LiveDonations() {
 
   const [rainOn, toggleRain, rainByWeather] = useAmbient('admin-live-rain', startRain, rain, RAIN_LEVEL, busy, quietUntil, true)
   const [sleepOn, toggleSleep] = useAmbient('admin-live-sleep-piano', startSleepPiano, sleepPiano, SLEEP_LEVEL, busy, quietUntil)
-  const [birdsOn, toggleBirds, birdsByMorning] = useAmbient('admin-live-birds', startBirds, birds, BIRDS_LEVEL, busy, quietUntil, false, true)
+  const [birdsOn, toggleBirds, birdsByMorning] = useAmbient('admin-live-birds', startBirds, birds, BIRDS_LEVEL, busy, quietUntil, false, BIRD_HOURS)
+  const [nightOn, toggleNight, nightByTime] = useAmbient('admin-live-night', startNight, night, NIGHT_LEVEL, busy, quietUntil, false, NIGHT_HOURS)
 
   // "My music": a song the admin picks from their own computer. It plays
   // straight from that file in this browser — nothing is uploaded — loops,
@@ -1314,6 +1565,7 @@ export default function LiveDonations() {
       <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label={rainByWeather ? "Rain · auto" : "Rain"} color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? (rainByWeather ? 'It is raining where you are, so the rain sound came on by itself — click to turn off' : 'Storm night in a tin hut is on — click to turn off') : 'Lying in a tin hut in the forest: rain, wind, frogs and thunder'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
       <SoundSwitch on={birdsOn} onClick={toggleBirds} icon="🐦" label={birdsByMorning ? "Birds · auto" : "Birds"} color="#4ADE80" tint="rgba(74,222,128,0.12)" hint={birdsOn ? (birdsByMorning ? "Morning birds came on by themselves (5–7 AM) — click to turn off" : "Morning birds are on — click to turn off") : "Morning birds: doel, sparrows, ghughu, koel. Comes on by itself 5–7 AM"} />
+      <SoundSwitch on={nightOn} onClick={toggleNight} icon="🦗" label={nightByTime ? "Night · auto" : "Night"} color="#A78BFA" tint="rgba(167,139,250,0.12)" hint={nightOn ? (nightByTime ? "Night sounds came on by themselves (7 PM–5 AM) — click to turn off" : "Night sounds are on — click to turn off") : "Night sounds: crickets, frogs, owl, tokkhok, far jackals. Comes on by itself 7 PM–5 AM"} />
 
       {/* My music: a song from this computer, its own control again. */}
       <input ref={fileInput} type="file" accept="audio/*,video/mp4" className="hidden" onChange={pickMusic} />
