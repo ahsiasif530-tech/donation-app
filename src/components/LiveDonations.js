@@ -368,6 +368,73 @@ export default function LiveDonations() {
     } catch {}
   }
 
+  // "My music": a song the admin picks from their own computer. It plays
+  // straight from that file in this browser — nothing is uploaded — loops,
+  // and dips while an alert plays. A page reload needs the file picked again.
+  const MUSIC_VOLUME = 0.4
+  const fileInput = useRef(null)
+  const audio = useRef(null)
+  const [music, setMusic] = useState(null) // { name, playing }
+
+  function pickMusic(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const old = audio.current
+    if (old) {
+      old.pause()
+      URL.revokeObjectURL(old.src)
+    }
+    const a = new Audio(URL.createObjectURL(file))
+    a.loop = true
+    a.volume = MUSIC_VOLUME
+    audio.current = a
+    a.play().catch(() => {})
+    setMusic({ name: file.name.replace(/\.[^.]+$/, ''), playing: true })
+  }
+
+  function toggleMusic() {
+    const a = audio.current
+    if (!a) return fileInput.current?.click()
+    if (a.paused) a.play().catch(() => {})
+    else a.pause()
+    setMusic((m) => m && { ...m, playing: !a.paused })
+  }
+
+  function removeMusic() {
+    const a = audio.current
+    if (a) {
+      a.pause()
+      URL.revokeObjectURL(a.src)
+    }
+    audio.current = null
+    setMusic(null)
+  }
+
+  useEffect(() => {
+    if (!music?.playing) return
+    const timer = setInterval(() => {
+      const a = audio.current
+      if (!a) return
+      const target = busy.current > 0 || Date.now() < quietUntil.current ? 0 : MUSIC_VOLUME
+      // Down fast for an alert, back up gently after.
+      const stepSize = target < a.volume ? 0.08 : 0.015
+      a.volume = Math.abs(target - a.volume) <= stepSize ? target : a.volume + Math.sign(target - a.volume) * stepSize
+    }, 100)
+    return () => clearInterval(timer)
+  }, [music?.playing])
+
+  useEffect(
+    () => () => {
+      const a = audio.current
+      if (a) {
+        a.pause()
+        URL.revokeObjectURL(a.src)
+      }
+    },
+    []
+  )
+
   // Runs a sound job in the queue while holding the music back.
   const play = (job) => {
     busy.current += 1
@@ -541,6 +608,38 @@ export default function LiveDonations() {
         </span>
         <span className="hidden sm:inline">{pulse ? 'On' : 'Off'}</span>
       </button>
+
+      {/* My music: a song from this computer, its own control again. */}
+      <input ref={fileInput} type="file" accept="audio/*,video/mp4" className="hidden" onChange={pickMusic} />
+      <div
+        className="inline-flex items-center rounded-lg overflow-hidden text-xs font-bold transition-colors"
+        style={{
+          background: music?.playing ? 'rgba(167,139,250,0.12)' : 'var(--a-surface)',
+          border: `1px solid ${music?.playing ? 'rgba(167,139,250,0.45)' : 'var(--a-border)'}`,
+          color: music?.playing ? '#A78BFA' : 'var(--a-text-muted)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={toggleMusic}
+          title={music ? (music.playing ? `Pause: ${music.name}` : `Play: ${music.name}`) : 'Play a song from this computer (it is not uploaded)'}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5"
+        >
+          <span aria-hidden="true" className={music?.playing ? 'animate-pulse' : ''}>🎶</span>
+          <span className="hidden sm:inline max-w-[9rem] truncate">{music ? music.name : 'My music'}</span>
+          {music && <span aria-hidden="true">{music.playing ? '⏸' : '▶'}</span>}
+        </button>
+        {music && (
+          <>
+            <button type="button" onClick={() => fileInput.current?.click()} title="Choose another song" className="hidden sm:inline px-2 py-1.5 border-l" style={{ borderColor: 'var(--a-border)' }}>
+              📁
+            </button>
+            <button type="button" onClick={removeMusic} title="Stop and remove the song" className="px-2 py-1.5 border-l" style={{ borderColor: 'var(--a-border)' }}>
+              ✕
+            </button>
+          </>
+        )}
+      </div>
 
       <AdminPortal>
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[min(360px,calc(100vw-2rem))]" aria-live="polite">
