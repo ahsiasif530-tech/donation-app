@@ -100,7 +100,7 @@ function pips(kind) {
 // warm low octave, plus gentle bell notes now and then from a scale built on
 // 777 Hz. It fades out while an alert plays and fades back in after.
 const CALM_HZ = 777
-const CALM_LEVEL = 0.055
+const CALM_LEVEL = 0.07
 const CALM_BELLS = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2].map((r) => CALM_HZ * r)
 const calm = { ctx: null, master: null, nodes: [], bellTimer: null, ducked: false }
 
@@ -122,6 +122,67 @@ function calmBell() {
     osc.start(start)
     osc.stop(start + 4.6)
   })
+}
+
+// A soft, mellow piano tuned to 777 Hz (the home note sits an octave lower
+// at 388.5 Hz). Each key is a few harmonics through a warm filter, fading
+// like a felt piano.
+const PIANO_ROOT = CALM_HZ / 2
+const PIANO_BEAT_MS = 900
+// Slow chord loop: I – vi – IV – V, each as just-tuned ratios of the root.
+const PIANO_CHORDS = [
+  [1, 5 / 4, 3 / 2, 2],
+  [5 / 6, 1, 5 / 4, 5 / 3],
+  [2 / 3, 5 / 6, 1, 4 / 3],
+  [3 / 4, 15 / 16, 9 / 8, 3 / 2],
+]
+const PIANO_ORDER = [0, 2, 1, 3, 2, 1, 3, 2]
+const PIANO_MELODY = [2, 9 / 4, 5 / 2, 3, 10 / 3]
+
+function pianoKey(freq, velocity = 1, delay = 0) {
+  const { ctx, master } = calm
+  if (!ctx || !master) return
+  const start = ctx.currentTime + 0.03 + delay
+  const length = 3.2
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(2600, start)
+  filter.frequency.exponentialRampToValueAtTime(700, start + length)
+  filter.connect(master)
+  ;[
+    [1, 1, 1],
+    [2, 0.42, 0.6],
+    [3, 0.16, 0.45],
+    [4, 0.07, 0.35],
+  ].forEach(([mult, level, decay]) => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = mult === 1 ? 'triangle' : 'sine'
+    osc.frequency.value = freq * mult
+    const peak = 0.9 * velocity * level
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(peak, start + 0.006)
+    gain.gain.exponentialRampToValueAtTime(peak * 0.35, start + 0.35 * decay + 0.1)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + length * decay + 0.4)
+    osc.connect(gain).connect(filter)
+    osc.start(start)
+    osc.stop(start + length + 0.5)
+  })
+}
+
+// One beat of the loop: 8 beats per chord, a low note to open each chord,
+// gentle broken-chord notes (some left out so it breathes), and now and then
+// a high melody note or bell.
+function calmPianoStep(step) {
+  const beat = step % 8
+  const chord = PIANO_CHORDS[Math.floor(step / 8) % PIANO_CHORDS.length]
+  if (beat === 0) pianoKey(PIANO_ROOT * chord[0] * 0.5, 0.7)
+  if (beat !== 0 && Math.random() < 0.22) return
+  pianoKey(PIANO_ROOT * chord[PIANO_ORDER[beat]], beat === 0 ? 0.75 : 0.5 + Math.random() * 0.2)
+  if (beat === 4 && Math.random() < 0.5) {
+    pianoKey(PIANO_ROOT * PIANO_MELODY[Math.floor(Math.random() * PIANO_MELODY.length)], 0.4, 0.45)
+  }
+  if (step % 24 === 12) calmBell()
 }
 
 function startCalm() {
@@ -154,9 +215,9 @@ function startCalm() {
 
     // 777 Hz, a hair-detuned twin for a soft shimmer, and a warm low octave.
     const voices = [
-      [CALM_HZ, 0.5],
-      [CALM_HZ + 0.4, 0.25],
-      [CALM_HZ / 2, 0.35],
+      [CALM_HZ, 0.3],
+      [CALM_HZ + 0.4, 0.15],
+      [CALM_HZ / 2, 0.25],
       [CALM_HZ * 1.5, 0.06],
     ]
     calm.nodes = [lfo]
@@ -171,8 +232,12 @@ function startCalm() {
       calm.nodes.push(osc)
     })
 
-    calm.bellTimer = setInterval(() => !calm.ducked && calmBell(), 7000)
-    setTimeout(calmBell, 1500)
+    // Soft piano on top, one gentle note per beat, with a bell now and then.
+    let step = 0
+    calm.bellTimer = setInterval(() => {
+      if (calm.ducked) return
+      calmPianoStep(step++)
+    }, PIANO_BEAT_MS)
   } catch {}
 }
 
