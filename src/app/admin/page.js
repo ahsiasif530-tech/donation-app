@@ -144,10 +144,19 @@ export default async function AdminPage({ searchParams }) {
     if (!personPageIds.has(person)) personPageIds.set(person, new Set())
     personPageIds.get(person).add(p.id)
   }
+  // Today is the Bangladesh calendar day (UTC+6, no daylight saving),
+  // compared with yesterday up to the same time of day.
+  const DHAKA_OFFSET = 6 * 60 * 60 * 1000
+  const dhakaTodayStart = Math.floor((now + DHAKA_OFFSET) / DAY_MS) * DAY_MS - DHAKA_OFFSET
+  const atOf = (d) => new Date(d.created_at).getTime()
+  const todayStats = (rows) => ({
+    ...sumOf(rows.filter((d) => atOf(d) >= dhakaTodayStart)),
+    prev: sumOf(rows.filter((d) => atOf(d) >= dhakaTodayStart - DAY_MS && atOf(d) <= now - DAY_MS)).total,
+  })
   const personOrder = [...personPageIds.keys()]
   const teamPeople = [...personPageIds.entries()].map(([name, ids]) => {
     const rows = completed.filter((d) => ids.has(d.page_id))
-    return { name, color: personColor(name, personOrder), pages: ids.size, week: windowStats(rows, 7), month: windowStats(rows, 30), all: sumOf(rows) }
+    return { name, color: personColor(name, personOrder), pages: ids.size, today: todayStats(rows), week: windowStats(rows, 7), month: windowStats(rows, 30), all: sumOf(rows) }
   })
 
   // Chart data: money per person per day for the last 7 and 30 days, and per
@@ -155,8 +164,8 @@ export default async function AdminPage({ searchParams }) {
   const pageOwner = Object.fromEntries((pages || []).map((p) => [p.id, p.label || p.title]))
   const dayLabel = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
   const todayStart = Math.floor(now / DAY_MS) * DAY_MS
-  const buildChart = (bucketMs, count, start) => {
-    const labels = Array.from({ length: count }, (_, i) => dayLabel(start + i * bucketMs))
+  const buildChart = (bucketMs, count, start, labelOf = dayLabel) => {
+    const labels = Array.from({ length: count }, (_, i) => labelOf(start + i * bucketMs, i))
     const values = Object.fromEntries(personOrder.map((name) => [name, new Array(count).fill(0)]))
     for (const d of completed) {
       const i = Math.floor((new Date(d.created_at).getTime() - start) / bucketMs)
@@ -168,7 +177,12 @@ export default async function AdminPage({ searchParams }) {
   const firstDonation = completed.length ? Math.min(...completed.map((d) => new Date(d.created_at).getTime())) : todayStart
   const WEEK_MS = 7 * DAY_MS
   const allStart = Math.floor(firstDonation / DAY_MS) * DAY_MS
+  // Today by Bangladesh hour, up to the current hour.
+  const HOUR_MS = 60 * 60 * 1000
+  const hoursSoFar = Math.floor((now - dhakaTodayStart) / HOUR_MS) + 1
+  const hourLabel = (_, h) => `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`
   const teamCharts = {
+    today: buildChart(HOUR_MS, Math.max(2, hoursSoFar), dhakaTodayStart, hourLabel),
     week: buildChart(DAY_MS, 7, todayStart - 6 * DAY_MS),
     month: buildChart(DAY_MS, 30, todayStart - 29 * DAY_MS),
     all: buildChart(WEEK_MS, Math.max(2, Math.ceil((todayStart + DAY_MS - allStart) / WEEK_MS)), allStart),

@@ -4,6 +4,7 @@ import { useId, useState } from 'react'
 import { initials } from '@/lib/avatar'
 
 const PERIODS = [
+  { key: 'today', label: 'Today', compare: 'yesterday at this time' },
   { key: 'week', label: '7 days', compare: 'previous 7 days' },
   { key: 'month', label: '30 days', compare: 'previous 30 days' },
   { key: 'all', label: 'All time', compare: null },
