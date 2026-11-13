@@ -49,6 +49,59 @@ function airportChime() {
   })
 }
 
+// Short, soft "pit-pit" notes. Checkout gets two quick pips; a payment gets a
+// happy rising three with a little sparkle on top.
+const PIPS = {
+  start: [
+    [1318.5, 0],
+    [1318.5, 0.16],
+  ],
+  paid: [
+    [1046.5, 0],
+    [1318.5, 0.13],
+    [1568, 0.26],
+    [2093, 0.42],
+  ],
+}
+
+function pips(kind) {
+  return new Promise((resolve) => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return resolve()
+      const ctx = new Ctx()
+      const notes = PIPS[kind] || PIPS.start
+      notes.forEach(([freq, at], i) => {
+        const start = ctx.currentTime + at
+        const last = i === notes.length - 1 && kind === 'paid'
+        const len = last ? 0.5 : 0.11
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        gain.gain.setValueAtTime(0.0001, start)
+        gain.gain.exponentialRampToValueAtTime(0.2, start + 0.008)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + len)
+        osc.connect(gain).connect(ctx.destination)
+        osc.start(start)
+        osc.stop(start + len + 0.05)
+      })
+      setTimeout(() => {
+        ctx.close()
+        resolve()
+      }, 1100)
+    } catch {
+      resolve()
+    }
+  })
+}
+
+const MODES = [
+  { id: 'voice', icon: '🔊', label: 'Voice', hint: 'Chime and spoken announcement' },
+  { id: 'beep', icon: '🔔', label: 'Beep', hint: 'Short pit-pit sound only' },
+  { id: 'off', icon: '🔇', label: 'Off', hint: 'No sound, pop-ups only' },
+]
+
 function pickVoice() {
   const voices = window.speechSynthesis?.getVoices() || []
   for (const name of PREFERRED_VOICES) {
@@ -91,22 +144,25 @@ export default function LiveDonations() {
   const paid = useRef(null)
   const queue = useRef(Promise.resolve())
   const [toasts, setToasts] = useState([])
-  const [muted, setMuted] = useState(false)
-  const mutedRef = useRef(false)
+  const [mode, setMode] = useState('voice')
+  const modeRef = useRef('voice')
 
   useEffect(() => {
     try {
-      const m = localStorage.getItem('admin-live-muted') === '1'
-      setMuted(m)
-      mutedRef.current = m
+      let m = localStorage.getItem('admin-live-sound')
+      if (!MODES.some((x) => x.id === m)) m = localStorage.getItem('admin-live-muted') === '1' ? 'off' : 'voice'
+      setMode(m)
+      modeRef.current = m
     } catch {}
     // Voices load late in some browsers; asking once wakes them up.
     window.speechSynthesis?.getVoices()
   }, [])
 
-  const announce = (text) => {
-    if (mutedRef.current) return
+  const announce = (kind, text) => {
+    const m = modeRef.current
+    if (m === 'off') return
     queue.current = queue.current.then(async () => {
+      if (m === 'beep') return pips(kind)
       await airportChime()
       await speak(text)
     })
@@ -139,13 +195,13 @@ export default function LiveDonations() {
           // are still announced, checkout first.
           if (isNew) {
             addToast({ ...d, id: `start-${d.invoice}`, kind: 'start' })
-            announce(checkoutText(d))
+            announce('start', checkoutText(d))
           }
           if (d.status === 'completed' && !paid.current.has(d.invoice)) {
             paid.current.add(d.invoice)
             anyPaid = true
             addToast({ ...d, id: `paid-${d.invoice}`, kind: 'paid' })
-            announce(receivedText(d))
+            announce('paid', receivedText(d))
           }
         }
         if (anyPaid) router.refresh()
@@ -163,14 +219,15 @@ export default function LiveDonations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  function toggleMute() {
-    const next = !muted
-    setMuted(next)
-    mutedRef.current = next
-    if (next) window.speechSynthesis?.cancel()
+  function choose(next) {
+    setMode(next)
+    modeRef.current = next
+    if (next !== 'voice') window.speechSynthesis?.cancel()
     try {
-      localStorage.setItem('admin-live-muted', next ? '1' : '0')
+      localStorage.setItem('admin-live-sound', next)
     } catch {}
+    // Picking a sound plays a quick sample (and lets the browser play sound).
+    if (next === 'beep') queue.current = queue.current.then(() => pips('paid'))
   }
 
   // Plays a sample so the admin can hear it (this click also lets the
@@ -178,6 +235,12 @@ export default function LiveDonations() {
   function test() {
     const sample = { amount: 25, country: 'United States', page: 'Sagor', pageTitle: 'Royal Grace' }
     queue.current = queue.current.then(async () => {
+      if (modeRef.current === 'beep') {
+        await pips('start')
+        await new Promise((r) => setTimeout(r, 500))
+        await pips('paid')
+        return
+      }
       await airportChime()
       await speak(checkoutText(sample))
       await airportChime()
@@ -195,23 +258,30 @@ export default function LiveDonations() {
           </span>
           Live
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!muted}
-          onClick={toggleMute}
-          title={muted ? 'Voice is off — click to turn it on' : 'Voice is on — click to turn it off'}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold sm:border-l"
-          style={{ borderColor: 'var(--a-border)', color: muted ? 'var(--a-text-muted)' : 'var(--a-success)' }}
-        >
-          <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
-          <span className="hidden sm:inline">Voice</span>
-          <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: muted ? 'var(--a-border)' : 'var(--a-success)' }} aria-hidden="true">
-            <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: muted ? 2 : 14 }} />
-          </span>
-          <span className="hidden sm:inline">{muted ? 'Off' : 'On'}</span>
-        </button>
-        {!muted && (
+        <span role="radiogroup" aria-label="Alert sound" className="inline-flex items-center gap-0.5 p-0.5 sm:border-l" style={{ borderColor: 'var(--a-border)' }}>
+          {MODES.map((m) => {
+            const on = mode === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => choose(m.id)}
+                title={m.hint}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold transition-colors"
+                style={{
+                  background: on ? (m.id === 'off' ? 'var(--a-border)' : 'rgba(52,211,153,0.16)') : 'transparent',
+                  color: on ? (m.id === 'off' ? 'var(--a-text)' : 'var(--a-success)') : 'var(--a-text-muted)',
+                }}
+              >
+                <span aria-hidden="true">{m.icon}</span>
+                <span className="hidden sm:inline">{m.label}</span>
+              </button>
+            )
+          })}
+        </span>
+        {mode !== 'off' && (
           <button
             type="button"
             onClick={test}
