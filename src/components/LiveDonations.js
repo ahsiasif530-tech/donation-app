@@ -353,21 +353,6 @@ export default function LiveDonations() {
             )
           })}
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={pulse}
-          onClick={togglePulse}
-          title={pulse ? 'Background piiit is on (every few seconds) — click to turn off' : 'Background piiit is off — click to turn on'}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold border-l"
-          style={{ borderColor: 'var(--a-border)', color: pulse ? 'var(--a-success)' : 'var(--a-text-muted)' }}
-        >
-          <span aria-hidden="true" className={pulse ? 'animate-pulse' : ''}>💓</span>
-          <span className="hidden sm:inline">Pulse</span>
-          <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: pulse ? 'var(--a-success)' : 'var(--a-border)' }} aria-hidden="true">
-            <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: pulse ? 14 : 2 }} />
-          </span>
-        </button>
         {mode !== 'off' && (
           <button
             type="button"
@@ -380,6 +365,28 @@ export default function LiveDonations() {
           </button>
         )}
       </div>
+
+      {/* The background pulse is its own control, apart from the alert sound. */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={pulse}
+        onClick={togglePulse}
+        title={pulse ? 'Background piiit is on (every few seconds) — click to turn off' : 'Background piiit is off — click to turn on'}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors"
+        style={{
+          background: pulse ? 'rgba(244,114,182,0.12)' : 'var(--a-surface)',
+          border: `1px solid ${pulse ? 'rgba(244,114,182,0.45)' : 'var(--a-border)'}`,
+          color: pulse ? '#F472B6' : 'var(--a-text-muted)',
+        }}
+      >
+        <span aria-hidden="true" className={pulse ? 'animate-pulse' : ''}>💓</span>
+        <span className="hidden sm:inline">Pulse</span>
+        <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: pulse ? '#F472B6' : 'var(--a-border)' }} aria-hidden="true">
+          <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: pulse ? 14 : 2 }} />
+        </span>
+        <span className="hidden sm:inline">{pulse ? 'On' : 'Off'}</span>
+      </button>
 
       <AdminPortal>
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[min(360px,calc(100vw-2rem))]" aria-live="polite">
