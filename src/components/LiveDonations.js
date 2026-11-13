@@ -321,9 +321,9 @@ function duckEngine(eng, down, level) {
   } catch {}
 }
 
-// Rain on a tent in a storm: a muffled downpour as heard from inside, the
-// canvas drumming with thousands of drops, wind gusts, and thunder now and
-// then — mostly far away, sometimes close with a crack first.
+// Rain on a tin roof in a storm, heard from inside: the roar on the sheets,
+// bright metal "tak-tik" drops with a fat ringing drop now and then, a little
+// wind, and thunder — mostly far away, sometimes close with a crack first.
 const RAIN_LEVEL = 0.35
 const rain = { ctx: null, master: null, timer: null, later: null, ducked: false }
 
@@ -422,34 +422,71 @@ function startRain() {
     rain.white = white
     rain.thunderNoise = noiseBuffer(ctx, 12, true)
 
-    // The downpour outside, muffled by the canvas, coming in waves.
-    loopNoise(ctx, brown, master, { type: 'lowpass', freq: 900, level: 0.75, lfoHz: 0.07, lfoDepth: 0.25 })
-    // The canvas itself hissing under the rain.
-    loopNoise(ctx, white, master, { type: 'bandpass', freq: 2200, q: 0.5, level: 0.05, lfoHz: 0.07, lfoDepth: 0.02 })
-    // Wind gusting around the tent.
-    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 320, q: 0.8, level: 0.35, lfoHz: 0.031, lfoDepth: 0.3 })
+    // The steady roar of rain on the roof, coming in waves.
+    loopNoise(ctx, brown, master, { type: 'lowpass', freq: 2200, level: 0.55, lfoHz: 0.07, lfoDepth: 0.2 })
+    // The bright metallic hiss of the sheets under the rain.
+    loopNoise(ctx, white, master, { type: 'bandpass', freq: 5200, q: 0.5, level: 0.06, lfoHz: 0.07, lfoDepth: 0.025 })
+    // The sheets humming low as the rain hammers them.
+    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 240, q: 1.5, level: 0.25, lfoHz: 0.05, lfoDepth: 0.12 })
+    // Wind, softer now, outside.
+    loopNoise(ctx, brown, master, { type: 'bandpass', freq: 380, q: 0.8, level: 0.18, lfoHz: 0.031, lfoDepth: 0.15 })
 
-    // Drops drumming on the tent: soft, dull taps, many at a time.
+    // A metal "tong": a few out-of-tune partials that ring briefly, like a
+    // fat drop hitting a tin sheet.
+    const tong = (at, base, level) => {
+      ;[1, 2.76, 5.4].forEach((mult, i) => {
+        const osc = ctx.createOscillator()
+        const g = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = base * mult
+        const peak = level / (i + 1)
+        const ring = 0.35 / (i + 1)
+        g.gain.setValueAtTime(0.0001, at)
+        g.gain.exponentialRampToValueAtTime(peak, at + 0.003)
+        g.gain.exponentialRampToValueAtTime(0.0001, at + ring)
+        osc.connect(g).connect(master)
+        osc.start(at)
+        osc.stop(at + ring + 0.02)
+      })
+    }
+
+    // Drops on the tin: sharp bright "tak-tik" clicks, lots at once, with
+    // a fat drop now and then that rings the metal and thuds the sheet.
     const tapBuffer = noiseBuffer(ctx, 0.12, false)
     rain.timer = setInterval(() => {
       if (rain.ducked || !rain.ctx) return
-      const count = 2 + Math.floor(Math.random() * 4)
+      const count = 3 + Math.floor(Math.random() * 5)
       for (let i = 0; i < count; i++) {
         const at = ctx.currentTime + 0.02 + Math.random() * 0.07
         const tap = ctx.createBufferSource()
         tap.buffer = tapBuffer
         const tone = ctx.createBiquadFilter()
         tone.type = 'bandpass'
-        tone.frequency.value = 450 + Math.random() * 1100
-        tone.Q.value = 2.2
+        tone.frequency.value = 2500 + Math.random() * 4500
+        tone.Q.value = 6 + Math.random() * 6
         const g = ctx.createGain()
-        const big = Math.random() < 0.12
-        const peak = big ? 0.22 + Math.random() * 0.12 : 0.05 + Math.random() * 0.09
-        const len = big ? 0.1 : 0.035 + Math.random() * 0.04
+        const peak = 0.12 + Math.random() * 0.22
+        const len = 0.02 + Math.random() * 0.04
         g.gain.setValueAtTime(peak, at)
         g.gain.exponentialRampToValueAtTime(0.0001, at + len)
         tap.connect(tone).connect(g).connect(master)
         tap.start(at, Math.random() * 0.05, len + 0.02)
+      }
+      if (Math.random() < 0.18) {
+        const at = ctx.currentTime + 0.02 + Math.random() * 0.07
+        tong(at, 520 + Math.random() * 700, 0.035 + Math.random() * 0.03)
+        // The sheet's dull thud under it.
+        const thud = ctx.createBufferSource()
+        thud.buffer = tapBuffer
+        const low = ctx.createBiquadFilter()
+        low.type = 'bandpass'
+        low.frequency.value = 160 + Math.random() * 90
+        low.Q.value = 3
+        const tg = ctx.createGain()
+        tg.gain.setValueAtTime(0.5, at)
+        tg.gain.exponentialRampToValueAtTime(0.0001, at + 0.11)
+        thud.connect(low).connect(tg).connect(master)
+        thud.start(at, 0, 0.12)
       }
     }, 70)
 
@@ -886,7 +923,7 @@ export default function LiveDonations() {
       </button>
 
       {/* Sleep sounds: rain and a slow piano, each its own switch. */}
-      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Rain on the tent is on — click to turn off' : 'Rain on a tent, with a storm now and then'} />
+      <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label="Rain" color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? 'Rain on the tin roof is on — click to turn off' : 'Rain on a tin roof, with a storm now and then'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
 
       {/* My music: a song from this computer, its own control again. */}
