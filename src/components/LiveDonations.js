@@ -701,9 +701,173 @@ function startSleepPiano() {
   } catch {}
 }
 
+// ---- Morning birds: a Bangladeshi dawn chorus, made in the browser. A
+// doel's (magpie-robin) whistled song, sparrows chattering, a ghughu (dove)
+// cooing low, a koel calling in the distance, little trills — each from a
+// different spot left/right and near/far, over a soft morning breeze.
+const BIRDS_LEVEL = 0.3
+const birds = { ctx: null, master: null, timer: null, later: null, ducked: false }
+
+// One whistled note: a sine gliding from f0 to f1, with a little warble.
+function birdNote(at, f0, f1, dur, level, out, warble = 0) {
+  const { ctx } = birds
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(f0, at)
+  osc.frequency.exponentialRampToValueAtTime(Math.max(60, f1), at + dur)
+  if (warble) {
+    const lfo = ctx.createOscillator()
+    const depth = ctx.createGain()
+    lfo.frequency.value = 25 + Math.random() * 20
+    depth.gain.value = warble
+    lfo.connect(depth).connect(osc.frequency)
+    lfo.start(at)
+    lfo.stop(at + dur + 0.05)
+  }
+  g.gain.setValueAtTime(0.0001, at)
+  g.gain.exponentialRampToValueAtTime(level, at + Math.min(0.015, dur / 3))
+  g.gain.setValueAtTime(level, at + dur * 0.7)
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur)
+  osc.connect(g).connect(out)
+  osc.start(at)
+  osc.stop(at + dur + 0.02)
+}
+
+// Where a bird sits: left/right and how far (far = quieter, duller).
+function birdSpot() {
+  const { ctx, master } = birds
+  const far = Math.random()
+  const out = ctx.createGain()
+  out.gain.value = 1 - far * 0.75
+  const tone = ctx.createBiquadFilter()
+  tone.type = 'lowpass'
+  tone.frequency.value = 9000 - far * 5500
+  out.connect(tone)
+  let last = tone
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner()
+    p.pan.value = Math.random() * 1.8 - 0.9
+    last.connect(p)
+    last = p
+  }
+  last.connect(master)
+  if (birds.room) {
+    const w = ctx.createGain()
+    w.gain.value = 0.15 + far * 0.35
+    last.connect(w).connect(birds.room)
+  }
+  return out
+}
+
+const BIRD_CALLS = {
+  // Doel: a sweet, varied whistled phrase.
+  doel(t, out) {
+    const n = 5 + Math.floor(Math.random() * 5)
+    for (let i = 0; i < n; i++) {
+      const f = 1800 + Math.random() * 1800
+      const dur = 0.08 + Math.random() * 0.16
+      const glide = f * (0.8 + Math.random() * 0.45)
+      birdNote(t, f, glide, dur, 0.16, out, Math.random() < 0.3 ? 60 : 0)
+      t += dur + 0.03 + Math.random() * 0.07
+    }
+    return t
+  },
+  // Chorui (sparrow): quick bright chirps.
+  sparrow(t, out) {
+    const n = 2 + Math.floor(Math.random() * 5)
+    const base = 3400 + Math.random() * 1200
+    for (let i = 0; i < n; i++) {
+      birdNote(t, base * 1.25, base * 0.85, 0.05 + Math.random() * 0.03, 0.12, out)
+      t += 0.09 + Math.random() * 0.08
+    }
+    return t
+  },
+  // Ghughu (dove): a soft low "ghu-ghuu… ghu".
+  dove(t, out) {
+    const base = 420 + Math.random() * 80
+    const pattern = [
+      [0.25, 1],
+      [0.5, 1.08],
+      [0.22, 0.95],
+    ]
+    for (const [dur, k] of pattern) {
+      birdNote(t, base * k * 1.04, base * k * 0.96, dur, 0.13, out, 6)
+      t += dur + 0.12
+    }
+    return t
+  },
+  // Kokil (koel): "ku-oo", repeated, rising each time, far away.
+  koel(t, out) {
+    const n = 3 + Math.floor(Math.random() * 3)
+    let base = 620 + Math.random() * 60
+    for (let i = 0; i < n; i++) {
+      birdNote(t, base, base * 0.95, 0.16, 0.1, out)
+      birdNote(t + 0.2, base * 1.12, base * 1.32, 0.42, 0.11, out)
+      t += 0.9
+      base *= 1.06
+    }
+    return t
+  },
+  // A tiny bird's fast trill.
+  trill(t, out) {
+    const f = 4200 + Math.random() * 1800
+    const n = 8 + Math.floor(Math.random() * 10)
+    for (let i = 0; i < n; i++) {
+      birdNote(t, f * 1.05, f * 0.95, 0.025, 0.07, out)
+      t += 0.045
+    }
+    return t
+  },
+}
+// How often each sings (doel and sparrows most, koel now and then).
+const BIRD_MIX = ['doel', 'doel', 'doel', 'sparrow', 'sparrow', 'sparrow', 'sparrow', 'dove', 'dove', 'koel', 'trill', 'trill']
+
+function startBirds() {
+  try {
+    if (!openEngine(birds, BIRDS_LEVEL)) return
+    const { ctx, master } = birds
+    birds.timeouts = []
+    birds.room = makeRoom(ctx, 1.8, 2.5)
+    const roomOut = ctx.createGain()
+    roomOut.gain.value = 0.6
+    birds.room.connect(roomOut).connect(master)
+    // A soft morning breeze under it all.
+    const breeze = ctx.createBufferSource()
+    breeze.buffer = noiseBuffer(ctx, 8, true)
+    breeze.loop = true
+    const bf = ctx.createBiquadFilter()
+    bf.type = 'bandpass'
+    bf.frequency.value = 500
+    bf.Q.value = 0.6
+    const bg = ctx.createGain()
+    bg.gain.value = 0.12
+    breeze.connect(bf).connect(bg).connect(master)
+    breeze.start()
+
+    // Each bird keeps its own spot for a while, so a doel "stays" on one
+    // branch and answers itself.
+    const spots = {}
+    const sing = () => {
+      if (!birds.ctx) return
+      if (!birds.ducked) {
+        const kind = BIRD_MIX[Math.floor(Math.random() * BIRD_MIX.length)]
+        if (!spots[kind] || Math.random() < 0.25) spots[kind] = birdSpot()
+        BIRD_CALLS[kind](ctx.currentTime + 0.05, spots[kind])
+      }
+      const id = setTimeout(sing, 500 + Math.random() * 2200)
+      birds.timeouts = [...birds.timeouts.slice(-20), id]
+    }
+    sing()
+    // A second voice so two birds sometimes overlap, like a real chorus.
+    const id = setTimeout(sing, 1300)
+    birds.timeouts.push(id)
+  } catch {}
+}
+
 // One on/off switch for a background sound, remembered in this browser.
 // After a reload, the first click on the page starts it (browsers need one).
-function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain = false) {
+function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain = false, followMorning = false) {
   const [on, setOn] = useState(false)
   // True while the sound is on only because it is really raining outside
   // (AdminSky reports the weather); it then stops by itself with the rain.
@@ -733,6 +897,29 @@ function useAmbient(storageKey, start, eng, level, busy, quietUntil, followRain 
     window.addEventListener('admin-weather', onWeather)
     return () => window.removeEventListener('admin-weather', onWeather)
   }, [followRain])
+  // Morning birds: on by themselves from 5:00 to 7:00 (this computer's
+  // clock), off again after — the same way the rain follows the weather.
+  useEffect(() => {
+    if (!followMorning) return
+    let wasMorning = false
+    const check = () => {
+      const h = new Date().getHours()
+      const morning = h >= 5 && h < 7
+      if (morning && !wasMorning) {
+        setOn((cur) => {
+          if (!cur) byRain.current = true
+          return true
+        })
+      } else if (!morning && wasMorning && byRain.current) {
+        byRain.current = false
+        setOn(false)
+      }
+      wasMorning = morning
+    }
+    check()
+    const timer = setInterval(check, 30000)
+    return () => clearInterval(timer)
+  }, [followMorning])
   useEffect(() => {
     if (!on) return
     start()
@@ -880,6 +1067,7 @@ export default function LiveDonations() {
 
   const [rainOn, toggleRain, rainByWeather] = useAmbient('admin-live-rain', startRain, rain, RAIN_LEVEL, busy, quietUntil, true)
   const [sleepOn, toggleSleep] = useAmbient('admin-live-sleep-piano', startSleepPiano, sleepPiano, SLEEP_LEVEL, busy, quietUntil)
+  const [birdsOn, toggleBirds, birdsByMorning] = useAmbient('admin-live-birds', startBirds, birds, BIRDS_LEVEL, busy, quietUntil, false, true)
 
   // "My music": a song the admin picks from their own computer. It plays
   // straight from that file in this browser — nothing is uploaded — loops,
@@ -1125,6 +1313,7 @@ export default function LiveDonations() {
       {/* Sleep sounds: rain and a slow piano, each its own switch. */}
       <SoundSwitch on={rainOn} onClick={toggleRain} icon="🌧" label={rainByWeather ? "Rain · auto" : "Rain"} color="#60A5FA" tint="rgba(96,165,250,0.12)" hint={rainOn ? (rainByWeather ? 'It is raining where you are, so the rain sound came on by itself — click to turn off' : 'Storm night in a tin hut is on — click to turn off') : 'Lying in a tin hut in the forest: rain, wind, frogs and thunder'} />
       <SoundSwitch on={sleepOn} onClick={toggleSleep} icon="🎹" label="Sleep piano" color="#FBBF24" tint="rgba(251,191,36,0.12)" hint={sleepOn ? 'Sleep piano is on — click to turn off' : 'Play a slow, sleepy piano'} />
+      <SoundSwitch on={birdsOn} onClick={toggleBirds} icon="🐦" label={birdsByMorning ? "Birds · auto" : "Birds"} color="#4ADE80" tint="rgba(74,222,128,0.12)" hint={birdsOn ? (birdsByMorning ? "Morning birds came on by themselves (5–7 AM) — click to turn off" : "Morning birds are on — click to turn off") : "Morning birds: doel, sparrows, ghughu, koel. Comes on by itself 5–7 AM"} />
 
       {/* My music: a song from this computer, its own control again. */}
       <input ref={fileInput} type="file" accept="audio/*,video/mp4" className="hidden" onChange={pickMusic} />
