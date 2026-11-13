@@ -96,29 +96,113 @@ function pips(kind) {
   })
 }
 
-// The always-on background "piiit", like a monitor quietly saying it is
-// alive. One shared audio context so a gap of a few seconds stays cheap.
-const PULSE_MS = 6500
-let pulseCtx = null
-function pulseBeep() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext
-    if (!Ctx) return
-    if (!pulseCtx || pulseCtx.state === 'closed') pulseCtx = new Ctx()
-    const ctx = pulseCtx
-    if (ctx.state === 'suspended') ctx.resume()
-    const start = ctx.currentTime + 0.02
+// Calm 777 Hz background music: a soft, slowly breathing 777 Hz tone with a
+// warm low octave, plus gentle bell notes now and then from a scale built on
+// 777 Hz. It fades out while an alert plays and fades back in after.
+const CALM_HZ = 777
+const CALM_LEVEL = 0.055
+const CALM_BELLS = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2].map((r) => CALM_HZ * r)
+const calm = { ctx: null, master: null, nodes: [], bellTimer: null, ducked: false }
+
+function calmBell() {
+  const { ctx, master } = calm
+  if (!ctx || !master) return
+  const freq = CALM_BELLS[Math.floor(Math.random() * CALM_BELLS.length)]
+  const start = ctx.currentTime + 0.05
+  ;[1, 2.003].forEach((mult, i) => {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.type = 'sine'
-    osc.frequency.value = 987.8
+    osc.frequency.value = freq * mult
+    const peak = i === 0 ? 0.5 : 0.08
     gain.gain.setValueAtTime(0.0001, start)
-    gain.gain.exponentialRampToValueAtTime(0.09, start + 0.02)
-    gain.gain.setValueAtTime(0.09, start + 0.28)
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45)
-    osc.connect(gain).connect(ctx.destination)
+    gain.gain.exponentialRampToValueAtTime(peak, start + 0.04)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 4.5)
+    osc.connect(gain).connect(master)
     osc.start(start)
-    osc.stop(start + 0.5)
+    osc.stop(start + 4.6)
+  })
+}
+
+function startCalm() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    if (calm.ctx) {
+      if (calm.ctx.state === 'suspended') calm.ctx.resume()
+      return
+    }
+    const ctx = new Ctx()
+    const master = ctx.createGain()
+    master.gain.setValueAtTime(0.0001, ctx.currentTime)
+    master.gain.exponentialRampToValueAtTime(CALM_LEVEL, ctx.currentTime + 3)
+    master.connect(ctx.destination)
+    calm.ctx = ctx
+    calm.master = master
+    calm.ducked = false
+
+    // Slow "breathing" swell, about one breath every 10 seconds.
+    const breath = ctx.createGain()
+    breath.gain.value = 0.7
+    breath.connect(master)
+    const lfo = ctx.createOscillator()
+    const lfoDepth = ctx.createGain()
+    lfo.frequency.value = 0.1
+    lfoDepth.gain.value = 0.3
+    lfo.connect(lfoDepth).connect(breath.gain)
+    lfo.start()
+
+    // 777 Hz, a hair-detuned twin for a soft shimmer, and a warm low octave.
+    const voices = [
+      [CALM_HZ, 0.5],
+      [CALM_HZ + 0.4, 0.25],
+      [CALM_HZ / 2, 0.35],
+      [CALM_HZ * 1.5, 0.06],
+    ]
+    calm.nodes = [lfo]
+    voices.forEach(([freq, level]) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.value = level
+      osc.connect(gain).connect(breath)
+      osc.start()
+      calm.nodes.push(osc)
+    })
+
+    calm.bellTimer = setInterval(() => !calm.ducked && calmBell(), 7000)
+    setTimeout(calmBell, 1500)
+  } catch {}
+}
+
+function stopCalm() {
+  const { ctx, master } = calm
+  clearInterval(calm.bellTimer)
+  calm.bellTimer = null
+  calm.ctx = null
+  calm.master = null
+  calm.nodes = []
+  if (!ctx) return
+  try {
+    master.gain.cancelScheduledValues(ctx.currentTime)
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), ctx.currentTime)
+    master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2)
+    setTimeout(() => ctx.close(), 1400)
+  } catch {
+    ctx.close()
+  }
+}
+
+function duckCalm(down) {
+  const { ctx, master } = calm
+  if (!ctx || calm.ducked === down) return
+  calm.ducked = down
+  try {
+    const now = ctx.currentTime
+    master.gain.cancelScheduledValues(now)
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now)
+    master.gain.exponentialRampToValueAtTime(down ? 0.0001 : CALM_LEVEL, now + (down ? 0.5 : 3))
   } catch {}
 }
 
@@ -184,37 +268,42 @@ export default function LiveDonations() {
     window.speechSynthesis?.getVoices()
   }, [])
 
-  // Background pulse: its own on/off, remembered per browser. It stays quiet
-  // while an alert is playing and for a moment after.
+  // Calm 777 Hz music: its own on/off, remembered per browser. It fades out
+  // while an alert is playing and comes back softly after.
   const [pulse, setPulse] = useState(false)
   const busy = useRef(0)
   const quietUntil = useRef(0)
 
   useEffect(() => {
     try {
-      setPulse(localStorage.getItem('admin-live-pulse') === '1')
+      setPulse(localStorage.getItem('admin-live-calm') === '1')
     } catch {}
   }, [])
 
   useEffect(() => {
     if (!pulse) return
-    const timer = setInterval(() => {
-      if (busy.current > 0 || Date.now() < quietUntil.current) return
-      pulseBeep()
-    }, PULSE_MS)
-    return () => clearInterval(timer)
+    startCalm()
+    // Browsers only allow sound after a click, so after a reload the first
+    // click anywhere on the page starts the music.
+    const wake = () => startCalm()
+    document.addEventListener('pointerdown', wake)
+    const timer = setInterval(() => duckCalm(busy.current > 0 || Date.now() < quietUntil.current), 400)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('pointerdown', wake)
+      stopCalm()
+    }
   }, [pulse])
 
   function togglePulse() {
     const next = !pulse
     setPulse(next)
     try {
-      localStorage.setItem('admin-live-pulse', next ? '1' : '0')
+      localStorage.setItem('admin-live-calm', next ? '1' : '0')
     } catch {}
-    if (next) pulseBeep()
   }
 
-  // Runs a sound job in the queue while holding the pulse back.
+  // Runs a sound job in the queue while holding the music back.
   const play = (job) => {
     busy.current += 1
     queue.current = queue.current
@@ -229,8 +318,8 @@ export default function LiveDonations() {
   const announce = (kind, text) => {
     const m = modeRef.current
     if (m === 'off') {
-      // Even with sound off, the pulse pauses so the moment stands out.
-      quietUntil.current = Date.now() + PULSE_MS
+      // Even with sound off, the music dips so the moment stands out.
+      quietUntil.current = Date.now() + 5000
       return
     }
     play(async () => {
@@ -366,13 +455,13 @@ export default function LiveDonations() {
         )}
       </div>
 
-      {/* The background pulse is its own control, apart from the alert sound. */}
+      {/* The calm music is its own control, apart from the alert sound. */}
       <button
         type="button"
         role="switch"
         aria-checked={pulse}
         onClick={togglePulse}
-        title={pulse ? 'Background piiit is on (every few seconds) — click to turn off' : 'Background piiit is off — click to turn on'}
+        title={pulse ? 'Calm 777 Hz music is playing — click to turn off' : 'Play calm 777 Hz background music'}
         className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors"
         style={{
           background: pulse ? 'rgba(244,114,182,0.12)' : 'var(--a-surface)',
@@ -380,8 +469,8 @@ export default function LiveDonations() {
           color: pulse ? '#F472B6' : 'var(--a-text-muted)',
         }}
       >
-        <span aria-hidden="true" className={pulse ? 'animate-pulse' : ''}>💓</span>
-        <span className="hidden sm:inline">Pulse</span>
+        <span aria-hidden="true" className={pulse ? 'animate-pulse' : ''}>🎵</span>
+        <span className="hidden sm:inline">Calm 777</span>
         <span className="relative inline-block w-7 h-4 rounded-full transition-colors" style={{ background: pulse ? '#F472B6' : 'var(--a-border)' }} aria-hidden="true">
           <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all" style={{ left: pulse ? 14 : 2 }} />
         </span>
