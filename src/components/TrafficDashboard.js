@@ -1,7 +1,9 @@
 'use client'
 
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { initials } from '@/lib/avatar'
+import { PAGES_PER_GROUP, SEPARATE_PAGE_SLUGS } from '@/lib/pageDomains'
+import GroupPager from './GroupPager'
 
 const money = (n) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const rate = (part, whole) => (whole ? (part / whole) * 100 : 0)
@@ -204,154 +206,180 @@ const COLUMNS = [
   { key: 'payRate', label: 'Pay %' },
 ]
 
-// Every page in one sortable table; a row opens its day-by-day numbers.
-function PagesTable({ pages, people }) {
-  const [sort, setSort] = useState({ key: 'visitors', dir: -1 })
-  const [person, setPerson] = useState('all')
-  const [q, setQ] = useState('')
-  const [hideEmpty, setHideEmpty] = useState(true)
-  const [open, setOpen] = useState(null)
+const withRates = (p) => ({ ...p, clickRate: rate(p.total.clicks, p.total.visitors), payRate: rate(p.total.paid, p.total.visitors) })
 
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return pages
-      .map((p) => ({ ...p, clickRate: rate(p.total.clicks, p.total.visitors), payRate: rate(p.total.paid, p.total.visitors) }))
-      .filter((p) => person === 'all' || p.person === person)
-      .filter((p) => !hideEmpty || p.total.views > 0 || p.total.clicks > 0)
-      .filter((p) => !needle || `${p.person} ${p.title} ${p.slug} ${p.host || ''}`.toLowerCase().includes(needle))
-      .sort((a, b) => {
+// A table of pages; a row opens its daily numbers and sources. Clicking a
+// column sorts the rows shown (the groups themselves never change).
+function PageRows({ pages }) {
+  const [sort, setSort] = useState(null)
+  const [open, setOpen] = useState(null)
+  const rows = sort
+    ? [...pages].sort((a, b) => {
         const av = sort.key in a.total ? a.total[sort.key] : a[sort.key]
         const bv = sort.key in b.total ? b.total[sort.key] : b[sort.key]
         return (av - bv) * sort.dir
       })
-  }, [pages, sort, person, q, hideEmpty])
-
-  const hidden = pages.length - rows.length
+    : pages
 
   return (
-    <div className="a-card overflow-hidden">
-      <div className="px-5 py-4 border-b flex flex-wrap items-center gap-2" style={{ borderColor: 'var(--a-border)' }}>
-        <h2 className="a-section-title mr-2">Pages</h2>
-        {['all', ...people.map((x) => x.name)].map((name) => {
-          const on = name === person
-          const color = people.find((x) => x.name === name)?.color
-          return (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setPerson(name)}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
-              style={on ? { background: 'var(--a-accent)', color: 'var(--a-accent-ink)' } : { border: '1px solid var(--a-border)', color: 'var(--a-text)' }}
-            >
-              {color && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}
-              {name === 'all' ? 'All' : name}
-            </button>
-          )
-        })}
-        <div className="ml-auto flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'var(--a-text-muted)' }}>
-            <input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} />
-            Hide pages with no visits
-          </label>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="text-[11px] uppercase" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>
+          <tr>
+            <th className="text-left px-5 py-2.5 font-semibold">Page</th>
+            {COLUMNS.map((c) => (
+              <th key={c.key} className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => setSort((s) => (s?.key === c.key ? (s.dir < 0 ? { key: c.key, dir: 1 } : null) : { key: c.key, dir: -1 }))}
+                  className="uppercase hover:underline"
+                  style={{ color: sort?.key === c.key ? 'var(--a-accent-strong)' : undefined }}
+                >
+                  {c.label}
+                  {sort?.key === c.key ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
+                </button>
+              </th>
+            ))}
+            <th className="text-right px-5 py-2.5 font-semibold">Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p) => (
+            <Fragment key={p.id}>
+              <tr className="border-t cursor-pointer" style={{ borderColor: 'var(--a-border)' }} onClick={() => setOpen(open === p.id ? null : p.id)}>
+                <td className="px-5 py-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="a-avatar" style={{ background: p.color, width: 28, height: 28, borderRadius: 9, fontSize: '0.7rem' }}>{initials(p.person)}</span>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">
+                        {p.person}
+                        {p.host && <span className="font-normal" style={{ color: 'var(--a-text-muted)' }}> · {p.title}</span>}
+                      </p>
+                      <p className="text-[11px] truncate" style={{ color: 'var(--a-text-muted)' }}>{p.host || `/donate/${p.slug}`}</p>
+                    </div>
+                    <span className="ml-1 text-xs" style={{ color: 'var(--a-text-muted)' }}>{open === p.id ? '▴' : '▾'}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-right tabular-nums font-semibold">{p.total.visitors}</td>
+                <td className="px-3 py-3 text-right tabular-nums">{p.total.views}</td>
+                <td className="px-3 py-3 text-right tabular-nums">{p.total.clicks}</td>
+                <td className="px-3 py-3 text-right tabular-nums">{p.total.paid}</td>
+                <td className="px-3 py-3 text-right tabular-nums font-semibold">
+                  {money(p.total.earned)}
+                  <div><Change now={p.total.earned} before={p.prev.earned} /></div>
+                </td>
+                <td className="px-3 py-3 text-right tabular-nums">{pct(p.clickRate)}</td>
+                <td className="px-3 py-3 text-right tabular-nums">{pct(p.payRate)}</td>
+                <td className="px-5 py-3 text-right"><Sparkline values={p.daily.map((d) => d.visitors)} color={p.color} /></td>
+              </tr>
+              {open === p.id && (
+                <tr style={{ background: 'var(--a-surface-2)' }}>
+                  <td colSpan={9} className="px-5 py-4">
+                    {p.sources.length > 0 && (
+                      <p className="flex flex-wrap gap-1.5 mb-3 text-xs">
+                        <span style={{ color: 'var(--a-text-muted)' }}>Comes from:</span>
+                        {p.sources.map(([s, n]) => (
+                          <span key={s} className="rounded-full px-2 py-0.5" style={{ border: '1px solid var(--a-border)' }}>
+                            {sourceIcon(s)} {s} <b className="tabular-nums">{n}</b>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
+                      {[...p.daily].reverse().filter((d) => d.views || d.clicks).map((d) => (
+                        <div key={d.day} className="rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)' }}>
+                          <p className="font-bold mb-0.5">{longDay(d.day)}</p>
+                          <p style={{ color: 'var(--a-text-muted)' }}>{d.visitors} visitors · {d.clicks} clicks</p>
+                          <p>
+                            <b>{d.paid}</b> paid · <b className="tabular-nums">{money(d.earned)}</b>
+                          </p>
+                        </div>
+                      ))}
+                      {!p.daily.some((d) => d.views || d.clicks) && <p className="text-xs" style={{ color: 'var(--a-text-muted)' }}>No visits in this period.</p>}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={9} className="px-5 py-8 text-center text-sm" style={{ color: 'var(--a-text-muted)' }}>No pages match.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// Pages four at a time in the same groups and order as the admin's Pages
+// table, with México in its own box below. Choosing a person or typing a
+// name shows every matching page at once instead.
+function PagesTable({ pages, people }) {
+  const [group, setGroup] = useState(0)
+  const [person, setPerson] = useState('all')
+  const [q, setQ] = useState('')
+
+  const all = pages.map(withRates)
+  const main = all.filter((p) => !SEPARATE_PAGE_SLUGS.includes(p.slug))
+  const separate = all.filter((p) => SEPARATE_PAGE_SLUGS.includes(p.slug))
+  const groups = []
+  for (let i = 0; i < main.length; i += PAGES_PER_GROUP) groups.push(main.slice(i, i + PAGES_PER_GROUP))
+
+  const needle = q.trim().toLowerCase()
+  const filtering = person !== 'all' || needle
+  const shown = filtering
+    ? main.filter((p) => (person === 'all' || p.person === person) && (!needle || `${p.person} ${p.title} ${p.slug} ${p.host || ''}`.toLowerCase().includes(needle)))
+    : groups[Math.min(group, groups.length - 1)] || []
+
+  return (
+    <div className="space-y-4">
+      <div className="a-card overflow-hidden">
+        <div className="px-5 py-4 border-b flex flex-wrap items-center gap-2" style={{ borderColor: 'var(--a-border)' }}>
+          <h2 className="a-section-title mr-2">Pages</h2>
+          {['all', ...people.map((x) => x.name).filter((n) => main.some((p) => p.person === n))].map((name) => {
+            const on = name === person
+            const color = people.find((x) => x.name === name)?.color
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setPerson(name)}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+                style={on ? { background: 'var(--a-accent)', color: 'var(--a-accent-ink)' } : { border: '1px solid var(--a-border)', color: 'var(--a-text)' }}
+              >
+                {color && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}
+                {name === 'all' ? 'All' : name}
+              </button>
+            )
+          })}
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Find a page…"
-            className="text-xs rounded-lg border px-3 py-1.5 w-40 focus:outline-none"
+            className="ml-auto text-xs rounded-lg border px-3 py-1.5 w-40 focus:outline-none"
             style={{ background: 'var(--a-surface-2)', borderColor: 'var(--a-border)', color: 'var(--a-text)' }}
           />
         </div>
+        <PageRows key={filtering ? `f-${person}-${needle}` : `g-${group}`} pages={shown} />
+        {filtering ? (
+          <p className="px-5 py-2.5 border-t text-xs" style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}>
+            {shown.length} matching {shown.length === 1 ? 'page' : 'pages'} ·{' '}
+            <button type="button" className="underline" onClick={() => { setPerson('all'); setQ('') }}>back to groups</button>
+          </p>
+        ) : (
+          <GroupPager index={group} count={groups.length} onChange={setGroup} />
+        )}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-[11px] uppercase" style={{ background: 'var(--a-surface-2)', color: 'var(--a-text-muted)' }}>
-            <tr>
-              <th className="text-left px-5 py-2.5 font-semibold">Page</th>
-              {COLUMNS.map((c) => (
-                <th key={c.key} className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">
-                  <button type="button" onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? -s.dir : -1 }))} className="uppercase hover:underline" style={{ color: sort.key === c.key ? 'var(--a-accent-strong)' : undefined }}>
-                    {c.label}
-                    {sort.key === c.key ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
-                  </button>
-                </th>
-              ))}
-              <th className="text-right px-5 py-2.5 font-semibold">Trend</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p) => (
-              <Fragment key={p.id}>
-                <tr className="border-t cursor-pointer" style={{ borderColor: 'var(--a-border)' }} onClick={() => setOpen(open === p.id ? null : p.id)}>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="a-avatar" style={{ background: p.color, width: 28, height: 28, borderRadius: 9, fontSize: '0.7rem' }}>{initials(p.person)}</span>
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">
-                          {p.person}
-                          {p.host && <span className="font-normal" style={{ color: 'var(--a-text-muted)' }}> · {p.title}</span>}
-                        </p>
-                        <p className="text-[11px] truncate" style={{ color: 'var(--a-text-muted)' }}>{p.host || `/donate/${p.slug}`}</p>
-                      </div>
-                      <span className="ml-1 text-xs" style={{ color: 'var(--a-text-muted)' }}>{open === p.id ? '▴' : '▾'}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums font-semibold">{p.total.visitors}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{p.total.views}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{p.total.clicks}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{p.total.paid}</td>
-                  <td className="px-3 py-3 text-right tabular-nums font-semibold">
-                    {money(p.total.earned)}
-                    <div><Change now={p.total.earned} before={p.prev.earned} /></div>
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums">{pct(p.clickRate)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{pct(p.payRate)}</td>
-                  <td className="px-5 py-3 text-right"><Sparkline values={p.daily.map((d) => d.visitors)} color={p.color} /></td>
-                </tr>
-                {open === p.id && (
-                  <tr style={{ background: 'var(--a-surface-2)' }}>
-                    <td colSpan={9} className="px-5 py-4">
-                      {p.sources.length > 0 && (
-                        <p className="flex flex-wrap gap-1.5 mb-3 text-xs">
-                          <span style={{ color: 'var(--a-text-muted)' }}>Comes from:</span>
-                          {p.sources.map(([s, n]) => (
-                            <span key={s} className="rounded-full px-2 py-0.5" style={{ border: '1px solid var(--a-border)' }}>
-                              {sourceIcon(s)} {s} <b className="tabular-nums">{n}</b>
-                            </span>
-                          ))}
-                        </p>
-                      )}
-                      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
-                        {[...p.daily].reverse().filter((d) => d.views || d.clicks).map((d) => (
-                          <div key={d.day} className="rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--a-surface)', border: '1px solid var(--a-border)' }}>
-                            <p className="font-bold mb-0.5">{longDay(d.day)}</p>
-                            <p style={{ color: 'var(--a-text-muted)' }}>
-                              {d.visitors} visitors · {d.clicks} clicks
-                            </p>
-                            <p>
-                              <b>{d.paid}</b> paid · <b className="tabular-nums">{money(d.earned)}</b>
-                            </p>
-                          </div>
-                        ))}
-                        {!p.daily.some((d) => d.views || d.clicks) && <p className="text-xs" style={{ color: 'var(--a-text-muted)' }}>No visits in this period.</p>}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-5 py-8 text-center text-sm" style={{ color: 'var(--a-text-muted)' }}>No pages match.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {hideEmpty && hidden > 0 && (
-        <p className="px-5 py-2.5 border-t text-xs" style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}>
-          {hidden} {hidden === 1 ? 'page' : 'pages'} hidden (no visits, or filtered).
-        </p>
+      {separate.length > 0 && (
+        <div className="a-card overflow-hidden">
+          <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--a-border)' }}>
+            <h2 className="a-section-title">México</h2>
+          </div>
+          <PageRows pages={separate} />
+        </div>
       )}
     </div>
   )

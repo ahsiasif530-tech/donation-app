@@ -40,6 +40,12 @@ export const PAGE_BY_HOST = {
   'sunsetmercy-give.vercel.app': 'sunset-mercy',
 }
 
+// The admin lists pages in groups of this many (in the order they were
+// made), with these pages kept apart in their own box; the traffic page
+// uses the same groups so group 2 is the same four pages in both.
+export const PAGES_PER_GROUP = 4
+export const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
+
 // The main site, where every other page lives.
 export const MAIN_SITE = 'https://www.blesshandss.com'
 

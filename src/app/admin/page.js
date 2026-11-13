@@ -14,7 +14,7 @@ import InvoiceSections from '@/components/InvoiceSections'
 import CountryBreakdown from '@/components/CountryBreakdown'
 import { parseHiddenSections } from '@/lib/invoiceSections'
 import RecoverPaypalButton from '@/components/RecoverPaypalButton'
-import { pageUrl, HOST_BY_PAGE } from '@/lib/pageDomains'
+import { pageUrl, HOST_BY_PAGE, PAGES_PER_GROUP, SEPARATE_PAGE_SLUGS } from '@/lib/pageDomains'
 import PageGroups from '@/components/PageGroups'
 import TeamProgress from '@/components/TeamProgress'
 import { initials, personColor } from '@/lib/avatar'
@@ -22,7 +22,6 @@ import AdminSidebar from '@/components/AdminSidebar'
 import AdminTopbar from '@/components/AdminTopbar'
 import CopyButton from '@/components/CopyButton'
 
-const PAGES_PER_GROUP = 4
 
 // Several pages share a person's name (label), so a page is told apart by
 // its own title when it has its own address, otherwise by its link.
@@ -33,8 +32,6 @@ function pageFullName(p) {
   const person = p.label || p.title
   return HOST_BY_PAGE[p.slug] ? `${person} · ${p.title}` : person
 }
-// Pages shown in their own box under the Pages table.
-const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
