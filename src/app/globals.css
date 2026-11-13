@@ -318,6 +318,8 @@ body {
   100% { transform: scale(2.6); opacity: 0; }
 }
 .admin-theme .a-map-pulse-home { filter: drop-shadow(0 0 6px #34D399); animation-duration: 1.4s; }
+.admin-theme .a-map-pulse-hub { filter: drop-shadow(0 0 6px #22D3EE); animation-duration: 1.4s; animation-delay: 0.7s; }
+.admin-theme .a-flow-fast { stroke-dasharray: 6 8; animation-duration: 0.7s; }
 /* Money flowing home: dashes moving along the line to Bangladesh. */
 .admin-theme .a-flow {
   stroke-dasharray: 4 6;

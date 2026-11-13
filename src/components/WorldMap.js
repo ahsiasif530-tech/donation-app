@@ -50,6 +50,8 @@ const RED = '#ef4444'
 // The team works from Bangladesh: its own green (from the flag), a pulsing
 // "working" marker, and lines from the top giving countries to it.
 const HOME = { name: 'Bangladesh', center: [90.35, 23.7], green: '#0E9F6E', flagGreen: '#006A4E', flagRed: '#F42A41' }
+// Donations are received in Italy first, then sent on to Bangladesh.
+const HUB = { name: 'Italy', center: [12.6, 42.7], color: '#22D3EE', fill: '#0E7490' }
 const FLOW_COUNTRIES = 8
 const MEDAL = ['🥇', '🥈', '🥉']
 const MIN_ZOOM = 1
@@ -182,9 +184,9 @@ function FlatMap({ shapes, placed }) {
             <path
               key={i}
               d={d}
-              fill={s.name === HOME.name ? HOME.flagGreen : fillFor(data, placed.max)}
-              stroke={s.name === HOME.name ? '#34D399' : '#171A21'}
-              strokeWidth={s.name === HOME.name ? 1 : 0.5}
+              fill={s.name === HOME.name ? HOME.flagGreen : s.name === HUB.name ? HUB.fill : fillFor(data, placed.max)}
+              stroke={s.name === HOME.name ? '#34D399' : s.name === HUB.name ? HUB.color : '#171A21'}
+              strokeWidth={s.name === HOME.name || s.name === HUB.name ? 1 : 0.5}
               onMouseEnter={data ? () => setHover({ ...data, x: fx(s.center[0]), y: fy(s.center[1]) }) : undefined}
             />
           )
@@ -202,13 +204,13 @@ function FlatMap({ shapes, placed }) {
           )
         })}
         {placed.dots
-          .filter((d) => d.country !== HOME.name)
+          .filter((d) => d.country !== HOME.name && d.country !== HUB.name)
           .slice(0, FLOW_COUNTRIES)
           .map((d) => {
             const x1 = fx(d.center[0])
             const y1 = fy(d.center[1])
-            const x2 = fx(HOME.center[0])
-            const y2 = fy(HOME.center[1])
+            const x2 = fx(HUB.center[0])
+            const y2 = fy(HUB.center[1])
             const lift = Math.min(90, Math.hypot(x2 - x1, y2 - y1) * 0.25)
             return (
               <path
@@ -216,11 +218,31 @@ function FlatMap({ shapes, placed }) {
                 className="a-flow"
                 d={`M${x1},${y1} Q${(x1 + x2) / 2},${Math.min(y1, y2) - lift} ${x2},${y2}`}
                 fill="none"
-                stroke="rgba(52,211,153,0.55)"
+                stroke="rgba(34,211,238,0.55)"
                 strokeWidth="1.2"
               />
             )
           })}
+        {(() => {
+          const x1 = fx(HUB.center[0])
+          const y1 = fy(HUB.center[1])
+          const x2 = fx(HOME.center[0])
+          const y2 = fy(HOME.center[1])
+          const d = `M${x1},${y1} Q${(x1 + x2) / 2},${Math.min(y1, y2) - 40} ${x2},${y2}`
+          return (
+            <g>
+              <path d={d} fill="none" stroke="rgba(52,211,153,0.35)" strokeWidth="5" />
+              <path d={d} className="a-flow a-flow-fast" fill="none" stroke="#FACC15" strokeWidth="2" />
+            </g>
+          )
+        })()}
+        <g>
+          <rect className="a-map-pulse a-map-pulse-hub" x={fx(HUB.center[0]) - 5} y={fy(HUB.center[1]) - 5} width="10" height="10" fill={HUB.color} transform={`rotate(45 ${fx(HUB.center[0])} ${fy(HUB.center[1])})`} />
+          <rect x={fx(HUB.center[0]) - 5} y={fy(HUB.center[1]) - 5} width="10" height="10" fill="#0E7490" stroke="#A5F3FC" strokeWidth="1.5" transform={`rotate(45 ${fx(HUB.center[0])} ${fy(HUB.center[1])})`} />
+          <text x={fx(HUB.center[0]) - 10} y={fy(HUB.center[1]) - 12} textAnchor="end" fontSize="11" fontWeight="700" fill={HUB.color} stroke="#0F1115" strokeWidth="3" paintOrder="stroke">
+            🇮🇹 Italy · Payment hub
+          </text>
+        </g>
         <g>
           <circle className="a-map-pulse a-map-pulse-home" cx={fx(HOME.center[0])} cy={fy(HOME.center[1])} r="6" fill="#34D399" />
           <circle cx={fx(HOME.center[0])} cy={fy(HOME.center[1])} r="6" fill={HOME.flagGreen} stroke="#A7F3D0" strokeWidth="1.5" />
@@ -413,11 +435,12 @@ function Globe({ shapes, placed }) {
         }
         if (!any) continue
         const isHome = shape.name === HOME.name
-        ctx.fillStyle = isHome ? HOME.flagGreen : fillFor(data, placed.max)
+        const isHub = shape.name === HUB.name
+        ctx.fillStyle = isHome ? HOME.flagGreen : isHub ? HUB.fill : fillFor(data, placed.max)
         ctx.fill(path)
-        if (isHome) {
+        if (isHome || isHub) {
           ctx.save()
-          ctx.strokeStyle = '#34D399'
+          ctx.strokeStyle = isHub ? HUB.color : '#34D399'
           ctx.lineWidth = 1.2
           ctx.stroke(path)
           ctx.restore()
@@ -440,37 +463,52 @@ function Globe({ shapes, placed }) {
         const s2 = Math.sin(t * w) / Math.sin(w)
         return toLonLat([a[0] * s1 + b[0] * s2, a[1] * s1 + b[1] * s2, a[2] * s1 + b[2] * s2])
       }
+      // The money's road: each top giving country → Italy (where it is
+      // received), then Italy → Bangladesh as one strong line.
+      const hubVec = toVec(HUB.center)
+      const drawArc = (fromVec, toVecB, stroke, width) => {
+        ctx.strokeStyle = stroke
+        ctx.lineWidth = width
+        ctx.beginPath()
+        let pen = false
+        for (let k = 0; k <= 48; k++) {
+          const [x, y, vis] = project(...arcPoint(fromVec, toVecB, k / 48))
+          if (vis) {
+            pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
+            pen = true
+          } else pen = false
+        }
+        ctx.stroke()
+      }
+      const drawSpark = (fromVec, toVecB, t, glow, fill, size) => {
+        const [x, y, vis] = project(...arcPoint(fromVec, toVecB, t))
+        if (!vis) return
+        ctx.shadowColor = glow
+        ctx.shadowBlur = 10
+        ctx.fillStyle = fill
+        ctx.beginPath()
+        ctx.arc(x, y, size * Math.sqrt(s.zoom), 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+      }
       placed.dots
-        .filter((d) => d.country !== HOME.name)
+        .filter((d) => d.country !== HOME.name && d.country !== HUB.name)
         .slice(0, FLOW_COUNTRIES)
         .forEach((d, i) => {
           const from = toVec(d.center)
-          ctx.strokeStyle = 'rgba(52,211,153,0.32)'
-          ctx.lineWidth = 1.2
-          ctx.beginPath()
-          let pen = false
-          for (let k = 0; k <= 40; k++) {
-            const [x, y, vis] = project(...arcPoint(from, homeVec, k / 40))
-            if (vis) {
-              pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
-              pen = true
-            } else pen = false
-          }
-          ctx.stroke()
-          if (!reduceMotion) {
-            const t = ((now / 2600) + i * 0.17) % 1
-            const [x, y, vis] = project(...arcPoint(from, homeVec, t))
-            if (vis) {
-              ctx.shadowColor = '#34D399'
-              ctx.shadowBlur = 8
-              ctx.fillStyle = '#A7F3D0'
-              ctx.beginPath()
-              ctx.arc(x, y, 2.2 * Math.sqrt(s.zoom), 0, Math.PI * 2)
-              ctx.fill()
-              ctx.shadowBlur = 0
-            }
-          }
+          drawArc(from, hubVec, 'rgba(34,211,238,0.30)', 1.2)
+          if (!reduceMotion) drawSpark(from, hubVec, ((now / 2600) + i * 0.17) % 1, HUB.color, '#A5F3FC', 2.2)
         })
+      // Italy → Bangladesh: a glowing double line with a train of lights.
+      ctx.save()
+      ctx.shadowColor = '#34D399'
+      ctx.shadowBlur = 12
+      drawArc(hubVec, homeVec, 'rgba(52,211,153,0.55)', 3)
+      ctx.restore()
+      drawArc(hubVec, homeVec, 'rgba(250,204,21,0.55)', 1)
+      if (!reduceMotion) {
+        for (let k = 0; k < 4; k++) drawSpark(hubVec, homeVec, ((now / 1800) + k * 0.25) % 1, '#FACC15', k % 2 ? '#FDE68A' : '#A7F3D0', 3)
+      }
 
       // Dots, smallest last on top; the top country pulses.
       const dotsOnScreen = []
@@ -539,6 +577,41 @@ function Globe({ shapes, placed }) {
         } else s.homeOnScreen = null
       }
 
+      // Italy marker: a cyan diamond with a pulsing ring, where the money
+      // is received before it goes on to Bangladesh.
+      {
+        const [ix, iy, vis] = project(...HUB.center)
+        if (vis) {
+          const ir = 6 * scale
+          if (!reduceMotion) {
+            const t = ((now + 700) % 1400) / 1400
+            ctx.strokeStyle = `rgba(34,211,238,${0.85 * (1 - t)})`
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(ix, iy, ir * (1 + 2.2 * t), 0, Math.PI * 2)
+            ctx.stroke()
+          }
+          ctx.save()
+          ctx.translate(ix, iy)
+          ctx.rotate(Math.PI / 4)
+          ctx.shadowColor = HUB.color
+          ctx.shadowBlur = 14
+          ctx.fillStyle = '#0E7490'
+          ctx.fillRect(-ir * 0.8, -ir * 0.8, ir * 1.6, ir * 1.6)
+          ctx.shadowBlur = 0
+          ctx.strokeStyle = '#A5F3FC'
+          ctx.lineWidth = 1.5
+          ctx.strokeRect(-ir * 0.8, -ir * 0.8, ir * 1.6, ir * 1.6)
+          ctx.restore()
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(ix, iy, ir * 0.3, 0, Math.PI * 2)
+          ctx.fill()
+          const blinkOn = reduceMotion || Math.floor((now + 350) / 700) % 2 === 0
+          drawLabel(ix, iy, ir, ['🇮🇹 Italy · Payment hub', `${blinkOn ? '●' : '○'} Receiving → Bangladesh`], true, HUB.color, 'rgba(34,211,238,0.8)')
+        }
+      }
+
       // Labels: the top three always; other giving countries once zoomed in
       // (2×); every country's name, faintly, when zoomed further (3×).
       const pct = (d) => {
@@ -560,7 +633,7 @@ function Globe({ shapes, placed }) {
         ctx.font = '500 10px ui-sans-serif, system-ui, sans-serif'
         ctx.textAlign = 'center'
         for (const shape of shapes) {
-          if (!shape.name || giving.has(shape.name) || shape.name === 'Antarctica' || shape.name === HOME.name) continue
+          if (!shape.name || giving.has(shape.name) || shape.name === 'Antarctica' || shape.name === HOME.name || shape.name === HUB.name) continue
           const [x, y, , cosc] = project(shape.center[0], shape.center[1])
           if (cosc < 0.25 || x < 0 || x > size || y < 0 || y > size) continue
           ctx.fillStyle = 'rgba(242,244,247,0.55)'
