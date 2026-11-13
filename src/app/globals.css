@@ -338,6 +338,7 @@ body {
 .admin-theme {
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
 }
 .admin-theme .a-star {
   animation: a-twinkle 4s ease-in-out infinite;
