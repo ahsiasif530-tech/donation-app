@@ -20,7 +20,7 @@ export const revalidate = 60
 const RECENT_DONORS_SHOWN = 7
 
 // Pages that offer the soft hymn button (being tried on one page first).
-const HYMN_PAGES = new Set(['blesshand-4'])
+const HYMN_PAGES = new Set(['blesshand-4', 'royal-grace'])
 
 // No pages are built ahead of time; each one is cached on its first visit.
 export async function generateStaticParams() {
