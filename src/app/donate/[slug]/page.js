@@ -8,6 +8,7 @@ import { getActivePaypalAccount } from '@/lib/paypalAccounts'
 import RecentDonors from '@/components/RecentDonors'
 import PageViewTracker from '@/components/PageViewTracker'
 import OpenInBrowser from '@/components/OpenInBrowser'
+import HymnPlayer from '@/components/HymnPlayer'
 import { getMessages } from '@/lib/i18n'
 import { paypalScriptOptions, paypalSdkUrl } from '@/lib/paypalScript'
 
@@ -17,6 +18,9 @@ import { paypalScriptOptions, paypalSdkUrl } from '@/lib/paypalScript'
 export const revalidate = 60
 
 const RECENT_DONORS_SHOWN = 7
+
+// Pages that offer the soft hymn button (being tried on one page first).
+const HYMN_PAGES = new Set(['blesshand-4'])
 
 // No pages are built ahead of time; each one is cached on its first visit.
 export async function generateStaticParams() {
@@ -113,6 +117,7 @@ export default async function DonatePage({ params }) {
     <main lang={t.htmlLang} className={`theme-${page.theme || 'classic'} min-h-screen`}>
     <PageViewTracker slug={slug} />
     <OpenInBrowser locale={page.locale} />
+    {HYMN_PAGES.has(slug) && <HymnPlayer />}
     <div className="mx-auto max-w-[600px] px-5 py-14 flex flex-col gap-7">
       {/* Banner themes (theme name starting "banner-") open with a wide
           picture carrying the title; every other theme with the small framed

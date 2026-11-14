@@ -410,7 +410,7 @@ export default function DonationForm({
 
   if (status === 'done') {
     return (
-      <div className="d-card rounded-2xl border p-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <div data-donation-done className="d-card rounded-2xl border p-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <p className="text-lg font-semibold" style={{ color: 'var(--heading)', fontFamily: 'var(--font-display)' }}>{t.godBless}</p>
         <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>{feedback}</p>
 
