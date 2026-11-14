@@ -177,27 +177,60 @@ function bell(a, f, t, level) {
   }
 }
 
-// Schedules one verse from time t0 and returns how long it lasts.
-function verse(a, t0) {
-  bell(a, HZ.G4, t0, 0.09)
+// Schedules one verse from time t0 and returns how long it lasts. Each of the
+// three verses sounds a little different so the hymn never feels repeated:
+// 0 = piano with choir, 1 = piano with a soft music-box line an octave up,
+// 2 = the choir itself sings the tune over quiet piano chords.
+function verse(a, t0, kind) {
+  if (kind === 0) bell(a, HZ.G4, t0, 0.09)
   let t = t0
   for (const [note, beats] of MELODY) {
-    piano(a, HZ[note], t, beats, 0.2)
+    const f = HZ[note]
+    if (kind === 2) {
+      choir(a, [f], t, beats * BEAT * 0.95, 0.075)
+      piano(a, f, t, beats, 0.08)
+    } else {
+      piano(a, f, t, beats, 0.2)
+      if (kind === 1) piano(a, f * 2, t, beats, 0.045)
+    }
     t += beats * BEAT
   }
   BARS.forEach((name, i) => {
     const at = t0 + (1 + i * 3) * BEAT
     const chord = CHORDS[name]
     piano(a, HZ[chord.bass], at, 3, 0.09)
-    choir(a, chord.notes.map((n) => HZ[n]), at, 3 * BEAT, 0.07)
+    if (kind === 2) {
+      chord.notes.forEach((n, j) => piano(a, HZ[n], at + j * BEAT, 1, 0.05))
+    } else {
+      choir(a, chord.notes.map((n) => HZ[n]), at, 3 * BEAT, kind === 1 ? 0.085 : 0.07)
+    }
   })
-  return SONG_BEATS * BEAT + 1.2
+  return SONG_BEATS * BEAT
 }
 
+// A short, quiet bridge between rounds: slow chords and a rising arpeggio.
+function interlude(a, t0) {
+  const order = ['G', 'C', 'G', 'D']
+  order.forEach((name, i) => {
+    const at = t0 + i * 3 * BEAT
+    const chord = CHORDS[name]
+    choir(a, chord.notes.map((n) => HZ[n]), at, 3 * BEAT, 0.06)
+    piano(a, HZ[chord.bass], at, 3, 0.07)
+    chord.notes.forEach((n, j) => piano(a, HZ[n] * 2, at + j * BEAT, 1.5, 0.05))
+  })
+  return order.length * 3 * BEAT
+}
+
+// Plays without stopping: three verses, a bridge, then again from the top.
+// Each part is queued about a second before the previous one ends.
 function playLoop(a) {
+  const parts = [(t) => verse(a, t, 0), (t) => verse(a, t, 1), (t) => verse(a, t, 2), (t) => interlude(a, t)]
+  let i = 0
+  let next = a.ctx.currentTime + 0.15
   const run = () => {
-    const len = verse(a, a.ctx.currentTime + 0.15)
-    a.timer = setTimeout(run, (len + 3.5) * 1000)
+    next += parts[i % parts.length](next)
+    i++
+    a.timer = setTimeout(run, Math.max(0, (next - a.ctx.currentTime - 1) * 1000))
   }
   run()
 }
