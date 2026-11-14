@@ -276,7 +276,7 @@ export default function HymnPlayer() {
         type="button"
         onClick={on ? stop : start}
         aria-pressed={on}
-        className="hymn-btn fixed z-40 bottom-4 right-4 flex items-center gap-2.5 rounded-full border pl-3 pr-4 py-2.5 text-left"
+        className="hymn-btn fixed z-40 bottom-1.5 right-3 sm:bottom-4 sm:right-4 flex items-center gap-2.5 rounded-full border pl-3 pr-4 py-2.5 text-left"
         style={{ background: 'var(--surface, #fff)', borderColor: 'var(--border, #e5e5e5)', color: 'var(--heading, #111)' }}
         title={on ? 'Stop the hymn' : 'Play a soft hymn while you give'}
       >
