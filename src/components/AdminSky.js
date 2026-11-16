@@ -160,8 +160,44 @@ function skyFor(sun) {
     stars: st0 + (st1 - st0) * t,
     x,
     y,
+    // Where the sun itself sits on screen (% of the window): near the bottom
+    // at sunrise/sunset, climbing to the upper part by midday.
+    sunTop: Math.max(18, Math.min(97, 97 - sun.elevation * 1.5)),
+    elevation: sun.elevation,
     phase: sun.elevation < -6 ? 'night' : sun.elevation < 3 ? (sun.morning ? 'dawn' : 'dusk') : sun.elevation < 15 ? (sun.morning ? 'morning' : 'afternoon') : 'day',
   }
+}
+
+// The sun as it really looks: a small, sharp, blinding disc (not a big
+// orb), white at midday and deep orange, larger and a touch flattened at the
+// horizon, with a tight corona and a wide faint glare in the air around it.
+// Cloud hides the disc but the glare still glows through. No rays, no pulse.
+function SunDisc({ elevation, clouds }) {
+  if (elevation < -1.5) return null
+  const t = Math.max(0, Math.min(1, elevation / 25)) // 0 horizon .. 1 high
+  const low = 1 - Math.max(0, Math.min(1, elevation / 8)) // 1 right at the horizon
+  const core = mix('#FFE3B5', '#FFFFFF', t)
+  const rim = mix('#FF7228', '#FFF1CC', t)
+  const air = mix('#FF6420', '#FFF3D6', t).slice(4, -1) // "r,g,b"
+  const size = 40 + low * 22
+  const squash = 1 - low * 0.09
+  const disc = Math.min(1, (elevation + 1.5) / 2.5) * (1 - clouds * 0.92)
+  const glare = Math.min(1, (elevation + 1.5) / 3) * (1 - clouds * 0.45)
+  const at = (w, h = w) => ({ position: 'absolute', width: w, height: h, left: -w / 2, top: -h / 2, borderRadius: '50%' })
+  return (
+    <>
+      <div style={{ ...at(size * 16), background: `radial-gradient(circle, rgba(${air},${0.2 * glare}) 0%, rgba(${air},${0.07 * glare}) 28%, transparent 62%)` }} />
+      <div style={{ ...at(size * 3.4), background: `radial-gradient(circle, rgba(255,255,255,${0.7 * disc}) 0%, rgba(${air},${0.45 * disc}) 24%, rgba(${air},${0.1 * disc}) 46%, transparent 70%)` }} />
+      <div
+        style={{
+          ...at(size, size * squash),
+          opacity: disc,
+          background: `radial-gradient(circle, #FFFFFF 0%, ${core} 52%, ${rim} 100%)`,
+          boxShadow: `0 0 ${size * 0.4}px ${size * 0.14}px rgba(255,255,255,${0.55 * disc}), 0 0 ${size * 1.2}px ${size * 0.3}px rgba(${air},${0.35 * disc})`,
+        }}
+      />
+    </>
+  )
 }
 
 // ---- The weather --------------------------------------------------------
@@ -362,6 +398,9 @@ export default function AdminSky() {
     const el = wrapEl
     if (!el) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    // Phones and tablets: the sky stays still while scrolling, so the page
+    // scrolls at the screen's full refresh rate with nothing to recalculate.
+    if (window.matchMedia?.('(max-width: 1023px), (pointer: coarse)').matches) return
     let raf = 0
     const update = () => {
       raf = 0
@@ -397,37 +436,32 @@ export default function AdminSky() {
         {/* The sky itself, a little deeper the further down the page */}
         <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${sky.top}, ${sky.bottom})`, opacity: 0.85, transition: 'background 60s linear' }} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent, rgba(5,7,15,0.45))', opacity: 'calc(var(--sp) * 0.9)' }} />
-        {/* Sunlight: breathes slowly, and rises as you scroll */}
+        {/* Daylight in the air, brightest around the sun (the layer is 140%
+            of the window, so the sun's window position is mapped into it) */}
         <div className="a-sky-glow absolute" style={{ inset: '-20%' }}>
           <div
-            className="a-glow-breathe absolute inset-0"
+            className="absolute inset-0"
             style={{
-              background: `radial-gradient(ellipse 58% 50% at ${sky.x}% ${sky.y * 0.7 + 15}%, ${sky.glow}, transparent 70%)`,
-              opacity: glow,
+              background: `radial-gradient(ellipse 55% 45% at ${(sky.x + 20) / 1.4}% ${(sky.sunTop + 20) / 1.4}%, ${sky.glow}, transparent 72%)`,
+              opacity: glow * 0.85,
               transition: 'opacity 60s linear, background 60s linear',
             }}
           />
         </div>
-        {/* Sun rays turning slowly in daylight */}
-        {glow > 0.15 && (
-          <div className="a-sky-glow absolute" style={{ inset: '-20%' }}>
-            <div
-              className="a-rays absolute"
-              style={{
-                left: `${sky.x}%`,
-                top: `${sky.y * 0.7 + 15}%`,
-                width: '160vmax',
-                height: '160vmax',
-                marginLeft: '-80vmax',
-                marginTop: '-80vmax',
-                background: `repeating-conic-gradient(from 0deg, ${sky.glow} 0deg 4deg, transparent 4deg 18deg)`,
-                opacity: glow * 0.16,
-                maskImage: 'radial-gradient(circle, black 0%, transparent 45%)',
-                WebkitMaskImage: 'radial-gradient(circle, black 0%, transparent 45%)',
-              }}
-            />
-          </div>
+        {/* Warm band along the horizon around sunrise and sunset */}
+        {sky.elevation > -8 && sky.elevation < 10 && (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(0deg, rgba(255,120,55,${0.22 * (1 - Math.abs(sky.elevation - 1) / 9) * (1 - clouds * 0.7)}), transparent 38%)`,
+              transition: 'background 60s linear',
+            }}
+          />
         )}
+        {/* The sun itself */}
+        <div className="a-sky-glow absolute" style={{ left: `${sky.x}%`, top: `${sky.sunTop}%`, width: 0, height: 0, transition: 'left 60s linear, top 60s linear' }}>
+          <SunDisc elevation={sky.elevation} clouds={clouds} />
+        </div>
         {/* Stars: the far layer, the sky turning slightly as you scroll */}
         <div className="a-sky-stars absolute" style={{ inset: '-25%', opacity: stars, transition: 'opacity 60s linear' }}>
           <div className="a-stars-spin absolute inset-0">

@@ -104,9 +104,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(15, 17, 21, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(15, 17, 21, 0.97);
   border-bottom: 1px solid var(--a-border);
 }
 .admin-theme .a-brand-sm {
@@ -344,13 +342,15 @@ body {
   animation: a-twinkle 4s ease-in-out infinite;
 }
 @keyframes a-twinkle {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(0.6); filter: brightness(0.5); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.6); opacity: 0.45; }
 }
+/* Soft clouds from the gradient alone: a blur filter here would be redrawn
+   every frame and make scrolling stutter on phones. */
 .admin-theme .a-cloud {
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(150,160,180,0.22), rgba(150,160,180,0.08) 45%, transparent 70%);
-  filter: blur(30px);
+  background: radial-gradient(ellipse at center, rgba(150,160,180,0.2), rgba(150,160,180,0.1) 30%, rgba(150,160,180,0.035) 52%, transparent 70%);
+  will-change: transform;
   animation: a-cloud-drift 120s ease-in-out infinite alternate;
 }
 .admin-theme .a-cloud-slow {
@@ -389,11 +389,23 @@ body {
 .admin-theme .a-glow-breathe { animation: a-breathe 14s ease-in-out infinite; }
 @keyframes a-spin { to { transform: rotate(360deg); } }
 @keyframes a-breathe {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.06); filter: brightness(1.15); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.88; }
+}
+/* The sky is its own layer: nothing in it makes the page re-lay out. */
+.admin-theme .a-sky { contain: strict; }
+/* Phones and tablets: a still sky behind a page that scrolls at the screen's
+   full refresh rate. No scroll parallax, no twinkling or drifting lights. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .admin-theme .a-sky-stars,
+  .admin-theme .a-sky-glow,
+  .admin-theme .a-sky-near,
+  .admin-theme .a-sky-clouds { transform: none; will-change: auto; }
+  .admin-theme .a-star,
+  .admin-theme .a-stars-spin { animation: none; }
+  .admin-theme .a-floater { display: none; }
 }
 .admin-theme .a-floater {
-  filter: blur(6px);
   animation: a-float 40s ease-in-out infinite;
 }
 @keyframes a-float {
