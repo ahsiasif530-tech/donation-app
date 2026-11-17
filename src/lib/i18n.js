@@ -18,6 +18,7 @@ const en = {
     noDonors: 'No donors yet — be the first to support this page.',
     secure: 'Secure & trusted payment',
     badges: ['SSL encrypted', 'PCI compliant'],
+    links: { about: 'About us', contact: 'Contact', privacy: 'Privacy' },
   },
 
   form: {
@@ -118,6 +119,7 @@ const es = {
     noDonors: 'Aún no hay donantes. ¡Sé el primero en apoyar esta página!',
     secure: 'Pago seguro y confiable',
     badges: ['Cifrado SSL', 'Cumple con PCI'],
+    links: { about: 'Quiénes somos', contact: 'Contacto', privacy: 'Privacidad' },
   },
 
   form: {

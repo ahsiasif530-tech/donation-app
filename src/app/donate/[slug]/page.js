@@ -244,6 +244,12 @@ export default async function DonatePage({ params }) {
         </div>
         <RecentDonors donors={donors} emptyText={t.page.noDonors} />
       </div>
+
+      <nav className="flex justify-center gap-5 text-sm font-semibold" style={{ color: 'var(--ink-muted)' }}>
+        <a href="/">{t.page.links.about}</a>
+        <a href="/contact">{t.page.links.contact}</a>
+        <a href="/privacy">{t.page.links.privacy}</a>
+      </nav>
     </div>
     </main>
   )
