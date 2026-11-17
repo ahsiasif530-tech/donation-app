@@ -20,12 +20,12 @@ export default function SiteLayout({ children }) {
       </header>
       <main className="site-main">{children}</main>
       <footer className="site-foot">
-        <p>© {new Date().getFullYear()} {SITE_NAME}</p>
+        {/* The team's way in: the copyright line quietly links to the login. */}
+        <p><a href="/login" className="site-quiet">© {new Date().getFullYear()} {SITE_NAME}</a></p>
         <nav>
           <Link href="/">About</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/privacy">Privacy</Link>
-          <Link href="/login">Team sign in</Link>
         </nav>
       </footer>
     </div>
