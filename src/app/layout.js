@@ -16,6 +16,10 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "BlessedHands",
   description: "Create and manage donation pages and invoices.",
+  // Proves to Meta (Facebook) that this business owns blesshandss.com.
+  other: {
+    "facebook-domain-verification": "76q3w4reojq050sp0fx8n8f6iki0fr",
+  },
 };
 
 export default function RootLayout({ children }) {
