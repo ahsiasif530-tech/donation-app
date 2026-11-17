@@ -368,7 +368,7 @@ export default async function AdminPage({ searchParams }) {
           Open ↗
         </a>
         <CopyButton
-          text={HOST_BY_PAGE[p.slug] ? `https://${HOST_BY_PAGE[p.slug]}/` : `https://www.blesshandss.com/donate/${p.slug}`}
+          text={pageUrl(p.slug)}
           label="Copy link"
           className="ml-2 rounded-lg border text-xs font-bold px-3 py-2 hover:opacity-80"
           style={{ borderColor: 'var(--a-border)', color: 'var(--a-text-muted)' }}

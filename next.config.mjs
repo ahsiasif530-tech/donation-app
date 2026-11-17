@@ -50,21 +50,23 @@ const nextConfig = {
       ...['/admin/:path*', '/dashboard/:path*', '/login'].map((source) => ({ source, headers: privateHeaders })),
     ]
   },
-  // Pages with their own address, handled at the edge with no server round
-  // trip: on its own host a page shows at the root, admin/login/dashboard go
-  // back to the root and another page's link goes to the main site; on any
-  // other host the page's /donate link moves to its own address. Query
-  // strings (?resume=…) are kept.
+  // Handled at the edge with no server round trip. A page that once had its
+  // own .vercel.app address now lives on the main site at a short path: the
+  // old address sends visitors there, and its /donate link moves to the short
+  // path too. Query strings (?resume=…) are kept. The page's files (/_next)
+  // still load from an old host, so a page already open there keeps working.
   async redirects() {
-    return ownHosts.flatMap(([host, slug]) => [
-      ...['/login', '/admin/:path*', '/dashboard/:path*'].map((source) => ({ source, has: hostIs(host), destination: '/', permanent: false })),
-      { source: `/donate/:slug((?!${slug}$).+)`, has: hostIs(host), destination: `${MAIN_SITE}/donate/:slug`, permanent: false },
-      { source: `/donate/${slug}`, missing: hostIs(host), destination: `https://${host}/`, permanent: false },
-    ])
+    return [
+      ...ownHosts.flatMap(([host, slug]) => [
+        { source: '/', has: hostIs(host), destination: `${MAIN_SITE}/${slug}`, permanent: false },
+        { source: '/:path((?!_next/).+)', has: hostIs(host), destination: `${MAIN_SITE}/:path`, permanent: false },
+      ]),
+      ...ownHosts.map(([, slug]) => ({ source: `/donate/${slug}`, destination: `/${slug}`, permanent: false })),
+    ]
   },
   async rewrites() {
     return {
-      beforeFiles: ownHosts.map(([host, slug]) => ({ source: '/', has: hostIs(host), destination: `/donate/${slug}` })),
+      beforeFiles: ownHosts.map(([, slug]) => ({ source: `/${slug}`, destination: `/donate/${slug}` })),
     }
   },
 };

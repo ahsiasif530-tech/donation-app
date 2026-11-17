@@ -1,6 +1,7 @@
-// Donation pages that have their own address. On these hosts the root (/)
-// shows that page, so the link carries no other site name and no /donate path.
-// The host must also be added to the project in Vercel (Settings → Domains).
+// Pages that used to have their own .vercel.app address. They now live on the
+// main site at a short path (www.blesshandss.com/royal-grace), so links shared
+// before still work: each old host sends visitors to that path. One domain is
+// easier for Facebook and donors to trust than many free addresses.
 export const PAGE_BY_HOST = {
   'royalgrace.vercel.app': 'royal-grace',
   'hopeharvest-give.vercel.app': 'hope-harvest',
@@ -49,12 +50,12 @@ export const SEPARATE_PAGE_SLUGS = ['blesshand-mx']
 // The main site, where every other page lives.
 export const MAIN_SITE = 'https://www.blesshandss.com'
 
-export const HOST_BY_PAGE = Object.fromEntries(Object.entries(PAGE_BY_HOST).map(([host, slug]) => [slug, host]))
-
 export const PAGES_WITH_OWN_DOMAIN = new Set(Object.values(PAGE_BY_HOST))
 
-// The address donors use for a page: its own address when it has one.
+// The short address shown for a page, without https://.
+export const HOST_BY_PAGE = Object.fromEntries([...PAGES_WITH_OWN_DOMAIN].map((slug) => [slug, `blesshandss.com/${slug}`]))
+
+// The address donors use for a page: its short path when it has one.
 export function pageUrl(slug) {
-  const host = HOST_BY_PAGE[slug]
-  return host ? `https://${host}/` : `/donate/${slug}`
+  return PAGES_WITH_OWN_DOMAIN.has(slug) ? `${MAIN_SITE}/${slug}` : `${MAIN_SITE}/donate/${slug}`
 }
